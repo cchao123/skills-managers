@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 保持原有的亮色模式配色 */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #edeeef;
+    --bg-card: #ffffff;
+    --border-color: #e1e3e4;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #94a3b8;
+    --hover-bg: #f1f5f9;
+    --active-bg: #e2e8f0;
+  }
+
+  .dark {
+    /* Dark 模式配色 - 优化文字对比度 */
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #141414;
+    --bg-tertiary: #1c1c1c;
+    --bg-card: #171717;
+    --border-color: #2a2a2a;
+    --text-primary: #f5f5f5;
+    --text-secondary: #c5c5c5;
+    --text-tertiary: #9a9a9a;
+    --hover-bg: #222222;
+    --active-bg: #2a2a2a;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Smooth transition for theme switching */
+* {
+  transition-property: background-color, border-color, color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Disable transition for theme icon itself to avoid flicker */
+.material-symbols-outlined,
+.no-transition {
+  transition: none !important;
+}
+
+/* Global input focus styles - red theme #b71422 */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: #b71422 !important;
+  box-shadow: 0 0 0 3px rgba(183, 20, 34, 0.1) !important;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #b71422 !important;
+  box-shadow: 0 0 0 3px rgba(183, 20, 34, 0.2) !important;
+}
+
+/* Input focus icon color change - when input is focused, adjacent icon turns red */
+.group:focus-within .material-symbols-outlined {
+  color: #b71422 !important;
+}
+
+/* Toast animations */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toast-out {
+  animation: toast-out 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* Hide scrollbars but keep scroll functionality */
+*:not([data-tauri-drag-region]) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*:not([data-tauri-drag-region])::-webkit-scrollbar {
+  display: none;
+}
+
+/* Show scrollbar for specific elements */
+.show-scrollbar {
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+}
+.show-scrollbar::-webkit-scrollbar {
+  display: auto;
+  width: 6px;
+}
+.show-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.show-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+.show-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark .show-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+.dark .show-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Window drag regions for Tauri Overlay titlebar - CRITICAL for window dragging */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+  app-region: drag;
+  /* Ensure drag region works correctly */
+  pointer-events: auto !important;
+  user-select: none !important;
+  /* Restore scrollbar for drag region */
+  scrollbar-width: auto;
+  -ms-overflow-style: auto;
+}
+[data-tauri-drag-region]::-webkit-scrollbar {
+  display: auto;
+}
+
+/* Ensure children of drag region don't interfere */
+[data-tauri-drag-region] > * {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.no-drag-region {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Resizable divider - prevent text selection during drag */
+.resizing,
+.resizing * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  cursor: col-resize !important;
+}
+
+/* Smooth transitions for resizable divider */
+.resizable-divider {
+  transition: all 0.15s ease;
+}
+
+.resizable-divider:hover {
+  transform: scaleX(1.1);
+}

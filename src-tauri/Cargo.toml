@@ -1,0 +1,37 @@
+[package]
+name = "skills-manager"
+version = "1.0.0"
+description = "Skills Manager for Claude Code"
+authors = ["Claude Skills Manager"]
+license = "MIT"
+repository = "https://github.com/cchao123/skills-managers"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+# vendored-*：在 macOS ARM runner 上交叉编译 x86_64-apple-darwin 时避免链接宿主机 arm64 的 OpenSSL/libgit2。
+# default-features = false 去掉 ssh，避免 libssh2-sys 交叉编译；GitHub HTTPS + PAT 无需 SSH。
+git2 = { version = "0.18", default-features = false, features = ["https", "vendored-libgit2", "vendored-openssl"] }
+regex = "1.10"
+dirs = "5.0"
+walkdir = "2.5"
+tempfile = "3.10"
+thiserror = "1.0"
+same-file = "1.0"
+anyhow = "1.0"
+tokio = { version = "1.35", features = ["full"] }
+ureq = "2.9"
+chrono = "0.4"
+log = "0.4"
+env_logger = "0.11"
+tauri-plugin-single-instance = "2.4.1"

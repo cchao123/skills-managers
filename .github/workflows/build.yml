@@ -1,0 +1,65 @@
+name: Build Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# 默认 GITHUB_TOKEN 常为只读，缺少此项会导致 tauri-action 创建 Release 时报：
+# Resource not accessible by integration
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+          - platform: windows-latest
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # 仓库含 pnpm-lock.yaml 时 tauri-action@v0.6 会调用 pnpm，需先安装 pnpm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 使用固定小版本，避免 @v0 指向过旧产物（易出现 Node「unsettled top-level await」告警）
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Skills Manager ${{ github.ref_name }}'
+          releaseBody: 'See the assets to download and install this version.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

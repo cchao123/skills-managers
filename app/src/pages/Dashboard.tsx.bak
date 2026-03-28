@@ -1,0 +1,1099 @@
+import { useState, useEffect, useRef as useReactRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { skillsApi, agentsApi } from '../api/tauri';
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import type { SkillMetadata, AgentConfig, SkillFileEntry } from '../types';
+import claudeIcon from '../assets/agents/claude.svg';
+import cursorIcon from '../assets/agents/cursor.svg';
+import gptIcon from '../assets/agents/GPT.svg';
+import openclawIcon from '../assets/agents/openclaw.svg';
+import PageHeader from '../components/PageHeader';
+import { useToast } from '../components/Toast';
+import CardFileTree from '../components/CardFileTree';
+
+// Skill icon pool (Material Symbols)
+const skillIconPool = [
+  'language', 'account_tree', 'bug_report', 'storage', 'autorenew', 'extension',
+  'terminal', 'cloud_sync', 'psychology', 'api', 'code', 'rocket_launch',
+  'bolt', 'smart_toy', 'schema', 'hub', 'transform', 'memory',
+  'database', 'settings_suggest', 'integration_instructions', 'data_object',
+  'source', 'html', 'css', 'javascript', 'functions', 'token',
+];
+
+// Skill color pool
+const skillColorPool = [
+  'bg-blue-50 text-blue-600',
+  'bg-purple-50 text-purple-600',
+  'bg-green-50 text-green-600',
+  'bg-orange-50 text-orange-600',
+  'bg-emerald-50 text-emerald-600',
+  'bg-rose-50 text-rose-600',
+  'bg-indigo-50 text-indigo-600',
+  'bg-amber-50 text-amber-600',
+  'bg-teal-50 text-teal-600',
+  'bg-cyan-50 text-cyan-600',
+  'bg-fuchsia-50 text-fuchsia-600',
+  'bg-sky-50 text-sky-600',
+  'bg-lime-50 text-lime-600',
+  'bg-violet-50 text-violet-600',
+  'bg-pink-50 text-pink-600',
+  'bg-red-50 text-red-500',
+];
+
+// Deterministic hash from string to index (same skill always gets same icon/color)
+const hashIndex = (str: string, poolSize: number): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) % poolSize;
+};
+
+const getSkillIcon = (skillId: string) => skillIconPool[hashIndex(skillId, skillIconPool.length)];
+const getSkillColor = (skillId: string) => skillColorPool[hashIndex(skillId, skillColorPool.length)];
+
+// Agent icon mapping
+const agentIcons: Record<string, string> = {
+  'claude': claudeIcon,
+  'cursor': cursorIcon,
+  'gpt': gptIcon,
+  'codex': gptIcon,
+  'openclaw': openclawIcon,
+};
+
+const getAgentIcon = (name: string) => agentIcons[name] || openclawIcon;
+
+const needsInvertInDark = new Set(['gpt', 'codex']);
+
+type FilterType = 'all' | 'enabled' | 'disabled';
+
+function Dashboard() {
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const [skills, setSkills] = useState<SkillMetadata[]>([]);
+  const [agents, setAgents] = useState<AgentConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [detailSkill, setDetailSkill] = useState<SkillMetadata | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [skillFiles, setSkillFiles] = useState<SkillFileEntry[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [currentFile, setCurrentFile] = useState<{ path: string; content: string } | null>(null);
+  const [loadingFile, setLoadingFile] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SkillMetadata | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importingRef = useReactRef(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(35); // 左侧面板宽度百分比
+  const [isResizing, setIsResizing] = useState(false);
+
+  // 处理分隔条拖拽
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+
+    // 添加resizing类到body，防止文本选择
+    document.body.classList.add('resizing');
+
+    const startX = e.clientX;
+    const container = (e.currentTarget as HTMLElement).parentElement;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const startWidth = rect.width * (leftPanelWidth / 100);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startX;
+      const newLeftWidth = ((startWidth + deltaX) / rect.width) * 100;
+
+      // 限制宽度在 20% 到 80% 之间
+      const clampedWidth = Math.max(20, Math.min(80, newLeftWidth));
+      setLeftPanelWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.classList.remove('resizing');
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleDrop = useCallback(async (paths: string[]) => {
+    if (importingRef.current) return;
+    importingRef.current = true;
+    setImporting(true);
+
+    const allPaths = paths;
+    let successCount = 0;
+    let errorMsg = '';
+
+    for (const folder of allPaths) {
+      try {
+        const name = await skillsApi.importFolder(folder);
+        successCount++;
+        console.log(`Imported skill: ${name}`);
+      } catch (error) {
+        const msg = typeof error === 'string' ? error : (error as Error)?.message || '导入失败';
+        errorMsg = msg;
+        console.error(`Failed to import ${folder}:`, error);
+      }
+    }
+
+    if (successCount > 0) {
+      showToast('success', `成功导入 ${successCount} 个技能`);
+      await loadSkills();
+    }
+    if (errorMsg) {
+      showToast('error', errorMsg);
+    }
+    importingRef.current = false;
+    setImporting(false);
+  }, []);
+
+  useEffect(() => {
+    console.log('Dashboard mounted, loading skills and agents...');
+    loadSkills();
+    loadAgents();
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let mounted = true;
+
+    // Get the drag region element
+    const dragRegion = document.querySelector('[data-tauri-drag-region]');
+
+    getCurrentWebview().onDragDropEvent((event) => {
+      if (!mounted) return;
+
+      const payload = event.payload as any;
+      const { type } = payload;
+
+      // Check if the drag is occurring in the window drag region (header)
+      // If so, don't handle it as file drag-drop to preserve window dragging
+      if (payload.position && dragRegion) {
+        const rect = dragRegion.getBoundingClientRect();
+        // If mouse is in the header region, let window dragging handle it
+        if (payload.position.y <= rect.bottom) {
+          return;
+        }
+      }
+
+      if (type === 'enter') {
+        setIsDragOver(true);
+      } else if (type === 'leave') {
+        setIsDragOver(false);
+      } else if (type === 'drop') {
+        setIsDragOver(false);
+        handleDrop(payload.paths);
+      }
+    }).then(fn => {
+      unlisten = fn;
+    }).catch(e => {
+      console.error('Drag-drop setup failed:', e);
+    });
+
+    return () => {
+      mounted = false;
+      unlisten?.();
+    };
+  }, []);
+
+  const loadSkills = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Check if running in Tauri environment
+      const isTauri = !!(window as any).__TAURI__;
+
+      if (!isTauri) {
+        throw new Error('Not running in Tauri environment');
+      }
+
+      console.log('Loading skills from API...');
+      const data = await skillsApi.list();
+      console.log('Skills loaded from API:', data);
+      console.log('First skill agent_enabled:', data[0]?.agent_enabled);
+
+      // 修正矛盾状态：总开关打开但所有子开关都关闭
+      const correctedData = data.map(skill => {
+        const enabledAgentCount = Object.values(skill.agent_enabled || {}).filter(Boolean).length;
+
+        // 如果总开关打开，但没有子开关打开 → 自动关闭总开关
+        if (skill.enabled === true && enabledAgentCount === 0) {
+          console.log(`修正矛盾状态: ${skill.name} - 总开关关闭（无子开关启用）`);
+          return { ...skill, enabled: false };
+        }
+
+        // 如果总开关关闭，但有子开关打开 → 自动打开总开关
+        if (skill.enabled === false && enabledAgentCount > 0) {
+          console.log(`修正矛盾状态: ${skill.name} - 总开关打开（有子开关启用）`);
+          return { ...skill, enabled: true };
+        }
+
+        return skill;
+      });
+
+      setSkills(correctedData);
+    } catch (err) {
+      console.error('Failed to load skills:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load skills');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAgents = async () => {
+    try {
+      console.log('Detecting agents...');
+      const agentsData = await agentsApi.detect();
+      console.log('Agents detected:', agentsData);
+      setAgents(agentsData);
+    } catch (error) {
+      console.error('Failed to detect agents:', error);
+    }
+  };
+
+  const handleToggleSkill = async (skill: SkillMetadata) => {
+    try {
+      const newState = !skill.enabled;
+
+      if (newState === false) {
+        // 关闭总开关 → 备份当前配置，然后关闭所有子开关
+        console.log('关闭总开关，备份配置并关闭所有子开关');
+
+        // 收集所有需要关闭的agent
+        const agentsToDisable = Object.keys(skill.agent_enabled || {}).filter(
+          agent => skill.agent_enabled[agent] === true
+        );
+
+        // 立即更新本地状态（备份 + 总开关 + 所有子开关）
+        setSkills(prevSkills =>
+          prevSkills.map(s =>
+            s.id === skill.id
+              ? {
+                  ...s,
+                  enabled: false,
+                  agent_enabled_backup: { ...s.agent_enabled }, // 备份当前状态
+                  agent_enabled: Object.keys(s.agent_enabled || {}).reduce((acc, agent) => {
+                    acc[agent] = false;
+                    return acc;
+                  }, {} as Record<string, boolean>)
+                }
+              : s
+          )
+        );
+
+        // 异步调用API关闭所有agent
+        agentsToDisable.forEach(agent => {
+          skillsApi.disable(skill.id, agent).catch(error => {
+            console.error(`Failed to disable ${skill.id} for agent ${agent}:`, error);
+          });
+        });
+      } else {
+        // 打开总开关 → 恢复之前的配置
+        console.log('打开总开关，恢复之前的配置');
+
+        // 确定要恢复的agent状态
+        const agentStatesToRestore = skill.agent_enabled_backup || skill.agent_enabled || {};
+
+        // 收集所有需要启用的agent
+        const agentsToEnable = Object.keys(agentStatesToRestore).filter(
+          agent => agentStatesToRestore[agent] === true
+        );
+
+        // 立即更新本地状态（恢复备份）
+        setSkills(prevSkills =>
+          prevSkills.map(s =>
+            s.id === skill.id
+              ? {
+                  ...s,
+                  enabled: true,
+                  agent_enabled: agentStatesToRestore,
+                  agent_enabled_backup: undefined // 清除备份
+                }
+              : s
+          )
+        );
+
+        // 异步调用API启用所有agent
+        agentsToEnable.forEach(agent => {
+          skillsApi.enable(skill.id, agent).catch(error => {
+            console.error(`Failed to enable ${skill.id} for agent ${agent}:`, error);
+            loadSkills();
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Failed to toggle skill:', error);
+    }
+  };
+
+  const handleToggleAgent = async (skill: SkillMetadata, agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => {
+    try {
+      // 阻止默认行为和事件冒泡
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      const isEnabled = skill.agent_enabled[agentName];
+      const newState = !isEnabled;
+
+      // 计算新状态下的agent启用数量
+      const currentEnabledCount = Object.values(skill.agent_enabled || {}).filter(Boolean).length;
+      const newEnabledCount = newState ? currentEnabledCount + 1 : currentEnabledCount - 1;
+
+      // 级联控制：更新总开关状态
+      const shouldUpdateMainSwitch =
+        (newState === true && skill.enabled === false) || // 打开子开关，总开关关闭 → 打开总开关
+        (newState === false && newEnabledCount === 0);   // 关闭最后一个子开关 → 关闭总开关
+
+      // 立即更新本地状态，提供即时反馈
+      setSkills(prevSkills =>
+        prevSkills.map(s =>
+          s.id === skill.id
+            ? {
+                ...s,
+                agent_enabled: {
+                  ...s.agent_enabled,
+                  [agentName]: newState
+                },
+                // 级联控制：自动更新总开关
+                enabled: shouldUpdateMainSwitch ? (newEnabledCount > 0) : s.enabled
+              }
+            : s
+        )
+      );
+
+      // 异步调用API（不等待完成，避免阻塞UI）
+      if (isEnabled) {
+        console.log(`Disabling skill ${skill.name} for agent ${agentName}`);
+        skillsApi.disable(skill.id, agentName).catch(error => {
+          console.error('Failed to disable skill:', error);
+          loadSkills();
+        });
+      } else {
+        console.log(`Enabling skill ${skill.name} for agent ${agentName}`);
+        skillsApi.enable(skill.id, agentName).catch(error => {
+          console.error('Failed to enable skill:', error);
+          loadSkills();
+        });
+      }
+    } catch (error) {
+      console.error('Failed to toggle agent:', error);
+    }
+  };
+
+  const toggleExpand = (skillId: string) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(skillId)) {
+      newExpanded.delete(skillId);
+    } else {
+      newExpanded.add(skillId);
+    }
+    setExpandedCards(newExpanded);
+  };
+
+  // 显示技能详情
+  const handleShowSkillDetail = async (skill: SkillMetadata) => {
+    try {
+      setDetailSkill(skill);
+      setShowDetailModal(true);
+      setCurrentFile(null);
+
+      // 加载文件列表
+      loadSkillFiles(skill.id);
+    } catch (error) {
+      console.error('Failed to load skill detail:', error);
+      showToast('error', '加载技能详情失败');
+    }
+  };
+
+  // 加载技能文件列表
+  const loadSkillFiles = async (skillId: string) => {
+    try {
+      setLoadingFiles(true);
+      const files = await skillsApi.getFiles(skillId);
+      setSkillFiles(files);
+
+      // 默认展开第一层文件夹
+      const firstLevelFolders = new Set<string>();
+      files.forEach(file => {
+        if (file.is_dir) {
+          firstLevelFolders.add(file.path);
+        }
+      });
+      setExpandedFolders(firstLevelFolders);
+
+      // 递归查找 SKILL.md
+      const findSkillMd = (entries: SkillFileEntry[]): SkillFileEntry | null => {
+        for (const entry of entries) {
+          if (entry.name === 'SKILL.md' && !entry.is_dir) {
+            return entry;
+          }
+          if (entry.children) {
+            const found = findSkillMd(entry.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      // 默认加载 SKILL.md
+      const skillMd = findSkillMd(files);
+      if (skillMd) {
+        try {
+          console.log('Loading SKILL.md from:', skillMd.path);
+          const content = await skillsApi.readFile(skillId, skillMd.path);
+          setCurrentFile({ path: skillMd.path, content });
+        } catch (error) {
+          console.error('Failed to load SKILL.md:', error);
+        }
+      } else {
+        console.log('SKILL.md not found in files:', files);
+      }
+
+      setLoadingFiles(false);
+    } catch (error) {
+      console.error('Failed to load skill files:', error);
+      setLoadingFiles(false);
+    }
+  };
+
+  // 切换文件夹展开/折叠
+  const toggleFolder = (path: string) => {
+    setExpandedFolders(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(path)) {
+        newExpanded.delete(path);
+      } else {
+        newExpanded.add(path);
+      }
+      return newExpanded;
+    });
+  };
+
+  // 读取文件内容
+  const handleReadFile = async (filePath: string, showLoading = true) => {
+    if (!detailSkill) return;
+
+    try {
+      if (showLoading) {
+        setLoadingFile(true);
+      }
+      const content = await skillsApi.readFile(detailSkill.id, filePath);
+      setCurrentFile({ path: filePath, content });
+      if (showLoading) {
+        setLoadingFile(false);
+      }
+    } catch (error) {
+      console.error('Failed to read file:', error);
+      if (showLoading) {
+        setLoadingFile(false);
+      }
+      showToast('error', '读取文件失败');
+    }
+  };
+
+  // 关闭详情弹窗
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setDetailSkill(null);
+    setSkillFiles([]);
+    setCurrentFile(null);
+    setExpandedFolders(new Set());
+  };
+
+  // 删除技能
+  const handleDeleteSkill = async (skill: SkillMetadata) => {
+    try {
+      if (skill.source !== 'central') {
+        showToast('warning', '只能删除中央存储中的技能');
+        return;
+      }
+
+      await skillsApi.delete(skill.id);
+      setSkills(prevSkills => prevSkills.filter(s => s.id !== skill.id));
+      showToast('success', `技能 "${skill.name}" 已删除`);
+      console.log(`技能 ${skill.name} 已删除`);
+    } catch (error) {
+      console.error('Failed to delete skill:', error);
+      showToast('error', '删除技能失败');
+    }
+  };
+
+  // Filter skills based on search term and filter type
+  const filteredSkills = skills.filter((skill) => {
+    const matchesSearch = searchTerm === '' ||
+      skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      skill.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesFilter = filterType === 'all' ||
+      (filterType === 'enabled' && skill.enabled) ||
+      (filterType === 'disabled' && !skill.enabled);
+
+    return matchesSearch && matchesFilter;
+  });
+
+  if (loading) {
+    return (
+      <div className="h-full flex flex-col">
+        <PageHeader icon="extension" title={t('header.dashboard')} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 dark:border-dark-bg-tertiary border-t-[#b71422] mb-4"></div>
+            <p className="text-slate-500 dark:text-gray-300 font-medium">{t('common.loading')}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex flex-col">
+        <PageHeader icon="extension" title={t('header.dashboard')} />
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="max-w-md w-full bg-white dark:bg-dark-bg-card rounded-xl p-6 border border-red-200 dark:border-red-900/30 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="material-symbols-outlined text-3xl text-red-600 dark:text-red-400">error</span>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('common.error')}</h3>
+            </div>
+            <p className="text-slate-600 dark:text-gray-300 mb-2">{error}</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">
+              {t('dashboard.errorMessage')}
+            </p>
+            <button
+              onClick={loadSkills}
+              className="w-full bg-[#b71422] hover:bg-[#a01220] text-white px-4 py-2 rounded-lg font-bold transition-all"
+            >
+              {t('dashboard.retry')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Reusable skill card renderer
+  const renderSkillCard = (skill: SkillMetadata) => (
+    <div
+      key={skill.id}
+      className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 overflow-hidden flex flex-col"
+    >
+      {/* Top section: Icon + Info on left, STATUS + Toggle + Expand on right */}
+      <div className="p-4 pb-0">
+        <div className="flex justify-between items-start gap-3">
+          {/* Left: Icon + Name + Version + Description */}
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className={`w-10 h-10 rounded-lg ${getSkillColor(skill.id)} flex items-center justify-center flex-shrink-0`}>
+              <span className="material-symbols-outlined text-xl" data-weight="fill" style={{ fontVariationSettings: "'FILL' 1" }}>
+                {getSkillIcon(skill.id)}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h4 className="text-base font-bold truncate text-slate-900 dark:text-white">{skill.name}</h4>
+                <span className="text-[10px] font-bold py-0.5 px-1.5 bg-[#edeeef] dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-300 rounded uppercase flex-shrink-0">
+                  v{skill.version || '1.0'}
+                </span>
+              </div>
+              <p className="text-xs text-[#5e5e5e] dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">{skill.description}</p>
+            </div>
+          </div>
+
+          {/* Right: STATUS + Toggle + Expand */}
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleToggleSkill(skill)}
+                className={`relative w-9 h-5 rounded-full transition-all flex-shrink-0 ${skill.enabled ? 'bg-[#b71422]' : 'bg-[#CBD5E0] dark:bg-gray-600'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${skill.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => handleShowSkillDetail(skill)} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded transition-colors">
+                <span className="material-symbols-outlined text-base text-slate-400 dark:text-gray-500">info</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom bar: agent summary + expand button (always visible) */}
+      <div className="border-t border-[#f0f0f0] dark:border-dark-border px-4 py-2.5 flex items-center justify-between" onClick={() => toggleExpand(skill.id)} >
+        <div className="flex items-center gap-1.5">
+          {agents.map((agent) => (
+            <div
+              key={agent.name}
+              className={`w-5 h-5 rounded-full overflow-hidden flex items-center justify-center ${
+                skill.agent_enabled[agent.name]
+                  ? ''
+                  : 'opacity-40'
+              }`}
+            >
+              <img src={getAgentIcon(agent.name)} alt={agent.display_name} className={`w-full h-full object-contain ${needsInvertInDark.has(agent.name) ? 'dark:invert' : ''}`} />
+            </div>
+          ))}
+          <span className="text-[11px] text-slate-500 dark:text-gray-400 ml-1">
+            {agents.filter(a => skill.agent_enabled[a.name]).length}/{agents.length} Agent 已启用
+          </span>
+        </div>
+        <button className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded transition-colors">
+          <span className="material-symbols-outlined text-base text-slate-500 dark:text-gray-400">
+            {expandedCards.has(skill.id) ? 'expand_less' : 'expand_more'}
+          </span>
+        </button>
+      </div>
+
+      {/* Expandable: Agent toggles (accordion style) */}
+      {expandedCards.has(skill.id) && (
+        <div className="border-t border-[#f0f0f0] dark:border-dark-border bg-[#fafafa] dark:bg-dark-bg-secondary px-3 py-3 relative pb-1">
+          {agents.map((agent, index) => {
+            const isLast = index === agents.length - 1;
+            return (
+              <div key={agent.name} className="relative flex items-center justify-between py-2">
+                {/* Vertical line: full height for non-last, half for last (├ / └) */}
+                <div
+                  className="absolute w-px bg-slate-300 dark:bg-dark-border"
+                  style={{ left: '12px', top: 0, height: isLast ? '50%' : '100%' }}
+                />
+                {/* Horizontal branch (──) */}
+                <div
+                  className="absolute h-px bg-slate-300 dark:bg-dark-border"
+                  style={{ left: '12px', top: '50%', width: '20px', transform: 'translateY(-0.5px)' }}
+                />
+
+                {/* Content with indent for tree */}
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 pl-9">
+                  <div className="relative flex-shrink-0 z-10">
+                    <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center">
+                      <img src={getAgentIcon(agent.name)} alt={agent.display_name} className={`w-full h-full object-contain ${needsInvertInDark.has(agent.name) ? 'dark:invert' : ''}`} />
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
+                      {!agent.detected && (
+                        <span className="text-[10px] text-slate-400 dark:text-gray-500">(未安装)</span>
+                      )}
+                    </div>
+                    <span className={`text-[10px] leading-tight ${
+                      skill.agent_enabled[agent.name] ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-gray-500'
+                    }`}>
+                      {skill.agent_enabled[agent.name] ? '已启用' : '未启用'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => handleToggleAgent(skill, agent.name, e)}
+                  disabled={!agent.detected}
+                  className={`relative w-8 h-[18px] rounded-full transition-colors flex-shrink-0 ${
+                    skill.agent_enabled[agent.name] ? 'bg-[#b71422]' : 'bg-gray-300 dark:bg-gray-600'
+                  } ${!agent.detected ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span className={`absolute top-[1px] left-[1px] w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                    skill.agent_enabled[agent.name] ? 'translate-x-[14px]' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="h-full flex flex-col">
+      <PageHeader
+        icon="extension"
+        title={t('header.dashboard')}
+        actions={
+          <div className="flex items-center gap-3 px-3 py-1.5 bg-[#f8f9fa] dark:bg-dark-bg-secondary rounded-lg border border-[#e1e3e4] dark:border-dark-border">
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+              <div className="text-xs font-bold text-slate-600 dark:text-gray-300">
+                <span className="text-sm">{skills.length}</span> {t('dashboard.stats.total')}
+              </div>
+            </div>
+            <div className="w-px h-3 bg-slate-300 dark:bg-dark-bg-tertiary"></div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+              <div className="text-xs font-bold text-green-600 dark:text-green-400">
+                <span className="text-sm">{skills.filter(s => s.enabled).length}</span> {t('dashboard.stats.enabled')}
+              </div>
+            </div>
+            <div className="w-px h-3 bg-slate-300 dark:bg-dark-bg-tertiary"></div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+              <div className="text-xs font-bold text-red-600 dark:text-red-400">
+                <span className="text-sm">{skills.filter(s => !s.enabled).length}</span> {t('dashboard.stats.disabled')}
+              </div>
+            </div>
+          </div>
+        }
+      />
+
+      <div className="flex-1 overflow-y-auto bg-white/80 dark:bg-dark-bg-secondary p-8">
+        {/* Search and Filter Section */}
+        <div className="max-w-6xl mx-auto mb-6">
+          <div className="flex items-center gap-3">
+            {/* Search Box */}
+            <div className="relative flex-1">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-400">
+                search
+              </span>
+              <input
+                type="text"
+                placeholder={t('dashboard.search.placeholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-xl py-3 pl-12 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-[#b71422]/20 focus:border-[#b71422] transition-all shadow-sm"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-200"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              )}
+            </div>
+
+            {/* Open Skills Folder */}
+            <button
+              onClick={() => {
+                invoke('open_skills_manager_folder').catch((err: unknown) => {
+                  console.error('Failed to open folder:', err);
+                  showToast('error', '打开文件夹失败');
+                });
+              }}
+              className="flex items-center gap-1.5 bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary hover:border-[#b71422]/30 transition-all shadow-sm"
+              title="打开技能文件夹"
+            >
+              <span className="material-symbols-outlined text-lg">folder_open</span>
+            </button>
+
+            {/* Filter Buttons */}
+            <div className="flex items-center gap-1 bg-white dark:bg-dark-bg-card rounded-lg border border-gray-200 dark:border-dark-border p-1">
+              <button
+                onClick={() => setFilterType('all')}
+                className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${filterType === 'all'
+                    ? 'bg-[#dc2626] text-white shadow-sm'
+                    : 'text-slate-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary'
+                  }`}
+              >
+                {t('dashboard.filter.all')}
+              </button>
+              <button
+                onClick={() => setFilterType('enabled')}
+                className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${filterType === 'enabled'
+                    ? 'bg-green-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary'
+                  }`}
+              >
+                {t('dashboard.filter.enabled')}
+              </button>
+              <button
+                onClick={() => setFilterType('disabled')}
+                className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${filterType === 'disabled'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary'
+                  }`}
+              >
+                {t('dashboard.filter.disabled')}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {filteredSkills.length === 0 ? (
+          <div className="max-w-6xl mx-auto flex flex-col items-center justify-center py-20">
+            <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600 mb-4">
+              search_off
+            </span>
+            <p className="text-slate-500 dark:text-gray-400 font-medium">
+              {searchTerm ? t('dashboard.search.noResults') : t('dashboard.filter.noResults')}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col lg:flex-row gap-4 items-start">
+            {/* Left column */}
+            <div className="flex-1 space-y-4">
+              {filteredSkills.filter((_, i) => i % 2 === 0).map(renderSkillCard)}
+              {/* Small screen: show right column skills here too */}
+              <div className="lg:hidden space-y-4">
+                {filteredSkills.filter((_, i) => i % 2 === 1).map(renderSkillCard)}
+              </div>
+            </div>
+            {/* Right column - only on large screens */}
+            <div className="flex-1 space-y-4 hidden lg:block">
+              {filteredSkills.filter((_, i) => i % 2 === 1).map(renderSkillCard)}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Skill Detail Modal */}
+      {showDetailModal && detailSkill && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-dark-bg-card rounded-xl shadow-xl w-[65%] max-w-[1400px] max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-200 dark:border-dark-border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-lg ${getSkillColor(detailSkill.id)} flex items-center justify-center`}>
+                    <span className="material-symbols-outlined text-2xl">
+                      {getSkillIcon(detailSkill.id)}
+                    </span>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-black dark:text-white">{detailSkill.name}</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">v{detailSkill.version || '1.0.0'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseDetailModal}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded-lg transition-colors"
+                >
+                  <span className="material-symbols-outlined text-gray-600 dark:text-gray-300">close</span>
+                </button>
+              </div>
+              {/* Description */}
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{detailSkill.description}</p>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 pb-20">
+              <div className="space-y-4">
+                  {/* Path */}
+                  {/* File Tree with Content Preview - Split View */}
+                  {skillFiles.length > 0 && (
+                    <div>
+                      <div className="mb-2 flex">
+                        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">文件目录：</h3>
+                        {detailSkill.path && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">
+                            {detailSkill.path}
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-[#fafafa] dark:bg-dark-bg-secondary rounded-lg flex overflow-hidden relative" style={{ height: '320px' }}>
+                        {/* Left: File Tree */}
+                        <div className="overflow-y-auto show-scrollbar p-2" style={{ width: `${leftPanelWidth}%` }}>
+                          {loadingFiles ? (
+                            <div className="flex items-center justify-center py-4">
+                              <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-gray-200 dark:border-dark-bg-secondary border-t-[#b71422]"></div>
+                            </div>
+                          ) : (
+                            <CardFileTree
+                              files={skillFiles}
+                              expandedFolders={expandedFolders}
+                              onToggleFolder={toggleFolder}
+                              onReadFile={handleReadFile}
+                              currentFile={currentFile?.path}
+                            />
+                          )}
+                        </div>
+
+                        {/* Resizable Divider */}
+                        <div
+                          className={`resizable-divider w-1.5 bg-gray-200 dark:bg-dark-border hover:bg-[#b71422] dark:hover:bg-[#b71422] cursor-col-resize relative z-10 flex items-center justify-center group ${
+                            isResizing ? 'bg-[#b71422]' : ''
+                          }`}
+                          onMouseDown={handleMouseDown}
+                          title="拖拽调整宽度"
+                        >
+                          {/* Drag handle indicator */}
+                          <div className="flex flex-col gap-0.5">
+                            <div className="w-0.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:bg-white transition-colors"></div>
+                            <div className="w-0.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:bg-white transition-colors"></div>
+                          </div>
+                        </div>
+
+                        {/* Right: File Content Preview */}
+                        <div className="overflow-y-auto bg-white dark:bg-dark-bg-card flex-1 show-scrollbar">
+                          {currentFile ? (
+                            <div className="h-full p-3">
+                              {loadingFile ? (
+                                <div className="flex items-center justify-center py-4">
+                                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-4 border-gray-200 dark:border-dark-bg-secondary border-t-[#b71422]"></div>
+                                </div>
+                              ) : (
+                                <pre className="text-xs text-slate-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed">
+                                  {currentFile.content}
+                                </pre>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-slate-400 dark:text-gray-500">
+                              <div className="text-center">
+                                <span className="material-symbols-outlined text-3xl mb-2">description</span>
+                                <p className="text-xs">点击文件查看内容</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Agent Status */}
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Agent 启用状态：</h3>
+                    <div className="bg-[#fafafa] dark:bg-dark-bg-secondary rounded-lg px-3 py-3 relative pb-1">
+                      {agents.map((agent, index) => {
+                        const isLast = index === agents.length - 1;
+                        return (
+                          <div key={agent.name} className="relative flex items-center justify-between py-2">
+                            {/* Vertical line: full height for non-last, half for last (├ / └) */}
+                            <div
+                              className="absolute w-px bg-slate-300 dark:bg-dark-border"
+                              style={{ left: '12px', top: 0, height: isLast ? '50%' : '100%' }}
+                            />
+                            {/* Horizontal branch (──) */}
+                            <div
+                              className="absolute h-px bg-slate-300 dark:bg-dark-border"
+                              style={{ left: '12px', top: '50%', width: '20px', transform: 'translateY(-0.5px)' }}
+                            />
+
+                            {/* Content with indent for tree */}
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1 pl-9">
+                              <div className="relative flex-shrink-0 z-10">
+                                <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center">
+                                  <img src={getAgentIcon(agent.name)} alt={agent.display_name} className={`w-full h-full object-contain ${needsInvertInDark.has(agent.name) ? 'dark:invert' : ''}`} />
+                                </div>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
+                                  {!agent.detected && (
+                                    <span className="text-[10px] text-slate-400 dark:text-gray-500">(未安装)</span>
+                                  )}
+                                </div>
+                                <span className={`text-[10px] leading-tight ${
+                                  detailSkill.agent_enabled[agent.name] ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-gray-500'
+                                }`}>
+                                  {detailSkill.agent_enabled[agent.name] ? '已启用' : '未启用'}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => handleToggleAgent(detailSkill, agent.name, e)}
+                              disabled={!agent.detected}
+                              className={`relative w-8 h-[18px] rounded-full transition-colors flex-shrink-0 ${
+                                detailSkill.agent_enabled[agent.name] ? 'bg-[#b71422]' : 'bg-gray-300 dark:bg-gray-600'
+                              } ${!agent.detected ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              <span className={`absolute top-[1px] left-[1px] w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                                detailSkill.agent_enabled[agent.name] ? 'translate-x-[14px]' : 'translate-x-0'
+                              }`} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-bg-secondary relative">
+              {detailSkill.source === 'central' && (
+                <button
+                  onClick={() => setDeleteTarget(detailSkill)}
+                  className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors absolute left-1/2 -translate-x-1/2 bottom-4"
+                  title="删除技能"
+                >
+                  <span className="material-symbols-outlined text-base">delete</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Drag & Drop Overlay - starts below header to avoid interfering with window drag */}
+      {isDragOver && (
+        <div className="fixed top-16 bottom-0 left-0 right-0 z-[99999] pointer-events-none">
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="absolute inset-0 border-4 border-[#b71422] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <span className="material-symbols-outlined text-[#b71422] text-6xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                drive_folder_upload
+              </span>
+              <p className="text-2xl font-black text-white tracking-wide">释放安装</p>
+              <p className="text-sm text-white/70">文件夹需包含 SKILL.md</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Importing Overlay */}
+      {importing && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+          <div className="bg-white dark:bg-dark-bg-card rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4">
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-slate-200 dark:border-dark-bg-tertiary border-t-[#b71422]"></div>
+            <p className="text-sm font-bold text-slate-700 dark:text-gray-300">正在导入技能...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10 backdrop-blur-[2px]">
+          <div className="w-full max-w-md bg-white/95 dark:bg-dark-bg-card backdrop-blur-xl rounded-3xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25),0_18px_36px_-18px_rgba(0,0,0,0.3)] border border-white/50 dark:border-dark-border overflow-hidden flex flex-col items-center text-center p-8">
+            <div className="w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-red-500 text-4xl"
+                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+              >
+                error
+              </span>
+            </div>
+            <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">删除确认</h3>
+            <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed mb-8 px-4">
+              确定要删除技能 <strong className="text-slate-900 dark:text-white">{deleteTarget.name}</strong> 吗？
+              <br />此操作将从中央存储删除技能文件并移除所有符号链接，且不可撤销。
+            </p>
+            <div className="w-full flex flex-col gap-3">
+              <button
+                onClick={async () => {
+                  const target = deleteTarget;
+                  setDeleteTarget(null);
+                  handleCloseDetailModal();
+                  await handleDeleteSkill(target);
+                }}
+                className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 hover:brightness-110 active:scale-[0.98] transition-all"
+              >
+                确认删除
+              </button>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="w-full py-3.5 bg-slate-100 dark:bg-dark-bg-tertiary text-slate-700 dark:text-gray-300 font-semibold rounded-2xl hover:bg-slate-200 dark:hover:bg-dark-bg-secondary transition-colors"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Dashboard;

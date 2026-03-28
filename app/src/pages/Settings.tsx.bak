@@ -1,0 +1,399 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-shell';
+import PageHeader from '../components/PageHeader';
+import { useTheme } from '../contexts/ThemeContext';
+import { agentsApi } from '../api/tauri';
+import { AgentCard } from '../components/AgentCard';
+import type { AgentConfig } from '../types';
+
+// GitHub URLs
+const GITHUB_URLS = {
+  REPO: 'https://github.com/cchao123/skills-managers',
+  RELEASES: 'https://github.com/cchao123/skills-managers/releases',
+  HOME: 'https://github.com',
+} as const;
+
+// External URLs
+const EXTERNAL_URLS = {
+  DOCS: 'https://docs.anthropic.com',
+} as const;
+
+// Languages configuration
+const LANGUAGES = [
+  { code: 'zh', name: '中文', abbr: '中' },
+  { code: 'en', name: 'English', abbr: 'EN' },
+] as const;
+
+// Theme options configuration
+type Theme = 'light' | 'dark' | 'auto';
+
+const THEME_OPTIONS = [
+  { value: 'light' as Theme, labelKey: 'settings.themeLight', icon: 'light_mode' },
+  { value: 'dark' as Theme, labelKey: 'settings.themeDark', icon: 'dark_mode' },
+  { value: 'auto' as Theme, labelKey: 'settings.themeAuto', icon: 'brightness_auto' },
+] as const;
+
+type TabType = 'general' | 'agents' | 'about' | 'changelog';
+
+function Settings() {
+  const { t, i18n } = useTranslation();
+  const { theme, setTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<TabType>('general');
+  const [agents, setAgents] = useState<AgentConfig[]>([]);
+  const [linkingStrategy, setLinkingStrategy] = useState<'Symlink' | 'Copy'>('Symlink');
+
+  const handleThemeChange = (newTheme: Theme) => {
+    setTheme(newTheme);
+  };
+
+  const handleLanguageChange = (lng: string) => {
+    i18n.changeLanguage(lng);
+    // 同步更新系统托盘菜单语言
+    if ((window as any).__TAURI__) {
+      invoke('update_tray_language', { lang: lng }).catch(() => { });
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const agentsData = await agentsApi.detect();
+      setAgents(agentsData);
+      const config = await agentsApi.getConfig();
+      setLinkingStrategy(config.linking_strategy);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
+
+  const handleDetectAgents = async () => {
+    try {
+      const updatedAgents = await agentsApi.detect();
+      setAgents(updatedAgents);
+    } catch (error) {
+      console.error('Failed to detect agents:', error);
+    }
+  };
+
+  const handleSetStrategy = async (strategy: 'Symlink' | 'Copy') => {
+    try {
+      await agentsApi.setLinkingStrategy(strategy);
+      setLinkingStrategy(strategy);
+    } catch (error) {
+      console.error('Failed to set linking strategy:', error);
+    }
+  };
+
+  const handleOpenFolder = async () => {
+    try {
+      await agentsApi.openFolder();
+    } catch (error) {
+      console.error('Failed to open folder:', error);
+    }
+  };
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const tabs = [
+    { id: 'general' as TabType, label: t('settings.tabGeneral'), icon: 'tune' },
+    { id: 'agents' as TabType, label: 'Agents', icon: 'smart_toy' },
+    { id: 'about' as TabType, label: t('settings.tabAbout'), icon: 'info' },
+  ];
+
+  return (
+    <div className="h-full flex flex-col">
+      <PageHeader
+        icon="settings"
+        title={t('header.settings')}
+        actions={
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => open(GITHUB_URLS.RELEASES)}
+              className="hover:bg-[#f8f9fa] dark:hover:bg-dark-bg-tertiary rounded-xl px-3 py-2 text-slate-500 dark:text-gray-300 transition-colors flex items-center gap-1.5 text-sm font-medium cursor-pointer"
+              title={t('settings.tabChangelog')}
+            >
+              <span className="material-symbols-outlined text-lg">update</span>
+              {t('settings.tabChangelog')}
+            </button>
+            <a
+              href={GITHUB_URLS.REPO}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:bg-[#f8f9fa] dark:hover:bg-dark-bg-tertiary rounded-full p-2 text-slate-500 dark:text-gray-300 transition-colors flex items-center justify-center"
+              title="GitHub"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+              </svg>
+            </a>
+          </div>
+        }
+      />
+
+      <div className="flex-1 overflow-y-auto bg-[#f8f9fa] dark:bg-dark-bg-secondary">
+        <div className="p-8 space-y-6">
+          {/* Tabs */}
+          <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-2 shadow-sm border border-[#e1e3e4] dark:border-dark-border mb-6 flex gap-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
+                  ? 'bg-[#b71422] text-white shadow-md'
+                  : 'text-slate-600 dark:text-gray-300 hover:bg-[#f8f9fa] dark:hover:bg-dark-bg-tertiary'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {tab.icon}
+                </span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div className="space-y-6">
+            {activeTab === 'general' && (
+              <>
+
+                {/* Language Section */}
+                <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-6 shadow-sm border border-[#e1e3e4] dark:border-dark-border">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span className="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">language</span>
+                      {t('settings.language')}
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
+                      {t('settings.languageDescription')}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => handleLanguageChange(lang.code)}
+                        className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${i18n.language === lang.code
+                          ? 'border-[#b71422] bg-[#b71422]/5 dark:bg-[#b71422]/10'
+                          : 'border-[#e1e3e4] dark:border-dark-border hover:border-[#b71422]/30 bg-white dark:bg-dark-bg-card'
+                          }`}
+                      >
+                        <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black ${i18n.language === lang.code
+                          ? 'bg-[#b71422] text-white'
+                          : 'bg-slate-100 dark:bg-dark-bg-tertiary text-slate-600 dark:text-gray-300'
+                          }`}>
+                          {lang.abbr}
+                        </span>
+                        <span className="text-sm font-bold text-slate-700 dark:text-white">
+                          {lang.name}
+                        </span>
+                        {i18n.language === lang.code && (
+                          <span className="material-symbols-outlined text-[#b71422] ml-auto">
+                            check_circle
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Appearance Section */}
+                <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-6 shadow-sm border border-[#e1e3e4] dark:border-dark-border">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span className="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">palette</span>
+                      {t('settings.appearance')}
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
+                      {t('settings.appearanceDescription')}
+                    </p>
+                  </div>
+
+                  {/* Theme Selection */}
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-gray-300 mb-3">
+                      {t('settings.theme')}
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {THEME_OPTIONS.map((themeOption) => (
+                        <button
+                          key={themeOption.value}
+                          onClick={() => handleThemeChange(themeOption.value)}
+                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${theme === themeOption.value
+                            ? 'border-[#b71422] bg-[#b71422]/5 dark:bg-[#b71422]/10'
+                            : 'border-[#e1e3e4] dark:border-dark-border hover:border-[#b71422]/30 bg-white dark:bg-dark-bg-card'
+                            }`}
+                        >
+                          <span className="material-symbols-outlined text-3xl text-slate-600 dark:text-gray-300">
+                            {themeOption.icon}
+                          </span>
+                          <span className="text-sm font-bold text-slate-700 dark:text-white">
+                            {t(themeOption.labelKey)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+
+              </>
+            )}
+
+            {activeTab === 'agents' && (
+              <div className="space-y-6">
+                {/* Agent Management Section */}
+                <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Agent Management
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Manage AI coding assistants for skill integration
+                    </p>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                    {agents.map((agent) => (
+                      <AgentCard
+                        key={agent.name}
+                        agent={agent}
+                        onToggle={() => console.log('Toggle agent:', agent.name)}
+                      />
+                    ))}
+
+                    <button
+                      onClick={handleDetectAgents}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined">search</span>
+                      Detect All Agents
+                    </button>
+                  </div>
+                </div>
+
+                {/* Linking Strategy Section */}
+                <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Linking Strategy
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Choose how skills are linked to agent directories
+                    </p>
+                  </div>
+
+                  <div className="p-6">
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-dark-border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary transition-colors">
+                        <input
+                          type="radio"
+                          name="linking-strategy"
+                          checked={linkingStrategy === 'Symlink'}
+                          onChange={() => handleSetStrategy('Symlink')}
+                          className="w-4 h-4 text-red-600"
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 dark:text-white">Symlink (Recommended)</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Create symbolic links - faster and uses less disk space
+                          </div>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-3 p-3 border border-gray-200 dark:border-dark-border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary transition-colors">
+                        <input
+                          type="radio"
+                          name="linking-strategy"
+                          checked={linkingStrategy === 'Copy'}
+                          onChange={() => handleSetStrategy('Copy')}
+                          className="w-4 h-4 text-red-600"
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 dark:text-white">Copy</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Copy files - slower but works without permissions
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Section */}
+                <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Actions
+                    </h2>
+                  </div>
+
+                  <div className="p-6">
+                    <button
+                      onClick={handleOpenFolder}
+                      className="w-full bg-gray-100 dark:bg-dark-bg-tertiary hover:bg-gray-200 dark:hover:bg-dark-bg-quaternary text-gray-900 dark:text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined">folder_open</span>
+                      Open Skills Folder
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'about' && (
+              <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-8 shadow-sm border border-[#e1e3e4] dark:border-dark-border">
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#b71422] to-[#a01220] flex items-center justify-center mb-6 shadow-lg">
+                    <span className="material-symbols-outlined text-5xl text-white">settings</span>
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
+                    {t('app.name')}
+                  </h2>
+                  <p className="text-lg text-slate-600 dark:text-gray-300 mb-6">
+                    {t('app.version')}
+                  </p>
+                  <div className="w-16 h-1 bg-gradient-to-r from-[#b71422] to-[#a01220] rounded-full mb-6"></div>
+                  <div className="text-sm text-slate-600 dark:text-gray-300 space-y-2 max-w-md">
+                    <p className="text-slate-700 dark:text-white font-medium">
+                      {t('settings.aboutDescription')}
+                    </p>
+                    <p className="mt-4">
+                      {t('settings.builtWith')}{' '}
+                      <span className="text-[#b71422] font-bold">Tauri 2</span> + <span className="text-[#b71422] font-bold">React</span>
+                    </p>
+                  </div>
+                  <div className="mt-8 flex gap-4">
+                    <a
+                      href={GITHUB_URLS.HOME}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-6 py-3 bg-[#b71422] hover:bg-[#a01220] text-white rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-lg">open_in_new</span>
+                      GitHub
+                    </a>
+                    <a
+                      href={EXTERNAL_URLS.DOCS}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-6 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-dark-bg-tertiary dark:hover:bg-dark-bg-card text-slate-700 dark:text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-lg">description</span>
+                      Documentation
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Settings;

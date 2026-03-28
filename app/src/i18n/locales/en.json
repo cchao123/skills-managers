@@ -1,0 +1,182 @@
+{
+  "app": {
+    "name": "Skills Manager",
+    "version": "v2.4.0-stable"
+  },
+  "nav": {
+    "marketplace": "Marketplace",
+    "dashboard": "Installed Skills",
+    "githubBackup": "GitHub Backup",
+    "settings": "Settings"
+  },
+  "header": {
+    "marketplace": "Skill Marketplace",
+    "dashboard": "Installed Skills",
+    "githubBackup": "GitHub Backup",
+    "settings": "Settings",
+    "notifications": "Notifications",
+    "profile": "Profile"
+  },
+  "marketplace": {
+    "title": "Skill Marketplace",
+    "search": "Search skills...",
+    "filterAll": "All",
+    "filterEnabled": "Enabled",
+    "filterDisabled": "Disabled",
+    "enable": "Enable",
+    "disable": "Disable",
+    "install": "Install",
+    "uninstall": "Uninstall"
+  },
+  "dashboard": {
+    "title": "Installed Skills",
+    "search": {
+      "placeholder": "Search installed skills...",
+      "noResults": "No matching skills found"
+    },
+    "filter": {
+      "all": "All",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "noResults": "No skills match the current filter"
+    },
+    "total": "Total Skills",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "stats": {
+      "total": "Total",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "noSkillsFound": "No skills found",
+    "noSkillsHint": "Try adjusting your search or filter",
+    "retry": "Retry",
+    "errorMessage": "Make sure the app is running in Tauri environment, not in a browser."
+  },
+  "githubBackup": {
+    "title": "GitHub Backup",
+    "description": "Manage your GitHub skills repositories",
+    "openFolder": "Open Local Folder",
+    "openRemote": "Open Remote Repo",
+    "config": {
+      "title": "GitHub Repository Configuration",
+      "owner": "Repository Owner",
+      "ownerPlaceholder": "e.g.: cchao123",
+      "ownerHelper": "GitHub username or organization name",
+      "repo": "Repository Name",
+      "repoPlaceholder": "e.g.: my-skills-repo",
+      "repoHelper": "Repository name for storing skill files",
+      "createRepoLink": "Don't have one? Create →",
+      "branch": "Branch",
+      "branchPlaceholder": "main",
+      "branchHelper": "Default to main or master",
+      "path": "Skills Storage Path",
+      "pathPlaceholder": "/skills",
+      "pathHelper": "Root directory for skill definitions in the repository",
+      "token": "Personal Access Token",
+      "tokenPlaceholder": "ghp_xxxxxxxxxxxxxx",
+      "tokenHelperBefore": "Generate in GitHub → Settings → Developer settings → ",
+      "tokenHelperAfter": " (requires repo permission)"    },
+    "buttons": {
+      "testConnection": "Test Connection",
+      "testing": "Testing...",
+      "saveSettings": "Save Settings",
+      "saving": "Saving...",
+      "syncNow": "Push to GitHub",
+      "syncing": "Syncing...",
+      "restoreNow": "Restore from GitHub",
+      "restoring": "Restoring...",
+      "editConfig": "Edit Config"
+    },
+    "guide": {
+      "title": "Configuration Guide",
+      "step1": {
+        "title": "Create a GitHub Repository",
+        "description": "If you don't have a repository for storing skills yet, create a new private or public repository on GitHub.",
+        "link": "Create Repo"
+      },
+      "step2": {
+        "title": "Generate Access Token (PAT)",
+        "description": "Go to GitHub Settings and generate a classic token or fine-grained token, make sure to check the repo permission so the app can read and write content.",
+        "link": "Generate Token"
+      },
+      "step3": {
+        "title": "Fill and Save",
+        "description": "Fill in the repository information and token in the form above, click 'Test Connection' to confirm the configuration is correct, then click 'Save Settings'."
+      },
+      "step4": {
+        "title": "Start Sync",
+        "description": "After saving, the app will automatically try to sync the remote skill library to local. You can check the sync status on the 'Installed Skills' page."
+      },
+      "notice": "Note: The sync process will compare local and remote differences. If there are conflicts, the system will use the remote repository version. It is recommended to manually backup before making changes."
+    },
+    "otherUsage": {
+      "title": "Other Usage",
+      "subtitle": "Let others install your Skills",
+      "step1": {
+        "title": "Create a Skills Repository",
+        "description": "Create a public repository on GitHub. Add a skills/ folder at the root, with each skill in its own subdirectory containing a SKILL.md file."
+      },
+      "step2": {
+        "title": "Write SKILL.md",
+        "description": "Create a SKILL.md file in each skill directory with YAML frontmatter to define metadata:"
+      },
+      "step3": {
+        "title": "Share the Repository URL",
+        "description": "Share your repository URL with others. They can enter your GitHub repo address (format: owner/repo) in the Marketplace search bar to browse and install your skills."
+      },
+      "step4": {
+        "title": "Others Install Skills",
+        "description": "After finding your repository in the Marketplace, they can select the skills and target agents (e.g. Claude, Cursor, etc.) and click install. Skills will be automatically linked to their local agent configuration."
+      },
+      "example": "---\nname: my-skill\ndescription: This is an example skill\n---\n\nWrite your skill instructions and content here...",
+      "tip": "Tip: Make sure the repository is public so others can browse and install your skills without a Token. For private repositories, they need to configure a Token with read access."
+    },
+    "messages": {
+      "fillRequired": "Please fill in all required fields",
+      "connectionSuccess": "Connected",
+      "connectionFailed": "Connection failed. Please check your credentials.",
+      "saveSuccess": "Settings saved successfully!",
+      "saveFailed": "Failed to save settings.",
+      "syncSuccess": "Sync successful! Skills pushed to GitHub.",
+      "syncFailed": "Sync failed. Please check your configuration and network.",
+      "restoreSuccess": "Restore successful! {count} skills restored from GitHub.",
+      "restoreFailed": "Restore failed. Please check your configuration and network.",
+      "restoreEmpty": "No skills found in the remote repository.",
+      "saveFirst": "Please save settings before syncing.",
+      "testFirst": "Please test connection before syncing",
+      "connectedHint": "Connected. Click 'Edit Config' to modify"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "tabGeneral": "General",
+    "tabAbout": "About",
+    "tabChangelog": "Changelog",
+    "appearance": "Appearance",
+    "appearanceDescription": "Customize the application's appearance and feel",
+    "language": "Language",
+    "languageDescription": "Select your preferred language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeAuto": "System",
+    "about": "About",
+    "aboutDescription": "A desktop application for managing Claude Code skills and plugins. Browse, install, and enable skills from the marketplace, or sync custom skills from GitHub repositories.",
+    "builtWith": "Built with"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "enable": "Enable",
+    "disable": "Disable",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "required": "Required"
+  }
+}
