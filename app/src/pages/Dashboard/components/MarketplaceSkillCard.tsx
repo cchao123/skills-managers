@@ -1,13 +1,13 @@
-import { useState } from 'react';
 import type { Skill } from '@/types/skills';
 
 interface MarketplaceSkillCardProps {
   skill: Skill;
   onInstall: (skillId: string) => void;
   onInfo: (skillId: string) => void;
+  collectedStatus?: 'collected' | 'uncollected';
 }
 
-function MarketplaceSkillCard({ skill, onInstall, onInfo }: MarketplaceSkillCardProps) {
+function MarketplaceSkillCard({ skill, onInstall, onInfo, collectedStatus }: MarketplaceSkillCardProps) {
   return (
     <article className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 flex flex-col group overflow-hidden">
       <div className="p-4">
@@ -42,14 +42,26 @@ function MarketplaceSkillCard({ skill, onInstall, onInfo }: MarketplaceSkillCard
           </div>
         </div>
 
-        {/* Install + Info buttons */}
+        {/* Buttons */}
         <div className="flex gap-2">
-          <button
-            onClick={() => onInstall(skill.id)}
-            className="flex-1 bg-[#b71422] text-white py-2 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity"
-          >
-            {skill.installed ? 'Installed' : 'Install'}
-          </button>
+          {collectedStatus !== undefined ? (
+            /* 收录标签 — 纯展示，不可点击 */
+            <div className={`flex-1 py-2 rounded-lg font-bold text-xs text-center ${
+              collectedStatus === 'collected'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800'
+                : 'bg-[#edeeef] dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 border border-[#e1e3e4] dark:border-dark-border'
+            }`}>
+              {collectedStatus === 'collected' ? '已收录' : '收录'}
+            </div>
+          ) : (
+            /* Install 按钮 — 原有逻辑 */
+            <button
+              onClick={() => onInstall(skill.id)}
+              className="flex-1 bg-[#b71422] text-white py-2 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity"
+            >
+              {skill.installed ? 'Installed' : 'Install'}
+            </button>
+          )}
           <button
             onClick={() => onInfo(skill.id)}
             className="w-9 h-9 border border-[#e1e3e4] dark:border-dark-border bg-[#f3f4f5] dark:bg-dark-bg-tertiary text-slate-600 dark:text-gray-300 rounded-lg flex items-center justify-center hover:bg-[#edeeef] dark:hover:bg-dark-hover transition-colors"
