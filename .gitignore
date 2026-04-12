@@ -31,5 +31,8 @@ src-tauri/gen/
 # Claude Code
 .claude/
 
+# Git worktrees
+.worktrees/
+
 # Test scripts
 *.sh
