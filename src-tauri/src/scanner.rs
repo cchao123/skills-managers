@@ -82,6 +82,7 @@ pub fn parse_skill_md(skill_md_path: &Path, source: SkillSource) -> Result<Skill
         installed_at: last_updated.clone(),
         last_updated,
         source,
+        is_collected: false,
         path: Some(skill_path),
     })
 }

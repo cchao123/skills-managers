@@ -37,6 +37,9 @@ pub struct SkillMetadata {
     /// 技能来源（用于智能默认状态）
     #[serde(default)]
     pub source: SkillSource,
+    /// 是否已被物理收录到 Agent 的 skills 目录中（非 symlink）
+    #[serde(default)]
+    pub is_collected: bool,
     /// 技能的完整文件系统路径（用于创建符号链接）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
