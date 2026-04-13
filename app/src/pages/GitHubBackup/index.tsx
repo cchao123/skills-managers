@@ -132,7 +132,7 @@ function GitHubBackup() {
                 }
                 await handleRestore(!!config.repositories['default']);
               }}
-              onSync={async () => {
+              onSync={async (overwriteRemote) => {
                 if (!connected) {
                   showToast('warning', t('githubBackup.messages.testFirst'));
                   return;
@@ -141,7 +141,7 @@ function GitHubBackup() {
                   showToast('warning', t('githubBackup.messages.saveFirst'));
                   return;
                 }
-                await handleSync(!!config.repositories['default']);
+                await handleSync(!!config.repositories['default'], overwriteRemote);
               }}
             />
           </Collapse>

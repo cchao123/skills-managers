@@ -121,8 +121,17 @@ export const githubApi = {
     return await invoke('list_github_repos');
   },
 
-  syncRepo: async (name: string, _branch: string): Promise<void> => {
-    await invoke('sync_github_repo', { request: { name } });
+  syncRepo: async (
+    name: string,
+    _branch: string,
+    options?: { overwriteRemote?: boolean }
+  ): Promise<void> => {
+    await invoke('sync_github_repo', {
+      request: {
+        name,
+        overwriteRemote: options?.overwriteRemote ?? false,
+      },
+    });
   },
 
   restoreFromGithub: async (name: string): Promise<number> => {

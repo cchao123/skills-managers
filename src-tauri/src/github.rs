@@ -71,45 +71,73 @@ impl GitHubIntegrator {
     }
 
     /// 推送本地技能到远程仓库（skills 目录本身就是 git repo）
-    pub fn push_to_remote(&self, config: &GitHubRepoConfig) -> Result<()> {
-        eprintln!("=== [sync] 开始同步 ===");
+    ///
+    /// `overwrite_remote`: 不把工作区重置为远端最新，按本地目录完整暂存（含对已跟踪文件的删除），
+    /// 必要时 `git push --force`，使远端分支与本地提交一致（解决「远端仍保留已删文件」的合并残留问题）。
+    pub fn push_to_remote(&self, config: &GitHubRepoConfig, overwrite_remote: bool) -> Result<()> {
+        eprintln!(
+            "=== [sync] 开始同步 (overwrite_remote={}) ===",
+            overwrite_remote
+        );
 
-        let repo = self.open_or_init_repo(config)?;
+        let repo = if overwrite_remote {
+            self.open_for_mirror_push(config)?
+        } else {
+            self.open_or_init_repo(config)?
+        };
 
-        // 1. 暂存所有变更（排除 .git）
+        // 1. 暂存变更：覆盖模式需 FORCE，才能把「工作区已删除、索引仍保留」的已跟踪文件从索引移除
         let mut index = repo.index()?;
-        index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
+        let add_opts = if overwrite_remote {
+            git2::IndexAddOption::DEFAULT | git2::IndexAddOption::FORCE
+        } else {
+            git2::IndexAddOption::DEFAULT
+        };
+        index.add_all(["*"].iter(), add_opts, None)?;
         index.write()?;
 
-        // 2. 检查是否有变更
+        // 2. 相对 HEAD 是否有暂存变更
         let head_tree = repo.head()?.peel_to_commit()?.tree()?;
         let diff = repo.diff_tree_to_index(Some(&head_tree), Some(&index), None)?;
-        eprintln!("[sync] 检测到 {} 个变更", diff.deltas().len());
-        if diff.deltas().len() == 0 {
+        let delta_count = diff.deltas().len();
+        eprintln!("[sync] 检测到 {} 个变更", delta_count);
+
+        if delta_count == 0 && !overwrite_remote {
             eprintln!("[sync] 没有需要同步的变更");
             return Ok(());
         }
 
-        // 3. 提交
-        let parent = repo.head()?.peel_to_commit()?;
-        let sig = Signature::now("Skills Manager", "skills-manager@local")
-            .unwrap_or_else(|_| Signature::now("SkillsManager", "skills-manager@local").unwrap());
+        // 3. 有变更则提交；覆盖模式且无变更时仍可能需 force push（例如仅想丢弃远端多出的提交）
+        if delta_count > 0 {
+            let parent = repo.head()?.peel_to_commit()?;
+            let sig = Signature::now("Skills Manager", "skills-manager@local")
+                .unwrap_or_else(|_| Signature::now("SkillsManager", "skills-manager@local").unwrap());
 
-        let tree_id = index.write_tree()?;
-        let tree = repo.find_tree(tree_id)?;
-        repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            &format!("Sync skills from Skills Manager [{}]", chrono::Utc::now().format("%Y-%m-%d %H:%M")),
-            &tree,
-            &[&parent],
-        )?;
-        eprintln!("[sync] 提交成功");
+            let tree_id = index.write_tree()?;
+            let tree = repo.find_tree(tree_id)?;
+            let msg = if overwrite_remote {
+                format!(
+                    "Force sync (mirror local → remote) [{}]",
+                    chrono::Utc::now().format("%Y-%m-%d %H:%M")
+                )
+            } else {
+                format!(
+                    "Sync skills from Skills Manager [{}]",
+                    chrono::Utc::now().format("%Y-%m-%d %H:%M")
+                )
+            };
+            repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&parent])?;
+            eprintln!("[sync] 提交成功");
+        }
 
         // 4. 推送
         eprintln!("[sync] 开始推送到远端...");
-        push_to_origin(&repo, &config.branch, config.token.as_deref())?;
+        push_to_origin(
+            &repo,
+            &config.branch,
+            config.token.as_deref(),
+            overwrite_remote,
+        )?;
 
         eprintln!("✅ [sync] 技能同步成功推送到 GitHub");
         Ok(())
@@ -171,8 +199,8 @@ impl GitHubIntegrator {
         }
     }
 
-    /// Fetch 并 reset 到远端最新
-    fn fetch_and_reset(&self, repo: &Repository, config: &GitHubRepoConfig) -> Result<()> {
+    /// 仅 fetch 远端分支（不改动工作区 / HEAD）
+    fn fetch_origin(&self, repo: &Repository, config: &GitHubRepoConfig) -> Result<()> {
         let mut remote = repo.find_remote("origin")?;
 
         let token_owned = config.token.clone();
@@ -188,14 +216,33 @@ impl GitHubIntegrator {
         let mut fetch_opts = git2::FetchOptions::new();
         fetch_opts.remote_callbacks(callbacks);
         remote.fetch(&[&config.branch], Some(&mut fetch_opts), None)?;
+        Ok(())
+    }
+
+    /// Fetch 并 reset 到远端最新
+    fn fetch_and_reset(&self, repo: &Repository, config: &GitHubRepoConfig) -> Result<()> {
+        self.fetch_origin(repo, config)?;
 
         // 将本地分支重置到远端最新
         let branch_ref = format!("origin/{}", config.branch);
-        let obj = repo.revparse_single(&branch_ref)
+        let obj = repo
+            .revparse_single(&branch_ref)
             .map_err(|e| anyhow!("无法找到远端分支 '{}': {}", config.branch, e))?;
         repo.reset(&obj, git2::ResetType::Hard, None)?;
 
         Ok(())
+    }
+
+    /// 打开仓库并仅 fetch（用于「本地覆盖远端」：避免 reset 把远端已删文件写回工作区）
+    fn open_for_mirror_push(&self, config: &GitHubRepoConfig) -> Result<Repository> {
+        let git_dir = self.skills_dir.join(".git");
+        if !git_dir.exists() {
+            // 首次关联：仍走 clone/init + 对齐远端，后续同步再使用覆盖模式
+            return self.open_or_init_repo(config);
+        }
+        let repo = Repository::open(&self.skills_dir)?;
+        self.fetch_origin(&repo, config)?;
+        Ok(repo)
     }
 
     pub fn add_repository(&self, config: &GitHubRepoConfig, _repo_name: &str) -> Result<()> {
@@ -254,10 +301,14 @@ fn checkout_branch(repo: &Repository, branch: &str) -> Result<()> {
     Ok(())
 }
 
-/// 推送到远程仓库
-fn push_to_origin(repo: &Repository, branch: &str, token: Option<&str>) -> Result<()> {
+/// 推送到远程仓库（`force` 时使用 `+refs/heads/branch` 强制远端与本地一致）
+fn push_to_origin(repo: &Repository, branch: &str, token: Option<&str>, force: bool) -> Result<()> {
     let mut remote = repo.find_remote("origin")?;
-    let refspec = format!("refs/heads/{}:refs/heads/{}", branch, branch);
+    let refspec = if force {
+        format!("+refs/heads/{}:refs/heads/{}", branch, branch)
+    } else {
+        format!("refs/heads/{}:refs/heads/{}", branch, branch)
+    };
 
     let token_owned = token.map(String::from);
     let mut callbacks = git2::RemoteCallbacks::new();
@@ -277,7 +328,9 @@ fn push_to_origin(repo: &Repository, branch: &str, token: Option<&str>) -> Resul
         if msg.contains("403") || msg.contains("denied") {
             anyhow!("推送失败: 权限不足。请检查 Token 是否有仓库写入权限（需要勾选 repo 权限范围）。前往设置: https://github.com/settings/personal-access-tokens")
         } else if msg.contains("non-fast-forward") || msg.contains("fast-forward") {
-            anyhow!("推送失败: 远端有新变更，请重试同步")
+            anyhow!("推送失败: 远端有新变更，请重试同步；若希望以本地为准，可在同步按钮旁勾选「以当前版本覆盖」后重试")
+        } else if force && (msg.contains("protected") || msg.contains("protected branch")) {
+            anyhow!("强制推送被拒绝: GitHub 上该分支可能开启了保护，请暂时允许 force push 或改用未保护分支")
         } else {
             anyhow!("推送失败: {}", msg)
         }

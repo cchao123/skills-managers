@@ -55,10 +55,9 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
       </div>
 
       {viewMode === 'flat' && (
-        <>
-          {/* Stats Bar */}
+        <div className="shrink-0">
           <StatsBar skills={skills} filterType={filterType} onFilterChange={onFilterChange} />
-        </>
+        </div>
       )}
 
       {viewMode === 'agent' && (

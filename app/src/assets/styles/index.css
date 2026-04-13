@@ -7,6 +7,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     /* 保持原有的亮色模式配色 */
     --bg-primary: #ffffff;
     --bg-secondary: #f8f9fa;
@@ -21,6 +22,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     /* Dark 模式配色 - 优化文字对比度 */
     --bg-primary: #0a0a0a;
     --bg-secondary: #141414;
@@ -133,31 +135,57 @@ select:focus {
   display: none;
 }
 
-/* Show scrollbar for specific elements */
+/* Show scrollbar for specific elements (WebView2/Win: need track + no buttons or OS paints light chrome) */
 .show-scrollbar {
   scrollbar-width: thin;
+  scrollbar-gutter: stable;
   -ms-overflow-style: auto;
 }
 .show-scrollbar::-webkit-scrollbar {
-  display: auto;
-  width: 6px;
+  display: block;
+  width: 8px;
+  height: 8px;
 }
-.show-scrollbar::-webkit-scrollbar-track {
+.show-scrollbar::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.show-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }
+.show-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+}
 .show-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 .show-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.32);
 }
 
+.dark .show-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.22) rgba(24, 24, 24, 0.85);
+}
+.dark .show-scrollbar::-webkit-scrollbar {
+  background: rgba(18, 18, 18, 0.95);
+}
+.dark .show-scrollbar::-webkit-scrollbar-track {
+  background: rgba(24, 24, 24, 0.92);
+  border-radius: 4px;
+}
 .dark .show-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 .dark .show-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 /* Window drag regions for Tauri Overlay titlebar - CRITICAL for window dragging */

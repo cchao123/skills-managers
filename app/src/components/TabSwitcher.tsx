@@ -14,7 +14,7 @@ interface TabSwitcherProps {
 
 export const TabSwitcher: React.FC<TabSwitcherProps> = ({ tabs, activeTab, onTabChange }) => {
   return (
-    <div className="flex items-center gap-1 bg-gray-100 dark:bg-dark-bg-secondary rounded-lg p-1">
+    <div className="flex items-center gap-1 bg-gray-100 dark:bg-black rounded-lg p-1">
       {tabs.map((tab) => (
         <button
           key={tab.id}

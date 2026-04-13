@@ -22,8 +22,12 @@ pub struct RemoveRepoRequest {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SyncRepoRequest {
     pub name: String,
+    /// 为 true 时：不将工作区重置为远端，按本地磁盘完整暂存（含删除）后提交，并 force push，使远端与本地一致。
+    #[serde(default)]
+    pub overwrite_remote: bool,
 }
 
 pub struct GitHubConfigManager {
@@ -282,8 +286,10 @@ pub async fn sync_github_repo(
     let integrator = GitHubIntegrator::new()
         .map_err(|e| e.to_string())?;
 
+    let overwrite_remote = request.overwrite_remote;
     tokio::task::spawn_blocking(move || {
-        integrator.push_to_remote(&repo_config)
+        integrator
+            .push_to_remote(&repo_config, overwrite_remote)
             .map_err(|e| e.to_string())
     })
     .await

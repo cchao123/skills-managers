@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { skillsApi, agentsApi } from '@/api/tauri';
 import type { SkillMetadata, AgentConfig } from '@/types';
 
@@ -51,7 +51,7 @@ export const useSkillData = () => {
     }
   }, []);
 
-  const loadAgents = async () => {
+  const loadAgents = useCallback(async () => {
     try {
       console.log('Detecting agents...');
       const agentsData = await agentsApi.detect();
@@ -60,26 +60,14 @@ export const useSkillData = () => {
     } catch (error) {
       console.error('Failed to detect agents:', error);
     }
-  };
-
-  useEffect(() => {
-    console.log('Dashboard mounted, loading skills and agents...');
-    loadSkills();
-    loadAgents();
   }, []);
 
-  // 窗口获得焦点时自动刷新 skills 列表
-  useEffect(() => {
-    const handleFocus = () => {
-      loadSkills();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [loadSkills]);
-
-  // 静默刷新：只更新数据，不触发 loading 状态
+  // 静默刷新：只更新数据，不触发 loading（用于窗口重新获得焦点等场景）
   const refreshSkills = useCallback(async () => {
     try {
+      const isTauri = !!(window as any).__TAURI__;
+      if (!isTauri) return;
+
       const data = await skillsApi.list();
       const correctedData = data.map(skill => {
         const enabledAgentCount = Object.values(skill.agent_enabled || {}).filter(Boolean).length;
@@ -96,6 +84,36 @@ export const useSkillData = () => {
       console.error('Failed to refresh skills:', err);
     }
   }, []);
+
+  useEffect(() => {
+    console.log('Dashboard mounted, loading skills and agents...');
+    loadSkills();
+    loadAgents();
+  }, []);
+
+  // 窗口重新获得焦点时静默同步列表（托盘唤起、Alt+Tab、拖动标题栏时 Windows 可能多次触发 focus）
+  const focusRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      if (focusRefreshTimerRef.current) {
+        clearTimeout(focusRefreshTimerRef.current);
+      }
+      focusRefreshTimerRef.current = setTimeout(() => {
+        focusRefreshTimerRef.current = null;
+        void refreshSkills();
+        void loadAgents();
+      }, 250);
+    };
+
+    window.addEventListener('focus', scheduleRefresh);
+    return () => {
+      window.removeEventListener('focus', scheduleRefresh);
+      if (focusRefreshTimerRef.current) {
+        clearTimeout(focusRefreshTimerRef.current);
+        focusRefreshTimerRef.current = null;
+      }
+    };
+  }, [refreshSkills, loadAgents]);
 
   return {
     skills,
