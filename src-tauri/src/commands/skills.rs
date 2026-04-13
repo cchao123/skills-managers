@@ -16,7 +16,7 @@ pub struct AppState {
 /// 根据技能来源获取基础路径
 fn get_skill_base_path(source: &SkillSource) -> PathBuf {
     match source {
-        SkillSource::Central => {
+        SkillSource::Global => {
             PathBuf::from("~/.skills-manager/skills")
         }
         SkillSource::Cursor => {
@@ -44,7 +44,7 @@ pub async fn list_skills(
     let config = settings.get_config();
     info!("Scanning skills from central, cursor, and claude sources...");
 
-    let skills = scanner::scan_all_skill_sources(&config.skill_states)
+    let skills = scanner::scan_all_skill_sources(&config.skill_states, &config.agents)
         .map_err(|e| {
             error!("Failed to scan skills: {}", e);
             format!("Failed to scan skills: {}", e)
@@ -69,7 +69,7 @@ pub async fn enable_skill(
             format!("Failed to acquire lock: {}", e)
         })?;
 
-    let skills = scanner::scan_all_skill_sources(&settings.get_config().skill_states)
+    let skills = scanner::scan_all_skill_sources(&settings.get_config().skill_states, &settings.get_config().agents)
         .map_err(|e| {
             error!("Failed to scan skills: {}", e);
             format!("Failed to scan skills: {}", e)
@@ -169,7 +169,7 @@ pub async fn disable_skill(
             format!("Failed to acquire lock: {}", e)
         })?;
 
-    let skills = scanner::scan_all_skill_sources(&settings.get_config().skill_states)
+    let skills = scanner::scan_all_skill_sources(&settings.get_config().skill_states, &settings.get_config().agents)
         .map_err(|e| {
             error!("Failed to scan skills: {}", e);
             format!("Failed to scan skills: {}", e)
@@ -275,10 +275,10 @@ pub async fn get_skill_files(
     info!("Getting files for skill: {}", skill_id);
 
     // 首先扫描技能获取其路径
-    let skills = scanner::scan_all_skill_sources(&state.settings_manager.lock()
-        .map_err(|e| format!("Failed to acquire lock: {}", e))?
-        .get_config()
-        .skill_states)
+    let guard = state.settings_manager.lock()
+        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let config = guard.get_config();
+    let skills = scanner::scan_all_skill_sources(&config.skill_states, &config.agents)
         .map_err(|e| {
             error!("Failed to scan skills: {}", e);
             format!("Failed to scan skills: {}", e)
@@ -374,10 +374,10 @@ pub async fn read_skill_file(
     info!("Reading file {} for skill: {}", file_path, skill_id);
 
     // 验证文件路径是否在技能目录内
-    let skills = scanner::scan_all_skill_sources(&state.settings_manager.lock()
-        .map_err(|e| format!("Failed to acquire lock: {}", e))?
-        .get_config()
-        .skill_states)
+    let guard = state.settings_manager.lock()
+        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let config = guard.get_config();
+    let skills = scanner::scan_all_skill_sources(&config.skill_states, &config.agents)
         .map_err(|e| {
             error!("Failed to scan skills: {}", e);
             format!("Failed to scan skills: {}", e)
@@ -430,67 +430,47 @@ pub async fn delete_skill(
 ) -> Result<(), String> {
     info!("Deleting skill: {}", skill_id);
 
-    // 获取技能列表并查找目标技能
-    let skills = scanner::scan_all_skill_sources(&state.settings_manager.lock()
-        .map_err(|e| format!("Failed to acquire lock: {}", e))?
-        .get_config()
-        .skill_states)
-        .map_err(|e| {
-            error!("Failed to scan skills: {}", e);
-            format!("Failed to scan skills: {}", e)
-        })?;
-
-    let skill = skills.iter()
-        .find(|s| s.id == skill_id)
-        .ok_or_else(|| {
-            error!("Skill '{}' not found", skill_id);
-            format!("Skill '{}' not found", skill_id)
-        })?;
-
-    // 检查是否为中央存储技能
-    if skill.source != SkillSource::Central {
-        let source_name = match skill.source {
-            SkillSource::Claude => "Claude插件",
-            SkillSource::Cursor => "Cursor",
-            SkillSource::Central => "中央存储",
-        };
-        return Err(format!("只能删除中央存储中的技能。此技能来源：{}", source_name));
-    }
-
-    // 删除中央存储中的技能文件
-    let skill_path = skill.path.as_ref()
-        .ok_or_else(|| "Skill has no path".to_string())?;
-
-    info!("Deleting skill from: {:?}", skill_path);
-
-    // 删除技能目录
-    if std::path::Path::new(skill_path).exists() {
-        std::fs::remove_dir_all(skill_path)
-            .map_err(|e| {
-                error!("Failed to delete skill directory: {}", e);
-                format!("Failed to delete skill directory: {}", e)
-            })?;
-        info!("Skill directory deleted: {:?}", skill_path);
-    }
-
-    // 获取配置和创建 linker（在独立的作用域中）
-    let (linking_strategy, agents) = {
-        let settings_manager = state.settings_manager.lock()
+    // 获取技能路径和配置（快速操作）
+    let (skill_path, linking_strategy, agents) = {
+        let guard = state.settings_manager.lock()
             .map_err(|e| format!("Failed to acquire lock: {}", e))?;
-        let config = settings_manager.get_config();
-        (config.linking_strategy.clone(), config.agents.clone())
+        let config = guard.get_config();
+        let skills_dir = AppSettingsManager::get_skills_dir();
+        let skill_path = skills_dir.join(&skill_id);
+
+        // 只检查 global 来源的路径是否存在
+        if !skill_path.exists() {
+            return Err(format!("技能 '{}' 不存在于根目录中", skill_id));
+        }
+
+        (skill_path.to_string_lossy().to_string(), config.linking_strategy.clone(), config.agents.clone())
     };
 
-    // 移除所有符号链接
-    let linker = LinkManager::new(linking_strategy);
-    for agent_config in &agents {
-        if agent_config.enabled {
-            // 尝试移除链接（忽略错误）
-            let _ = linker.unlink_skill_from_agent(&skill, agent_config);
+    // 重 I/O 操作放到阻塞线程
+    let skill_id_clone = skill_id.clone();
+    tokio::task::spawn_blocking(move || {
+        // 删除技能目录
+        let path = std::path::Path::new(&skill_path);
+        if path.exists() {
+            std::fs::remove_dir_all(path)
+                .map_err(|e| format!("删除技能目录失败: {}", e))?;
+            info!("Skill directory deleted: {:?}", skill_path);
         }
-    }
 
-    // 清理配置文件中的状态
+        // 移除符号链接
+        let linker = LinkManager::new(linking_strategy);
+        for agent_config in &agents {
+            if agent_config.enabled {
+                let _ = linker.unlink_skill_id_from_agent(&skill_id_clone, agent_config);
+            }
+        }
+
+        Ok::<(), String>(())
+    })
+    .await
+    .map_err(|e| format!("任务执行失败: {}", e))??;
+
+    // 清理配置（快速操作，回到主线程）
     {
         let mut settings = state.settings_manager.lock()
             .map_err(|e| format!("Failed to acquire lock: {}", e))?;
@@ -500,10 +480,7 @@ pub async fn delete_skill(
             .remove(&skill_id);
 
         settings.save()
-            .map_err(|e| {
-                error!("Failed to save config: {}", e);
-                format!("Failed to save config: {}", e)
-            })?;
+            .map_err(|e| format!("保存配置失败: {}", e))?;
     }
 
     info!("Skill '{}' deleted successfully", skill_id);

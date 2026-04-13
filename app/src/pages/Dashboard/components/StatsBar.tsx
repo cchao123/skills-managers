@@ -11,7 +11,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({ skills, filterType, onFilter
   const { t } = useTranslation();
 
   return (
-    <div className="flex items-center justify-center gap-3 px-3 py-2 bg-[#f8f9fa] dark:bg-dark-bg-secondary rounded-lg border border-[#e1e3e4] dark:border-dark-border">
+    <div className="flex items-center justify-center gap-3 px-2 py-2 bg-[#f8f9fa] dark:bg-dark-bg-secondary rounded-lg border border-[#e1e3e4] dark:border-dark-border">
       <button
         onClick={() => onFilterChange('all')}
         className={`flex items-center gap-1.5 transition-all rounded-md px-2 py-1.5 ${
@@ -56,7 +56,6 @@ export const StatsBar: React.FC<StatsBarProps> = ({ skills, filterType, onFilter
             : 'hover:bg-white/50 dark:hover:bg-dark-bg-card/50'
         }`}
       >
-        11
         <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
         <div className={`text-xs font-bold transition-colors ${
           filterType === 'disabled'

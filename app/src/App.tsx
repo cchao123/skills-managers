@@ -34,7 +34,7 @@ function App() {
             isSidebarCollapsed ? 'ml-20' : 'ml-64'
           }`}
         >
-          {currentPage === 'dashboard' && <Dashboard />}
+          {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} />}
           {currentPage === 'githubBackup' && <GitHubBackup />}
           {currentPage === 'settings' && <Settings />}
         </main>

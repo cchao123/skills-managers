@@ -38,7 +38,7 @@ impl SkillInstaller {
         // 2. 扫描技能
         let skill_metadata = crate::scanner::parse_skill_md(
             &skill_path.join("SKILL.md"),
-            crate::models::SkillSource::Central
+            crate::models::SkillSource::Global
         )?;
 
         // 3. 创建 linker

@@ -1,5 +1,5 @@
 // Skill source type
-export type SkillSource = 'central' | 'cursor' | 'claude';
+export type SkillSource = 'global' | 'cursor' | 'claude';
 
 // Skill Metadata (matches backend Phase 1)
 export interface SkillMetadata {
@@ -11,6 +11,7 @@ export interface SkillMetadata {
   agent_enabled: Record<string, boolean>;  // Per-agent enablement (changed from agent_disabled)
   agent_enabled_backup?: Record<string, boolean>;  // Backup of agent states before main toggle
   source?: SkillSource;          // Where the skill comes from
+  is_collected?: boolean;         // Whether skill is physically copied to any agent's skills dir
   author?: string;               // Author (optional)
   version?: string;              // Version (optional)
   repository?: string;           // Repository URL (optional)

@@ -6,8 +6,9 @@ export interface Skill {
   category: string;
   icon: string;
   iconColor: string;
-  rating: number;
-  downloads: string;
+  enabledAgentCount: number;
+  totalAgentCount: number;
+  size?: number;
   author: string;
   installed?: boolean;
 }

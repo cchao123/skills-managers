@@ -1,6 +1,5 @@
 use crate::github::GitHubIntegrator;
 use crate::models::{GitHubConfig, GitHubRepoConfig};
-use crate::settings::AppSettingsManager;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -282,10 +281,9 @@ pub async fn sync_github_repo(
 
     let integrator = GitHubIntegrator::new()
         .map_err(|e| e.to_string())?;
-    let skills_dir = AppSettingsManager::get_skills_dir();
 
     tokio::task::spawn_blocking(move || {
-        integrator.push_to_remote(&repo_config, &skills_dir)
+        integrator.push_to_remote(&repo_config)
             .map_err(|e| e.to_string())
     })
     .await
@@ -317,10 +315,9 @@ pub async fn restore_from_github(
 
     let integrator = GitHubIntegrator::new()
         .map_err(|e| e.to_string())?;
-    let skills_dir = AppSettingsManager::get_skills_dir();
 
     let count = tokio::task::spawn_blocking(move || {
-        integrator.pull_from_remote(&repo_config, &skills_dir)
+        integrator.pull_from_remote(&repo_config)
             .map_err(|e| e.to_string())
     })
     .await

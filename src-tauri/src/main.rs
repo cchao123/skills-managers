@@ -50,7 +50,8 @@ fn rebuild_tray_menu<R: Runtime, M: Manager<R>>(manager: &M, lang: &str) -> Resu
     let state = app.state::<AppState>();
     let config = state.settings_manager.lock().unwrap().get_config().clone();
     let skill_states = config.skill_states.clone();
-    let skills = scanner::scan_all_skill_sources(&skill_states).unwrap_or_default();
+    let agents = config.agents.clone();
+    let skills = scanner::scan_all_skill_sources(&skill_states, &agents).unwrap_or_default();
 
     let mut menu_builder = MenuBuilder::new(app);
 
@@ -119,9 +120,10 @@ pub fn run() {
             // 检测 agents 并获取配置
             let config = settings_manager.get_config().clone();
             let skill_states = config.skill_states.clone();
+            let agents = config.agents.clone();
 
             // 扫描技能
-            let _skills = scanner::scan_all_skill_sources(&skill_states)
+            let _skills = scanner::scan_all_skill_sources(&skill_states, &agents)
                 .unwrap_or_default();
 
             // 设置应用状态
@@ -205,6 +207,7 @@ pub fn run() {
             commands::settings::set_linking_strategy,
             commands::settings::open_skills_manager_folder,
             commands::settings::detect_agents,
+            commands::settings::open_folder,
             // Marketplace commands
             commands::marketplace::scan_github_repos,
             commands::marketplace::install_from_github,

@@ -3,6 +3,7 @@ import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelper
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import CardFileTree from '@/components/CardFileTree';
 import { FILE_TREE_HEIGHT } from '@/pages/Dashboard/constants/panel';
+import { agentsApi } from '@/api/tauri';
 
 interface SkillDetailModalProps {
   skill: SkillMetadata;
@@ -77,7 +78,11 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                 <div className="mb-2 flex items-center gap-2">
                   <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">文件目录：</h3>
                   {skill.path && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate flex-1 min-w-0" title={skill.path}>
+                    <p
+                      className="text-xs text-blue-500 dark:text-blue-400 font-mono truncate flex-1 min-w-0 cursor-pointer hover:underline"
+                      title={skill.path}
+                      onClick={() => agentsApi.openFolderPath(skill.path!)}
+                    >
                       {skill.path}
                     </p>
                   )}
@@ -145,7 +150,11 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                 <div className="mb-2 flex items-center gap-2">
                   <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">文件目录：</h3>
                   {skill.path && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate flex-1 min-w-0" title={skill.path}>
+                    <p
+                      className="text-xs text-blue-500 dark:text-blue-400 font-mono truncate flex-1 min-w-0 cursor-pointer hover:underline"
+                      title={skill.path}
+                      onClick={() => agentsApi.openFolderPath(skill.path!)}
+                    >
                       {skill.path}
                     </p>
                   )}
@@ -232,13 +241,13 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
 
         {/* Footer */}
         <div className="border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-bg-secondary relative">
-          {skill.source === 'central' && (
+          {skill.source === 'global' && (
             <button
               onClick={onDelete}
-              className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors absolute left-1/2 -translate-x-1/2 bottom-4"
+              className="w-12 h-12 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors absolute left-1/2 -translate-x-1/2 bottom-4 shadow-lg"
               title="删除技能"
             >
-              <span className="material-symbols-outlined text-base">delete</span>
+              <span className="material-symbols-outlined text-lg">delete</span>
             </button>
           )}
         </div>

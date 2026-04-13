@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { skillsApi, agentsApi } from '@/api/tauri';
 import type { SkillMetadata, AgentConfig } from '@/types';
 
@@ -8,7 +8,7 @@ export const useSkillData = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadSkills = async () => {
+  const loadSkills = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -49,7 +49,7 @@ export const useSkillData = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadAgents = async () => {
     try {
@@ -68,6 +68,35 @@ export const useSkillData = () => {
     loadAgents();
   }, []);
 
+  // 窗口获得焦点时自动刷新 skills 列表
+  useEffect(() => {
+    const handleFocus = () => {
+      loadSkills();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [loadSkills]);
+
+  // 静默刷新：只更新数据，不触发 loading 状态
+  const refreshSkills = useCallback(async () => {
+    try {
+      const data = await skillsApi.list();
+      const correctedData = data.map(skill => {
+        const enabledAgentCount = Object.values(skill.agent_enabled || {}).filter(Boolean).length;
+        if (skill.enabled === true && enabledAgentCount === 0) {
+          return { ...skill, enabled: false };
+        }
+        if (skill.enabled === false && enabledAgentCount > 0) {
+          return { ...skill, enabled: true };
+        }
+        return skill;
+      });
+      setSkills(correctedData);
+    } catch (err) {
+      console.error('Failed to refresh skills:', err);
+    }
+  }, []);
+
   return {
     skills,
     setSkills,
@@ -75,6 +104,7 @@ export const useSkillData = () => {
     loading,
     error,
     loadSkills,
+    refreshSkills,
     loadAgents,
   };
 };

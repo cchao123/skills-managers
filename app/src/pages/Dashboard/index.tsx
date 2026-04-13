@@ -18,17 +18,19 @@ import { SearchAndFilterBar } from '@/pages/Dashboard/components/SearchAndFilter
 import { DragDropOverlay } from '@/pages/Dashboard/components/DragDropOverlay';
 import { ImportingOverlay } from '@/pages/Dashboard/components/ImportingOverlay';
 import { DeleteConfirmModal } from '@/pages/Dashboard/components/DeleteConfirmModal';
+import { EmptyView } from '@/pages/Dashboard/components/EmptyView';
 import { SkillDetailModal } from '@/pages/Dashboard/components/SkillDetailModal';
 import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import MarketplaceSkillCard from '@/pages/Dashboard/components/MarketplaceSkillCard';
 import type { Skill } from '@/types/skills';
 
-function Dashboard() {
+function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { t } = useTranslation();
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<SkillMetadata | null>(null);
   const [viewMode, setViewMode] = useState('flat');
-  const [selectedAgent, setSelectedAgent] = useState<string>('All');
+  const [selectedSource, setSelectedSource] = useState<string>('claude');
+  const [githubTipDismissed, setGithubTipDismissed] = useState(() => sessionStorage.getItem('githubTipDismissed') === 'true');
   const [showHelp, setShowHelp] = useState(false);
   const helpButtonRef = useRef<HTMLButtonElement>(null);
   const helpPopoverRef = useRef<HTMLDivElement>(null);
@@ -43,12 +45,12 @@ function Dashboard() {
   const handleViewModeChange = (mode: string) => {
     setViewMode(mode);
     if (mode === 'agent') {
-      setSelectedAgent('All');
+      setSelectedSource('claude');
     }
   };
 
   // Custom hooks
-  const { skills, setSkills, agents, loading, error, loadSkills } = useSkillData();
+  const { skills, setSkills, agents, loading, error, loadSkills, refreshSkills } = useSkillData();
 
   // 延迟显示/隐藏帮助，配合hover效果
   const handleHelpMouseEnter = () => {
@@ -76,10 +78,11 @@ function Dashboard() {
     };
   }, []);
   const { searchTerm, setSearchTerm, filterType, setFilterType, filteredSkills } = useSkillFilters(skills);
-  const { handleToggleSkill, handleToggleAgent, handleDeleteSkill } = useSkillActions(skills, setSkills);
+  const { handleToggleSkill, handleToggleAgent, handleDeleteSkill, handleAddToRoot } = useSkillActions(skills, setSkills);
 
   // 将SkillMetadata转换为Marketplace的Skill格式
   const convertToMarketplaceSkill = (skill: SkillMetadata): Skill => {
+    const enabledCount = Object.values(skill.agent_enabled || {}).filter(Boolean).length;
     return {
       id: skill.id,
       name: skill.name,
@@ -88,22 +91,23 @@ function Dashboard() {
       category: 'Skill',
       icon: getSkillIcon(skill.id),
       iconColor: getSkillColor(skill.id),
-      rating: 4.5,
-      downloads: '1k',
+      enabledAgentCount: enabledCount,
+      totalAgentCount: agents.filter(a => a.detected).length,
+      size: skill.size,
       author: 'Skills Manager',
       installed: skill.enabled,
     };
   };
 
-  const marketplaceSkills = filteredSkills.map(convertToMarketplaceSkill);
+  // 按来源过滤
+  const filteredBySource = filteredSkills.filter(skill => {
+    if (selectedSource === 'claude') return skill.source === 'claude';
+    if (selectedSource === 'cursor') return skill.source === 'cursor';
+    if (selectedSource === 'global') return skill.source === 'global';
+    return true;
+  });
 
-  // 根据选中的agent筛选技能
-  const filteredByAgent = selectedAgent === 'All'
-    ? marketplaceSkills
-    : marketplaceSkills.filter(skill => {
-      const originalSkill = filteredSkills.find(s => s.id === skill.id);
-      return originalSkill?.agent_enabled[selectedAgent];
-    });
+  const marketplaceSkills = filteredBySource.map(convertToMarketplaceSkill);
   const {
     detailSkill,
     showDetailModal,
@@ -117,7 +121,7 @@ function Dashboard() {
     toggleFolder,
     handleReadFile,
   } = useSkillModal();
-  const { isDragOver, importing } = useDragDrop();
+  const { isDragOver, importing } = useDragDrop(loadSkills);
   const { leftPanelWidth, isResizing, handleMouseDown } = usePanelResize();
 
   // Handlers
@@ -250,9 +254,8 @@ function Dashboard() {
             onFilterChange={setFilterType}
             skills={skills}
             viewMode={viewMode as 'flat' | 'agent'}
-            selectedAgent={selectedAgent}
-            onAgentSelect={setSelectedAgent}
-            agents={agents}
+            selectedSource={selectedSource}
+            onSourceSelect={setSelectedSource}
           />
         </div>
       </div>
@@ -263,15 +266,7 @@ function Dashboard() {
           {viewMode === 'flat' && (
             <>
               {filteredSkills.length === 0 ? (
-                <div className="max-w-6xl mx-auto flex flex-col items-center justify-center py-20">
-
-                  <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600 mb-4">
-                    search_off
-                  </span>
-                  <p className="text-slate-500 dark:text-gray-400 font-medium">
-                    {searchTerm ? t('dashboard.search.noResults') : t('dashboard.filter.noResults')}
-                  </p>
-                </div>
+                <EmptyView message={searchTerm ? t('dashboard.search.noResults') : t('dashboard.filter.noResults')} />
               ) : (
                 <div className="flex flex-col lg:flex-row gap-4 items-start">
                   {/* Left column */}
@@ -326,28 +321,56 @@ function Dashboard() {
 
           {viewMode === 'agent' && (
             <div className="bg-[#f8f9fa] dark:bg-dark-bg-secondary">
+              {selectedSource === 'global' && !githubTipDismissed && (
+                <div className="mb-4 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.67-.3-5.46-1.334-5.46-5.925 0-1.305.465-2.38 1.23-3.22-.12-.3-.54-1.53.12-3.18 0 0 1.005-.322 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.297-1.23 3.297-1.23.66 1.653.242 2.874.118 3.176.77.84 1.235 1.905 1.235 3.22 0 4.605-2.805 5.624-5.475 5.921.43.372.823 1.102.823 2.22 0 1.605-.015 2.89-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                  </svg>
+                  <p className="text-xs text-[#5e5e5e] dark:text-gray-400">
+                    收录至根目录的技能可以通过
+                    <span
+                      className="text-[#2563eb] dark:text-blue-400 cursor-pointer hover:underline"
+                      onClick={() => onNavigate('githubBackup')}
+                    > GitHub 备份</span>
+                    同步到远端仓库
+                  </p>
+                  <button
+                    onClick={() => { setGithubTipDismissed(true); sessionStorage.setItem('githubTipDismissed', 'true'); }}
+                    className="text-xs text-[#5e5e5e] dark:text-gray-400 hover:text-[#b71422] dark:hover:text-[#b71422] transition-colors ml-1"
+                  >
+                    知道了
+                  </button>
+                </div>
+              )}
               <div className="space-y-6">
                 {/* Skills Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {filteredByAgent.map((skill) => (
-                    <MarketplaceSkillCard
-                      key={skill.id}
-                      skill={skill}
-                      onInstall={() => {
-                        const originalSkill = skills.find(s => s.id === skill.id);
-                        if (originalSkill) {
-                          handleToggleSkill(originalSkill);
-                        }
-                      }}
-                      onInfo={() => handleShowSkillDetail(skills.find(s => s.id === skill.id)!)}
-                    />
-                  ))}
+                  {marketplaceSkills.map((skill) => {
+                    const originalSkill = filteredBySource.find(s => s.id === skill.id);
+                    const isGlobalSource = originalSkill?.source === 'global';
+                    const existsInRoot = !isGlobalSource && skills.some(s => s.id === skill.id && s.source === 'global');
+
+                    return (
+                      <MarketplaceSkillCard
+                        key={skill.id}
+                        skill={skill}
+                        onInstall={() => {
+                          const orig = skills.find(s => s.id === skill.id);
+                          if (orig) {
+                            handleToggleSkill(orig);
+                          }
+                        }}
+                        onInfo={() => handleShowSkillDetail(skills.find(s => s.id === skill.id)!)}
+                        onDelete={isGlobalSource ? () => originalSkill && setDeleteTarget(originalSkill) : undefined}
+                        onAddToRoot={!isGlobalSource ? () => originalSkill && handleAddToRoot(originalSkill).then(() => refreshSkills()) : undefined}
+                        isInRoot={!isGlobalSource ? existsInRoot : undefined}
+                      />
+                    );
+                  })}
                 </div>
 
-                {filteredByAgent.length === 0 && (
-                  <div className="text-center py-20 text-slate-500 dark:text-gray-400">
-                    该 Agent 下暂无技能
-                  </div>
+                {marketplaceSkills.length === 0 && (
+                  <EmptyView message="该来源下暂无技能" />
                 )}
               </div>
             </div>

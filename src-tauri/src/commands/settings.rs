@@ -110,6 +110,41 @@ pub async fn open_skills_manager_folder() -> Result<(), String> {
     Ok(())
 }
 
+/// 在系统文件管理器中打开指定目录
+#[tauri::command]
+pub async fn open_folder(path: String) -> Result<(), String> {
+    let path = std::path::PathBuf::from(&path);
+    if !path.exists() {
+        return Err(format!("目录不存在: {}", path.display()));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    Ok(())
+}
+
 /// 检测系统中的 Agent
 #[tauri::command]
 pub async fn detect_agents(

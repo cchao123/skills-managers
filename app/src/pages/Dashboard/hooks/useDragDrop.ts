@@ -3,7 +3,7 @@ import { skillsApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
-export const useDragDrop = () => {
+export const useDragDrop = (onImportComplete?: () => void) => {
   const { showToast } = useToast();
   const [isDragOver, setIsDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -32,13 +32,14 @@ export const useDragDrop = () => {
 
     if (successCount > 0) {
       showToast('success', `成功导入 ${successCount} 个技能`);
+      onImportComplete?.();
     }
     if (errorMsg) {
       showToast('error', errorMsg);
     }
     importingRef.current = false;
     setImporting(false);
-  }, [showToast]);
+  }, [showToast, onImportComplete]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

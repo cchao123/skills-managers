@@ -381,6 +381,15 @@ impl LinkManager {
         skill: &SkillMetadata,
         agent: &AgentConfig,
     ) -> Result<(), LinkerError> {
+        self.unlink_skill_id_from_agent(&skill.id, agent)
+    }
+
+    /// 仅通过 skill ID 移除链接（无需完整 SkillMetadata）
+    pub fn unlink_skill_id_from_agent(
+        &self,
+        skill_id: &str,
+        agent: &AgentConfig,
+    ) -> Result<(), LinkerError> {
         let home_dir = dirs::home_dir()
             .ok_or_else(|| LinkerError::AgentNotFound("Cannot find home directory".to_string()))?;
 
@@ -393,7 +402,7 @@ impl LinkManager {
             home_dir.join(&agent.path)
         };
 
-        let skill_target = agent_path.join(&agent.skills_path).join(&skill.id);
+        let skill_target = agent_path.join(&agent.skills_path).join(skill_id);
         remove_link(&skill_target)
     }
 

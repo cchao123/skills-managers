@@ -1,4 +1,5 @@
 import type { SkillMetadata } from '@/types';
+import { agentsApi } from '@/api/tauri';
 
 interface DeleteConfirmModalProps {
   target: SkillMetadata | null;
@@ -26,9 +27,9 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
         <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">删除确认</h3>
         <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed mb-8 px-4">
           确定要删除技能 <strong className="text-slate-900 dark:text-white">{target.name}</strong> 吗？
-          <br />此操作将从中央存储删除技能文件并移除所有符号链接，且不可撤销。
+          <br />此操作将从 <span className="text-blue-500 underline cursor-pointer" onClick={() => agentsApi.openFolderPath(target.path || '')}>Skills Manager</span> 根目录删除技能文件并移除所有符号链接，且不可撤销。
         </p>
-        <div className="w-full flex flex-col gap-3">
+        <div className="w-full flex gap-3">
           <button
             onClick={onConfirm}
             className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 hover:brightness-110 active:scale-[0.98] transition-all"

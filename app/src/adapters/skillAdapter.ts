@@ -16,6 +16,7 @@ export interface BackendSkillMetadata {
   installed_at: string;
   last_updated: string;
   path?: string;
+  is_collected?: boolean;
 }
 
 /**
@@ -40,6 +41,7 @@ export const adaptSkillMetadata = (
     installed_at: backendData.installed_at,
     last_updated: backendData.last_updated,
     path: backendData.path,
+    is_collected: backendData.is_collected,
   };
 };
 

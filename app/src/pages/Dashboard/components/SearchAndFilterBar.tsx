@@ -3,7 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { useToast } from '@/components/Toast';
 import { StatsBar } from '@/pages/Dashboard/components/StatsBar';
 import { getAgentIcon } from '@/pages/Dashboard/utils/agentHelpers';
-import type { SkillMetadata, AgentConfig } from '@/types';
+import octopusIcon from '@/assets/agents/octopus.svg';
+import type { SkillMetadata } from '@/types';
 
 interface SearchAndFilterBarProps {
   searchTerm: string;
@@ -12,9 +13,8 @@ interface SearchAndFilterBarProps {
   onFilterChange: (type: 'all' | 'enabled' | 'disabled') => void;
   skills: SkillMetadata[];
   viewMode: 'flat' | 'agent';
-  selectedAgent: string;
-  onAgentSelect: (agent: string) => void;
-  agents: AgentConfig[];
+  selectedSource: string;
+  onSourceSelect: (source: string) => void;
 }
 
 export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
@@ -24,9 +24,8 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
   onFilterChange,
   skills,
   viewMode,
-  selectedAgent,
-  onAgentSelect,
-  agents,
+  selectedSource,
+  onSourceSelect,
 }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -63,44 +62,32 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
       )}
 
       {viewMode === 'agent' && (
-        <>
-          {/* Agent Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            {agents.filter(a => a.detected).map((agent) => {
-              return (
-                <button
-                  key={agent.name}
-                  onClick={() => onAgentSelect(agent.name)}
-                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                    selectedAgent === agent.name
-                      ? 'bg-[#b71422] text-white font-bold'
-                      : 'bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border text-[#5e5e5e] dark:text-gray-300 hover:bg-[#edeeef] dark:hover:bg-dark-bg-tertiary'
-                  }`}
-                >
-                  <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                    <img
-                      src={getAgentIcon(agent.name)}
-                      alt={agent.display_name}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <span>{agent.display_name}</span>
-                </button>
-              );
-            })}
+        <div className="flex flex-wrap items-center gap-2 h-[50px]">
+          {[
+            { id: 'global', label: 'Skills Manager根目录', icon: octopusIcon },
+            { id: 'claude', label: 'Claude Code', icon: getAgentIcon('claude') },
+            { id: 'cursor', label: 'Cursor', icon: getAgentIcon('cursor') },
+          ].map((item) => (
             <button
-              onClick={() => onAgentSelect('All')}
+              key={item.id}
+              onClick={() => onSourceSelect(item.id)}
               className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                selectedAgent === 'All'
+                selectedSource === item.id
                   ? 'bg-[#b71422] text-white font-bold'
                   : 'bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border text-[#5e5e5e] dark:text-gray-300 hover:bg-[#edeeef] dark:hover:bg-dark-bg-tertiary'
               }`}
             >
-              <span className="text-base">🐙</span>
-              <span>全部</span>
+              {item.icon ? (
+                <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                  <img src={item.icon} alt={item.label} className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <span className="material-symbols-outlined text-base">inventory_2</span>
+              )}
+              <span>{item.label}</span>
             </button>
-          </div>
-        </>
+          ))}
+        </div>
       )}
 
       {/* Open Skills Folder */}

@@ -1,24 +1,19 @@
 use crate::models::GitHubRepoConfig;
+use crate::settings::AppSettingsManager;
 use anyhow::{anyhow, Context, Result};
 use git2::{Repository, Signature};
 use std::fs;
-use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
+use std::path::PathBuf;
 
 pub struct GitHubIntegrator {
-    skills_manager_dir: PathBuf,
+    skills_dir: PathBuf,
 }
 
 impl GitHubIntegrator {
     pub fn new() -> Result<Self> {
-        let home = dirs::home_dir()
-            .context("Failed to get home directory")?;
-        let skills_manager_dir = home.join(".claude").join("skills-manager");
-
-        // Create directory if it doesn't exist
-        fs::create_dir_all(&skills_manager_dir)?;
-
-        Ok(Self { skills_manager_dir })
+        let skills_dir = AppSettingsManager::get_skills_dir();
+        fs::create_dir_all(&skills_dir)?;
+        Ok(Self { skills_dir })
     }
 
     /// 测试 GitHub 连接：验证仓库和 Token 是否有效
@@ -75,48 +70,18 @@ impl GitHubIntegrator {
         Ok(true)
     }
 
-    /// 推送本地技能到远程仓库
-    pub fn push_to_remote(
-        &self,
-        config: &GitHubRepoConfig,
-        source_skills_dir: &Path,
-    ) -> Result<()> {
-        let cache_dir = self.skills_manager_dir.join(&config.repo);
+    /// 推送本地技能到远程仓库（skills 目录本身就是 git repo）
+    pub fn push_to_remote(&self, config: &GitHubRepoConfig) -> Result<()> {
         eprintln!("=== [sync] 开始同步 ===");
-        eprintln!("[sync] cache_dir: {:?}", cache_dir);
-        eprintln!("[sync] source_skills_dir: {:?}", source_skills_dir);
 
-        // 1. 克隆或打开缓存仓库
-        let repo = if cache_dir.exists() && cache_dir.join(".git").exists() {
-            eprintln!("[sync] 打开已有缓存仓库");
-            let repo = Repository::open(&cache_dir)?;
-            // fetch 最新
-            self.fetch_and_reset(&repo, config)?;
-            repo
-        } else {
-            eprintln!("[sync] 克隆仓库");
-            let url = build_auth_url(&config.owner, &config.repo, config.token.as_deref());
-            Repository::clone(&url, &cache_dir)
-                .with_context(|| format!("克隆仓库失败: {}", url))?
-        };
+        let repo = self.open_or_init_repo(config)?;
 
-        // 2. Checkout 目标分支
-        eprintln!("[sync] checkout 分支: {}", config.branch);
-        checkout_branch(&repo, &config.branch)?;
-
-        // 3. 复制本地技能到仓库目标路径
-        let target_path = cache_dir.join(&config.path);
-        eprintln!("[sync] 目标路径: {:?}", target_path);
-        fs::create_dir_all(&target_path)?;
-
-        sync_directory_contents(source_skills_dir, &target_path)?;
-
-        // 4. 暂存所有变更
+        // 1. 暂存所有变更（排除 .git）
         let mut index = repo.index()?;
         index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
         index.write()?;
 
-        // 5. 检查是否有变更（对比 HEAD 与新 index）
+        // 2. 检查是否有变更
         let head_tree = repo.head()?.peel_to_commit()?.tree()?;
         let diff = repo.diff_tree_to_index(Some(&head_tree), Some(&index), None)?;
         eprintln!("[sync] 检测到 {} 个变更", diff.deltas().len());
@@ -125,7 +90,7 @@ impl GitHubIntegrator {
             return Ok(());
         }
 
-        // 6. 提交
+        // 3. 提交
         let parent = repo.head()?.peel_to_commit()?;
         let sig = Signature::now("Skills Manager", "skills-manager@local")
             .unwrap_or_else(|_| Signature::now("SkillsManager", "skills-manager@local").unwrap());
@@ -142,7 +107,7 @@ impl GitHubIntegrator {
         )?;
         eprintln!("[sync] 提交成功");
 
-        // 7. 推送
+        // 4. 推送
         eprintln!("[sync] 开始推送到远端...");
         push_to_origin(&repo, &config.branch, config.token.as_deref())?;
 
@@ -150,80 +115,60 @@ impl GitHubIntegrator {
         Ok(())
     }
 
-    /// 从远程仓库恢复技能到本地
-    pub fn pull_from_remote(
-        &self,
-        config: &GitHubRepoConfig,
-        target_skills_dir: &Path,
-    ) -> Result<u32> {
-        let cache_dir = self.skills_manager_dir.join(&config.repo);
+    /// 从远程仓库恢复技能到本地（直接 clone/pull 到 skills 目录）
+    pub fn pull_from_remote(&self, config: &GitHubRepoConfig) -> Result<u32> {
         eprintln!("=== [restore] 开始从 GitHub 恢复 ===");
-        eprintln!("[restore] cache_dir: {:?}", cache_dir);
-        eprintln!("[restore] target_skills_dir: {:?}", target_skills_dir);
 
-        // 1. 克隆或打开缓存仓库并拉取最新
-        let repo = if cache_dir.exists() && cache_dir.join(".git").exists() {
-            eprintln!("[restore] 打开已有缓存仓库并拉取最新");
-            let repo = Repository::open(&cache_dir)?;
-            self.fetch_and_reset(&repo, config)?;
-            repo
-        } else {
-            eprintln!("[restore] 克隆仓库");
-            let url = build_auth_url(&config.owner, &config.repo, config.token.as_deref());
-            Repository::clone(&url, &cache_dir)
-                .with_context(|| format!("克隆仓库失败: {}", url))?
-        };
+        let _repo = self.open_or_init_repo(config)?;
 
-        // 2. Checkout 目标分支
-        eprintln!("[restore] checkout 分支: {}", config.branch);
-        checkout_branch(&repo, &config.branch)?;
-
-        // 3. 确定远端技能源路径
-        let source_path = cache_dir.join(&config.path);
-        if !source_path.exists() {
-            anyhow::bail!("远端仓库中不存在路径 '{}'，没有可恢复的技能", config.path);
-        }
-
-        // 4. 遍历远端技能文件夹，逐个恢复到本地
-        fs::create_dir_all(target_skills_dir)?;
-        let mut restored_count: u32 = 0;
-
-        for entry in fs::read_dir(&source_path)? {
+        // 统计恢复的 skills 数量
+        let mut count: u32 = 0;
+        for entry in fs::read_dir(&self.skills_dir)? {
             let entry = entry?;
-            let entry_path = entry.path();
-
-            if !entry_path.is_dir() {
-                continue;
+            let path = entry.path();
+            if path.is_dir() && path.join("SKILL.md").exists() {
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    if !name.starts_with('.') {
+                        count += 1;
+                        eprintln!("[restore] ✅ 已恢复: {}", name);
+                    }
+                }
             }
-
-            let folder_name = match entry_path.file_name().and_then(|n| n.to_str()) {
-                Some(name) => name.to_string(),
-                None => continue,
-            };
-
-            if folder_name.starts_with('.') {
-                continue;
-            }
-
-            let skill_md = entry_path.join("SKILL.md");
-            if !skill_md.exists() {
-                eprintln!("[restore] 跳过 '{}': 没有 SKILL.md", folder_name);
-                continue;
-            }
-
-            let target_folder = target_skills_dir.join(&folder_name);
-            if target_folder.exists() {
-                eprintln!("[restore] 覆盖已有技能: {}", folder_name);
-                fs::remove_dir_all(&target_folder)?;
-            }
-
-            copy_dir_recursive(&entry_path, &target_folder)?;
-            restored_count += 1;
-            eprintln!("[restore] ✅ 已恢复: {}", folder_name);
         }
 
-        eprintln!("✅ [restore] 恢复完成，共恢复 {} 个技能", restored_count);
-        Ok(restored_count)
+        eprintln!("✅ [restore] 恢复完成，共恢复 {} 个技能", count);
+        Ok(count)
+    }
+
+    /// 打开已有的 git repo 或 clone 到 skills 目录
+    fn open_or_init_repo(&self, config: &GitHubRepoConfig) -> Result<Repository> {
+        let git_dir = self.skills_dir.join(".git");
+
+        if git_dir.exists() {
+            // 已是 git repo → fetch + hard reset
+            eprintln!("[git] 打开已有仓库并拉取最新");
+            let repo = Repository::open(&self.skills_dir)?;
+            self.fetch_and_reset(&repo, config)?;
+            checkout_branch(&repo, &config.branch)?;
+            Ok(repo)
+        } else if self.skills_dir.exists() {
+            // 目录存在但不是 git repo → init + add remote + fetch
+            eprintln!("[git] 初始化仓库并拉取远端");
+            let repo = Repository::init(&self.skills_dir)?;
+            let url = build_auth_url(&config.owner, &config.repo, config.token.as_deref());
+            repo.remote("origin", &url)?;
+            self.fetch_and_reset(&repo, config)?;
+            checkout_branch(&repo, &config.branch)?;
+            Ok(repo)
+        } else {
+            // 目录不存在 → clone
+            eprintln!("[git] 克隆仓库到 skills 目录");
+            let url = build_auth_url(&config.owner, &config.repo, config.token.as_deref());
+            let repo = Repository::clone(&url, &self.skills_dir)
+                .with_context(|| format!("克隆仓库失败: {}", url))?;
+            checkout_branch(&repo, &config.branch)?;
+            Ok(repo)
+        }
     }
 
     /// Fetch 并 reset 到远端最新
@@ -253,49 +198,28 @@ impl GitHubIntegrator {
         Ok(())
     }
 
-    pub fn add_repository(&self, config: &GitHubRepoConfig, repo_name: &str) -> Result<()> {
-        let repo_path = self.skills_manager_dir.join(repo_name);
-
-        let url = build_auth_url(&config.owner, &config.repo, config.token.as_deref());
-
-        Repository::clone(&url, &repo_path)
-            .with_context(|| format!("克隆仓库失败: {}", url))?;
-
-        // Checkout specific branch
-        let repo = Repository::open(&repo_path)?;
-        checkout_branch(&repo, &config.branch)?;
-
+    pub fn add_repository(&self, config: &GitHubRepoConfig, _repo_name: &str) -> Result<()> {
+        // 直接在 skills 目录操作，等价于 restore
+        self.open_or_init_repo(config)?;
         Ok(())
     }
 
-    pub fn remove_repository(&self, repo_name: &str) -> Result<()> {
-        let repo_path = self.skills_manager_dir.join(repo_name);
-        fs::remove_dir_all(&repo_path)
-            .with_context(|| format!("删除仓库失败 {}", repo_name))?;
+    pub fn remove_repository(&self, _repo_name: &str) -> Result<()> {
+        // 删除 .git 目录以解除 GitHub 关联，保留 skills 文件
+        let git_dir = self.skills_dir.join(".git");
+        if git_dir.exists() {
+            fs::remove_dir_all(&git_dir)
+                .with_context(|| "删除 .git 目录失败")?;
+        }
         Ok(())
     }
 
     pub fn list_repositories(&self) -> Result<Vec<String>> {
-        let mut repos = Vec::new();
-
-        if !self.skills_manager_dir.exists() {
-            return Ok(repos);
+        if self.skills_dir.join(".git").exists() {
+            Ok(vec!["default".to_string()])
+        } else {
+            Ok(vec![])
         }
-
-        for entry in fs::read_dir(&self.skills_manager_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.is_dir() {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if path.join(".git").exists() {
-                        repos.push(name.to_string());
-                    }
-                }
-            }
-        }
-
-        Ok(repos)
     }
 }
 
@@ -330,41 +254,6 @@ fn checkout_branch(repo: &Repository, branch: &str) -> Result<()> {
     Ok(())
 }
 
-/// 递归复制源目录内容到目标目录
-fn sync_directory_contents(source: &Path, target: &Path) -> Result<()> {
-    if !source.exists() {
-        anyhow::bail!("源目录不存在: {:?}", source);
-    }
-
-    for entry in WalkDir::new(source).into_iter().filter_map(|e| e.ok()) {
-        if entry.file_type().is_dir() {
-            let relative = entry.path().strip_prefix(source)?;
-            let target_dir = target.join(relative);
-            if !target_dir.exists() {
-                fs::create_dir_all(&target_dir)?;
-            }
-        } else if entry.file_type().is_file() {
-            let relative = entry.path().strip_prefix(source)?;
-            let target_file = target.join(relative);
-
-            // 跳过 .git 目录下的文件
-            if relative.starts_with(".git") {
-                continue;
-            }
-
-            if let Some(parent) = target_file.parent() {
-                if !parent.exists() {
-                    fs::create_dir_all(parent)?;
-                }
-            }
-
-            fs::copy(entry.path(), &target_file)?;
-        }
-    }
-
-    Ok(())
-}
-
 /// 推送到远程仓库
 fn push_to_origin(repo: &Repository, branch: &str, token: Option<&str>) -> Result<()> {
     let mut remote = repo.find_remote("origin")?;
@@ -394,21 +283,5 @@ fn push_to_origin(repo: &Repository, branch: &str, token: Option<&str>) -> Resul
         }
     })?;
 
-    Ok(())
-}
-
-/// 递归复制目录
-fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
-    fs::create_dir_all(dst)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        let dest_path = dst.join(entry.file_name());
-        if ty.is_dir() {
-            copy_dir_recursive(&entry.path(), &dest_path)?;
-        } else {
-            fs::copy(entry.path(), dest_path)?;
-        }
-    }
     Ok(())
 }

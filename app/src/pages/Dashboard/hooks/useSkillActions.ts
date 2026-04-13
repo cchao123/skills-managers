@@ -126,13 +126,13 @@ export const useSkillActions = (
 
   const handleDeleteSkill = useCallback(async (skill: SkillMetadata) => {
     try {
-      if (skill.source !== 'central') {
-        showToast('warning', '只能删除中央存储中的技能');
+      if (skill.source !== 'global') {
+        showToast('warning', '只能删除 Skills Manager 根目录中的技能');
         return;
       }
 
       await skillsApi.delete(skill.id);
-      setSkills(prevSkills => prevSkills.filter(s => s.id !== skill.id));
+      setSkills(prevSkills => prevSkills.filter(s => !(s.id === skill.id && s.source === 'global')));
       showToast('success', `技能 "${skill.name}" 已删除`);
       console.log(`Skill ${skill.name} deleted`);
     } catch (error) {
@@ -141,9 +141,24 @@ export const useSkillActions = (
     }
   }, [setSkills, showToast]);
 
+  const handleAddToRoot = useCallback(async (skill: SkillMetadata) => {
+    try {
+      if (!skill.path) {
+        showToast('error', '无法获取技能路径');
+        return;
+      }
+      await skillsApi.importFolder(skill.path);
+      showToast('success', `技能 "${skill.name}" 已拷贝到根目录`);
+    } catch (error) {
+      const msg = typeof error === 'string' ? error : (error as Error)?.message || '拷贝到根目录失败';
+      showToast('error', msg);
+    }
+  }, [showToast]);
+
   return {
     handleToggleSkill,
     handleToggleAgent,
     handleDeleteSkill,
+    handleAddToRoot,
   };
 };

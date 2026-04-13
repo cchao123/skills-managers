@@ -78,7 +78,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
               <img src={getAgentIcon(agent.name)} alt={agent.display_name} className={`w-full h-full object-contain ${needsInvertInDark(agent.name) ? 'dark:invert' : ''}`} />
             </div>
           ))}
-          <span className="text-[11px] text-slate-500 dark:text-gray-400 ml-1">
+          <span className="text-[11px] text-slate-500 dark:text-black0 ml-1">
             {agents.filter(a => skill.agent_enabled[a.name]).length}/{agents.length} Agent 已启用
           </span>
         </div>

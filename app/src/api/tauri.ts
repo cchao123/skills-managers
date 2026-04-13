@@ -86,6 +86,13 @@ export const agentsApi = {
   },
 
   /**
+   * Open a specific folder path in system file manager
+   */
+  openFolderPath: async (path: string): Promise<void> => {
+    await invoke('open_folder', { path });
+  },
+
+  /**
    * Detect which agents are installed on the system
    * Returns updated agent list with detection status
    */
