@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '@/components/PageHeader';
+import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
 import type { SkillMetadata } from '@/types';
 import { TabSwitcher } from '@/components/TabSwitcher';
 
@@ -24,16 +26,54 @@ import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelper
 import MarketplaceSkillCard from '@/pages/Dashboard/components/MarketplaceSkillCard';
 import type { Skill } from '@/types/skills';
 
+const DASHBOARD_VIEW_MODE_KEY = 'skills-manager:dashboard:viewMode';
+/** v2：默认来源改为 global，与旧键分离以免会话里仍残留此前的默认 claude */
+const DASHBOARD_SELECTED_SOURCE_KEY = 'skills-manager:dashboard:selectedSourceV2';
+
+function readPersistedDashboardNav(): { viewMode: 'flat' | 'agent'; selectedSource: string } {
+  try {
+    const vm = sessionStorage.getItem(DASHBOARD_VIEW_MODE_KEY);
+    const src = sessionStorage.getItem(DASHBOARD_SELECTED_SOURCE_KEY);
+    const viewMode: 'flat' | 'agent' = vm === 'agent' ? 'agent' : 'flat';
+    const selectedSource =
+      src === 'global' || src === 'claude' || src === 'cursor' ? src : 'global';
+    return { viewMode, selectedSource };
+  } catch {
+    return { viewMode: 'flat', selectedSource: 'global' };
+  }
+}
+
+/** 平铺去重：同 id 多来源时保留一条（优先 global），与列表展示逻辑一致 */
+function dedupeSkillsByIdPreferGlobal(skills: SkillMetadata[]): SkillMetadata[] {
+  const sourcePriority = (s: SkillMetadata): number => {
+    if (s.source === 'global') return 0;
+    if (s.source === 'claude') return 1;
+    if (s.source === 'cursor') return 2;
+    return 3;
+  };
+  const byId = new Map<string, SkillMetadata>();
+  for (const skill of skills) {
+    const cur = byId.get(skill.id);
+    if (!cur || sourcePriority(skill) < sourcePriority(cur)) {
+      byId.set(skill.id, skill);
+    }
+  }
+  return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+}
+
 function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { t } = useTranslation();
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<SkillMetadata | null>(null);
-  const [viewMode, setViewMode] = useState('flat');
-  const [selectedSource, setSelectedSource] = useState<string>('claude');
+  const [viewMode, setViewMode] = useState<'flat' | 'agent'>(() => readPersistedDashboardNav().viewMode);
+  const [selectedSource, setSelectedSource] = useState<string>(() => readPersistedDashboardNav().selectedSource);
   const [githubTipDismissed, setGithubTipDismissed] = useState(() => sessionStorage.getItem('githubTipDismissed') === 'true');
-  const [showHelp, setShowHelp] = useState(false);
+  /** 帮助气泡挂 Portal：与 Toast 一样在 body 层 fixed，backdrop-blur 才能作用到整窗，否则会透出下层 Tab 等 */
+  const [helpPopover, setHelpPopover] = useState<{ open: boolean; anchor: DOMRect | null }>({
+    open: false,
+    anchor: null,
+  });
   const helpButtonRef = useRef<HTMLButtonElement>(null);
-  const helpPopoverRef = useRef<HTMLDivElement>(null);
   const helpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const viewTabs = [
@@ -41,12 +81,18 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
     { id: 'agent', label: '按来源展示', icon: 'smart_toy' },
   ];
 
-  // 切换视图时重置agent选择
-  const handleViewModeChange = (mode: string) => {
-    setViewMode(mode);
-    if (mode === 'agent') {
-      setSelectedSource('claude');
+  // 离开再进入 Dashboard（如去 GitHub 备份页）时保留视图与来源 Tab：写入 sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(DASHBOARD_VIEW_MODE_KEY, viewMode);
+      sessionStorage.setItem(DASHBOARD_SELECTED_SOURCE_KEY, selectedSource);
+    } catch {
+      /* ignore quota / private mode */
     }
+  }, [viewMode, selectedSource]);
+
+  const handleViewModeChange = (mode: string) => {
+    setViewMode(mode === 'agent' ? 'agent' : 'flat');
   };
 
   // Custom hooks
@@ -57,7 +103,9 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
     if (helpTimeoutRef.current) {
       clearTimeout(helpTimeoutRef.current);
     }
-    setShowHelp(true);
+    const el = helpButtonRef.current;
+    const anchor = el ? el.getBoundingClientRect() : null;
+    setHelpPopover({ open: true, anchor });
   };
 
   const handleHelpMouseLeave = () => {
@@ -65,9 +113,24 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
       clearTimeout(helpTimeoutRef.current);
     }
     helpTimeoutRef.current = setTimeout(() => {
-      setShowHelp(false);
+      setHelpPopover({ open: false, anchor: null });
     }, 100);
   };
+
+  useLayoutEffect(() => {
+    if (!helpPopover.open) return;
+    const update = () => {
+      const el = helpButtonRef.current;
+      if (!el) return;
+      setHelpPopover((p) => (p.open ? { ...p, anchor: el.getBoundingClientRect() } : p));
+    };
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [helpPopover.open]);
 
   // 清理定时器
   useEffect(() => {
@@ -79,6 +142,15 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
   }, []);
   const { searchTerm, setSearchTerm, filterType, setFilterType, filteredSkills } = useSkillFilters(skills);
   const { handleToggleSkill, handleToggleAgent, handleDeleteSkill, handleAddToRoot } = useSkillActions(skills, setSkills);
+
+  /** 仅平铺视图：同 id 多来源时保留一条（优先 global），避免重复卡片；按来源 Tab 仍用完整 filteredSkills */
+  const filteredSkillsForFlat = useMemo(() => dedupeSkillsByIdPreferGlobal(filteredSkills), [filteredSkills]);
+
+  /** 全量技能中与平铺去重相比多出的条数，用于平铺底部「已过滤 n 条重复」 */
+  const skillsFlatDedupeExtraCount = useMemo(
+    () => Math.max(0, skills.length - dedupeSkillsByIdPreferGlobal(skills).length),
+    [skills]
+  );
 
   // 将SkillMetadata转换为Marketplace的Skill格式
   const convertToMarketplaceSkill = (skill: SkillMetadata): Skill => {
@@ -121,6 +193,36 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
     toggleFolder,
     handleReadFile,
   } = useSkillModal();
+
+  /** 弹窗内技能数据需与 skills 同步，否则开关只更新了列表状态、UI 仍引用打开时的旧对象 */
+  const detailSkillLive = useMemo((): SkillMetadata | null => {
+    if (!detailSkill) return null;
+    return (
+      skills.find((s) => s.id === detailSkill.id && s.source === detailSkill.source) ??
+      skills.find((s) => s.id === detailSkill.id) ??
+      detailSkill
+    );
+  }, [skills, detailSkill]);
+
+  // Esc：删除确认优先于技能详情关闭
+  useEffect(() => {
+    if (!showDetailModal && !deleteTarget) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (deleteTarget) {
+        e.preventDefault();
+        setDeleteTarget(null);
+        return;
+      }
+      if (showDetailModal) {
+        e.preventDefault();
+        handleCloseDetailModal();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showDetailModal, deleteTarget, handleCloseDetailModal]);
+
   const { isDragOver, importing } = useDragDrop(loadSkills);
   const { leftPanelWidth, isResizing, handleMouseDown } = usePanelResize();
 
@@ -195,57 +297,24 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
         title={t('header.dashboard')}
         center={<TabSwitcher tabs={viewTabs} activeTab={viewMode} onTabChange={handleViewModeChange} />}
         actions={
-          <div className="relative">
+          <div className="flex items-center">
             <button
               ref={helpButtonRef}
               onMouseEnter={handleHelpMouseEnter}
               onMouseLeave={handleHelpMouseLeave}
-              className="help-popover p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="rounded-xl p-2 transition-colors hover:bg-slate-100/80 dark:hover:bg-white/10"
               title="视图说明"
             >
               <span className="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">
                 help
               </span>
             </button>
-
-            {/* 帮助弹出框 - 显示在按钮下方 */}
-            {showHelp && (
-              <div
-                ref={helpPopoverRef}
-                onMouseEnter={handleHelpMouseEnter}
-                onMouseLeave={handleHelpMouseLeave}
-                className="absolute right-0 top-full mt-2 z-50 w-80 help-popover"
-              >
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                      <span className="material-symbols-outlined text-blue-600">info</span>
-                      视图说明
-                    </h3>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <div className="font-medium text-gray-800 dark:text-gray-200 mb-1">平铺展示</div>
-                        <div className="text-gray-600 dark:text-gray-400">
-                          扫描本地所有 Agent，显示所有可用的 Skills（不区分 Agent 来源）
-                        </div>
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-800 dark:text-gray-200 mb-1">按来源展示</div>
-                        <div className="text-gray-600 dark:text-gray-400">
-                          按照不同的 Agent 对 Skills 进行分类展示，可以清晰地看到每个 Agent 下有哪些 Skills
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         }
       />
 
-      {/* 搜索栏 - 固定 */}
-      <div className="bg-[#f8f9fa] dark:bg-dark-bg-secondary px-8 py-4">
+      {/* 搜索栏 - 固定；overflow-visible 供统计条 hover 气泡向上伸出 */}
+      <div className="overflow-visible bg-[#f8f9fa] dark:bg-dark-bg-secondary px-8 py-4">
         <div className="max-w-6xl mx-auto">
           <SearchAndFilterBar
             searchTerm={searchTerm}
@@ -265,29 +334,44 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
         <div className="max-w-6xl mx-auto">
           {viewMode === 'flat' && (
             <>
-              {filteredSkills.length === 0 ? (
+              {filteredSkillsForFlat.length === 0 ? (
                 <EmptyView message={searchTerm ? t('dashboard.search.noResults') : t('dashboard.filter.noResults')} />
               ) : (
-                <div className="flex flex-col lg:flex-row gap-4 items-start">
-                  {/* Left column */}
-                  <div className="flex-1 space-y-4">
-                    {filteredSkills.filter((_, i) => i % 2 === 0).map((skill) => (
-                      <SkillCard
-                        key={skill.id}
-                        skill={skill}
-                        agents={agents}
-                        expanded={expandedCards.has(skill.id)}
-                        onToggleExpand={toggleExpand}
-                        onToggleSkill={handleToggleSkill}
-                        onToggleAgent={handleToggleAgent}
-                        onShowDetail={handleShowSkillDetail}
-                      />
-                    ))}
-                    {/* Small screen: show right column skills here too */}
-                    <div className="lg:hidden space-y-4">
-                      {filteredSkills.filter((_, i) => i % 2 === 1).map((skill) => (
+                <>
+                  <div className="flex flex-col lg:flex-row gap-4 items-start">
+                    {/* 奇偶分两列：卡片可展开，Grid 同行对齐易产生大块空白；独立纵列更自然 */}
+                    <div className="flex-1 space-y-4">
+                      {filteredSkillsForFlat.filter((_, i) => i % 2 === 0).map((skill) => (
                         <SkillCard
-                          key={skill.id}
+                          key={`${skill.id}:${skill.source ?? ''}`}
+                          skill={skill}
+                          agents={agents}
+                          expanded={expandedCards.has(skill.id)}
+                          onToggleExpand={toggleExpand}
+                          onToggleSkill={handleToggleSkill}
+                          onToggleAgent={handleToggleAgent}
+                          onShowDetail={handleShowSkillDetail}
+                        />
+                      ))}
+                      <div className="lg:hidden space-y-4">
+                        {filteredSkillsForFlat.filter((_, i) => i % 2 === 1).map((skill) => (
+                          <SkillCard
+                            key={`${skill.id}:${skill.source ?? ''}`}
+                            skill={skill}
+                            agents={agents}
+                            expanded={expandedCards.has(skill.id)}
+                            onToggleExpand={toggleExpand}
+                            onToggleSkill={handleToggleSkill}
+                            onToggleAgent={handleToggleAgent}
+                            onShowDetail={handleShowSkillDetail}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-4 hidden lg:block">
+                      {filteredSkillsForFlat.filter((_, i) => i % 2 === 1).map((skill) => (
+                        <SkillCard
+                          key={`${skill.id}:${skill.source ?? ''}`}
                           skill={skill}
                           agents={agents}
                           expanded={expandedCards.has(skill.id)}
@@ -299,22 +383,12 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
                       ))}
                     </div>
                   </div>
-                  {/* Right column - only on large screens */}
-                  <div className="flex-1 space-y-4 hidden lg:block">
-                    {filteredSkills.filter((_, i) => i % 2 === 1).map((skill) => (
-                      <SkillCard
-                        key={skill.id}
-                        skill={skill}
-                        agents={agents}
-                        expanded={expandedCards.has(skill.id)}
-                        onToggleExpand={toggleExpand}
-                        onToggleSkill={handleToggleSkill}
-                        onToggleAgent={handleToggleAgent}
-                        onShowDetail={handleShowSkillDetail}
-                      />
-                    ))}
-                  </div>
-                </div>
+                  {skillsFlatDedupeExtraCount > 0 && (
+                    <p className="mt-5 pb-2 text-center text-[11px] text-slate-400 dark:text-gray-500">
+                      {t('dashboard.stats.dedupeFooter', { count: skillsFlatDedupeExtraCount })}
+                    </p>
+                  )}
+                </>
               )}
             </>
           )}
@@ -360,7 +434,10 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
                             handleToggleSkill(orig);
                           }
                         }}
-                        onInfo={() => handleShowSkillDetail(skills.find(s => s.id === skill.id)!)}
+                        onInfo={() => {
+                          const orig = filteredBySource.find((s) => s.id === skill.id);
+                          if (orig) handleShowSkillDetail(orig);
+                        }}
                         onDelete={isGlobalSource ? () => originalSkill && setDeleteTarget(originalSkill) : undefined}
                         onAddToRoot={!isGlobalSource ? () => originalSkill && handleAddToRoot(originalSkill).then(() => refreshSkills()) : undefined}
                         isInRoot={!isGlobalSource ? existsInRoot : undefined}
@@ -385,9 +462,9 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
       </div>
 
       {/* Skill Detail Modal */}
-      {showDetailModal && detailSkill && (
+      {showDetailModal && detailSkillLive && (
         <SkillDetailModal
-          skill={detailSkill}
+          skill={detailSkillLive}
           agents={agents}
           skillFiles={skillFiles}
           loadingFiles={loadingFiles}
@@ -400,7 +477,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
           onToggleFolder={toggleFolder}
           onReadFile={handleReadFile}
           onToggleAgent={handleToggleAgent}
-          onDelete={() => setDeleteTarget(detailSkill)}
+          onDelete={() => setDeleteTarget(detailSkillLive)}
           onResizeStart={handleMouseDown}
         />
       )}
@@ -412,6 +489,59 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {helpPopover.open &&
+        helpPopover.anchor &&
+        (() => {
+          const rect = helpPopover.anchor as DOMRect;
+          const vw = window.innerWidth;
+          const width = Math.min(352, vw - 16);
+          let left = rect.right - width;
+          left = Math.max(8, Math.min(left, vw - width - 8));
+          const bridge = 12;
+          return createPortal(
+            <div
+              style={{
+                position: 'fixed',
+                top: rect.bottom - bridge,
+                left,
+                width,
+                paddingTop: bridge,
+                zIndex: 9998,
+              }}
+              className="pointer-events-auto"
+              onMouseEnter={handleHelpMouseEnter}
+              onMouseLeave={handleHelpMouseLeave}
+            >
+              <div
+                className={`${LIQUID_GLASS_TOAST_PANEL_CLASS} max-h-[min(70vh,28rem)] overflow-hidden p-4 animate-toast-in`}
+              >
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center self-start rounded-full bg-info/10 dark:bg-info/20">
+                  <span
+                    className="material-symbols-outlined text-xl text-info"
+                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+                  >
+                    info
+                  </span>
+                </div>
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+                  <p className="break-words text-sm font-bold text-slate-900 dark:text-white">视图说明</p>
+                  <div className="mt-1 space-y-3 text-xs leading-normal text-slate-500 dark:text-gray-400">
+                    <div>
+                      <p className="mb-1 font-bold text-slate-800 dark:text-gray-200">平铺展示</p>
+                      <p>扫描本地所有 Agent，显示所有可用的 Skills（不区分 Agent 来源）</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 font-bold text-slate-800 dark:text-gray-200">按来源展示</p>
+                      <p>按照不同的 Agent 对 Skills 进行分类展示，可以清晰地看到每个 Agent 下有哪些 Skills</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body
+          );
+        })()}
     </div>
   );
 }

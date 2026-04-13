@@ -46,7 +46,8 @@
     "stats": {
       "total": "总计",
       "enabled": "已启用",
-      "disabled": "已禁用"
+      "disabled": "已禁用",
+      "dedupeFooter": "已过滤 {{count}} 条重复"
     },
     "noSkillsFound": "未找到技能",
     "noSkillsHint": "尝试调整搜索或筛选条件",
@@ -77,6 +78,11 @@
       "tokenPlaceholder": "ghp_xxxxxxxxxxxxxx",
       "tokenHelperBefore": "在 GitHub → Settings → Developer settings → ",
       "tokenHelperAfter": " 中生成 (需要 repo 权限)"    },
+    "syncMenu": {
+      "openTitle": "同步选项",
+      "overwriteRemote": "以当前版本覆盖",
+      "overwriteRemoteHint": "勾选后：不把本地重置为远端再提交，而是按当前磁盘内容暂存（含删除）并强制推送，使 GitHub 上的技能目录与本地一致。分支若开启保护可能无法强制推送。"
+    },
     "buttons": {
       "testConnection": "测试连接",
       "testing": "测试中...",

@@ -12,7 +12,7 @@ const defaultSlots = (
 export default function PageHeader({ icon, title, center = defaultSlots, actions = defaultSlots }: PageHeaderProps) {
   return (
     <header
-      className="h-16 flex-shrink-0 bg-white/80 dark:bg-dark-bg-card/80 backdrop-blur-md flex justify-between items-center px-8 border-b border-[#edeeef] dark:border-dark-border relative"
+      className="relative z-30 h-16 flex-shrink-0 overflow-visible bg-white/80 dark:bg-dark-bg-card/80 backdrop-blur-md flex justify-between items-center px-8 border-b border-[#edeeef] dark:border-dark-border"
       data-tauri-drag-region
     >
       <div className="flex items-center gap-4">

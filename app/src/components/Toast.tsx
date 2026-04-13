@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
+import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
 
 export type ToastType = 'info' | 'warning' | 'error' | 'success';
 
@@ -71,7 +72,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto w-full bg-white/90 dark:bg-white/5 backdrop-blur-xl rounded-2xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1),0_0_1px_0_rgba(0,0,0,0.1)] dark:shadow-[0_10px_30px_-5px_rgba(0,0,0,0.3)] border border-slate-200/50 dark:border-white/10 flex gap-4 transform transition-all duration-300 ${
+              className={`${LIQUID_GLASS_TOAST_PANEL_CLASS} ${
                 isCompact ? 'p-3 items-center' : 'p-4'
               } ${toast.leaving ? 'animate-toast-out' : 'animate-toast-in'}`}
             >

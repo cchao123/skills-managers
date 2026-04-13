@@ -46,7 +46,8 @@
     "stats": {
       "total": "Total",
       "enabled": "Enabled",
-      "disabled": "Disabled"
+      "disabled": "Disabled",
+      "dedupeFooter": "{{count}} duplicate row(s) filtered"
     },
     "noSkillsFound": "No skills found",
     "noSkillsHint": "Try adjusting your search or filter",
@@ -77,6 +78,11 @@
       "tokenPlaceholder": "ghp_xxxxxxxxxxxxxx",
       "tokenHelperBefore": "Generate in GitHub → Settings → Developer settings → ",
       "tokenHelperAfter": " (requires repo permission)"    },
+    "syncMenu": {
+      "openTitle": "Sync options",
+      "overwriteRemote": "Overwrite remote with this copy",
+      "overwriteRemoteHint": "When checked: stage the working tree as-is (including deletions) and force-push so the remote skills tree matches local. Protected branches may reject force push."
+    },
     "buttons": {
       "testConnection": "Test Connection",
       "testing": "Testing...",

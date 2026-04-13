@@ -40,7 +40,7 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
     }
   }, [repoConfig, showToast, setConnected]);
 
-  const handleSync = useCallback(async (hasDefaultRepo: boolean) => {
+  const handleSync = useCallback(async (hasDefaultRepo: boolean, overwriteRemote = false) => {
     if (!hasDefaultRepo) {
       showToast('warning', t('githubBackup.messages.saveFirst'));
       return;
@@ -48,7 +48,7 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
 
     try {
       setSyncing(true);
-      await githubApi.syncRepo('default', repoConfig.branch);
+      await githubApi.syncRepo('default', repoConfig.branch, { overwriteRemote });
       showToast('success', `${t('githubBackup.messages.syncSuccess')}\nhttps://github.com/${repoConfig.owner}/${repoConfig.repo}`);
     } catch (error: any) {
       console.error('Sync failed:', error);
