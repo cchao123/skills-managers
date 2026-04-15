@@ -1,13 +1,15 @@
 {
   "app": {
     "name": "Skills Manager",
-    "version": "v2.4.0-stable"
+    "version": "v1.0.0"
   },
   "nav": {
     "marketplace": "Marketplace",
     "dashboard": "Installed Skills",
     "githubBackup": "GitHub Backup",
-    "settings": "Settings"
+    "settings": "Settings",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "header": {
     "marketplace": "Skill Marketplace",
@@ -20,6 +22,7 @@
   "marketplace": {
     "title": "Skill Marketplace",
     "search": "Search skills...",
+    "searchFull": "Search skill name, description, or category...",
     "filterAll": "All",
     "filterEnabled": "Enabled",
     "filterDisabled": "Disabled",
@@ -49,10 +52,55 @@
       "disabled": "Disabled",
       "dedupeFooter": "{{count}} duplicate row(s) filtered"
     },
+    "agentsEnabled": "Agent Enabled",
+    "notInstalled": "Not Installed",
+    "agentEnabled": "Enabled",
+    "agentDisabled": "Disabled",
+    "openFolder": "Open Skills Folder",
+    "dragDrop": {
+      "release": "Drop to Install",
+      "hint": "Folder must contain SKILL.md"
+    },
+    "importing": "Importing skills...",
+    "delete": {
+      "title": "Delete Confirmation",
+      "message": "Are you sure you want to delete skill \"{{name}}\"?",
+      "description": "This will delete skill files from the Skills Manager root directory and remove all symbolic links. This cannot be undone.",
+      "confirm": "Confirm Delete"
+    },
+    "detail": {
+      "fileDirectory": "File Directory:",
+      "clickToView": "Click a file to view content",
+      "loadingFiles": "Loading file list...",
+      "noFiles": "No Files",
+      "noFilesHint": "No files found in this skill directory",
+      "agentStatus": "Agent Enable Status:",
+      "dragResize": "Drag to resize",
+      "deleteSkill": "Delete Skill"
+    },
+    "source": {
+      "global": "Skills Manager Root",
+      "removeFromRoot": "Remove from Root",
+      "existsInRoot": "Already in Root",
+      "copyToRoot": "Copy to Root",
+      "collected": "Collected",
+      "collect": "Collect",
+      "agentEnabled": "Agent Enabled"
+    },
     "noSkillsFound": "No skills found",
     "noSkillsHint": "Try adjusting your search or filter",
     "retry": "Retry",
-    "errorMessage": "Make sure the app is running in Tauri environment, not in a browser."
+    "errorMessage": "Make sure the app is running in Tauri environment, not in a browser.",
+    "viewFlat": "Flat View",
+    "viewBySource": "By Source",
+    "viewHelp": "View Guide",
+    "viewHelpFlat": "Scan all local Agents and show all available Skills regardless of source",
+    "viewHelpBySource": "Group Skills by Agent source, so you can clearly see which Skills belong to each Agent",
+    "githubTipBefore": "Skills collected to root can be synced via",
+    "githubTipLink": " GitHub Backup",
+    "githubTipAfter": "to the remote repository",
+    "dismiss": "Got it",
+    "noSkillsInSource": "No skills in this source"
   },
   "githubBackup": {
     "title": "GitHub Backup",
@@ -82,6 +130,39 @@
       "openTitle": "Sync options",
       "overwriteRemote": "Overwrite remote with this copy",
       "overwriteRemoteHint": "When checked: stage the working tree as-is (including deletions) and force-push so the remote skills tree matches local. Protected branches may reject force push."
+    },
+    "restoreMenu": {
+      "overwriteLocal": "Overwrite local with remote",
+      "overwriteLocalHint": "When checked, local-only files will be deleted to match the remote exactly"
+    },
+    "confirm": {
+      "forceSyncTitle": "Force Sync Confirmation",
+      "forceSyncMessage": "You have checked 'Overwrite remote with this copy'. Syncing will force-push local content to the remote, overwriting any other changes on the remote. This cannot be undone.",
+      "confirmContinue": "Are you sure you want to continue?",
+      "confirmSync": "Confirm Sync",
+      "overwriteRestoreTitle": "Overwrite Restore Confirmation",
+      "overwriteRestoreMessage": "You have checked 'Overwrite local with remote'. After restoring, local-only files will be deleted and local content will match the remote exactly. This cannot be undone.",
+      "confirmRestore": "Confirm Restore"
+    },
+    "star": {
+      "starred": "Starred",
+      "star": "Star"
+    },
+    "form": {
+      "connectedTitle": "Connected. Click Edit Config to modify"
+    },
+    "shared": {
+      "title": "Share with Others",
+      "subtitle": "Let others install your skills via Claude Code Plugin Marketplace",
+      "claudeCode": "Claude Code",
+      "viaMarketplace": "via Plugin Marketplace",
+      "step1Title": "Register Marketplace",
+      "step1Desc": "Run the following command in Claude Code to register the marketplace:",
+      "step2Title": "Install Plugin",
+      "step2Desc": "Install a plugin from the marketplace:",
+      "copy": "Copy",
+      "copied": "Copied",
+      "notice": "Make sure the repository is public"
     },
     "buttons": {
       "testConnection": "Test Connection",
@@ -158,8 +239,16 @@
   "settings": {
     "title": "Settings",
     "tabGeneral": "General",
+    "tabAgents": "Agents",
     "tabAbout": "About",
     "tabChangelog": "Changelog",
+    "agents": {
+      "title": "Agents",
+      "subtitle": "Click an agent to open its directory",
+      "installed": "Installed",
+      "notInstalled": "Not Installed",
+      "skillsManager": "Skills Manager"
+    },
     "appearance": "Appearance",
     "appearanceDescription": "Customize the application's appearance and feel",
     "language": "Language",
@@ -184,6 +273,23 @@
     "disable": "Disable",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "required": "Required"
+    "required": "Required",
+    "notInstalled": "Not Installed",
+    "detected": "Detected"
+  },
+  "installDialog": {
+    "title": "Install Skill: {{name}}",
+    "selectAgent": "Select agents to enable this skill for:",
+    "selectOne": "Please select at least one Agent",
+    "confirmInstall": "Confirm Install"
+  },
+  "githubSkillCard": {
+    "enabled": "Enabled ({{count}})",
+    "downloaded": "Downloaded",
+    "installable": "Available",
+    "category": "Category",
+    "details": "Details",
+    "installed": "Installed",
+    "install": "Install"
   }
 }

@@ -1,8 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import { GITHUB_URLS, EXTERNAL_URLS } from '../constants/config';
+import { GITHUB_URLS } from '../constants/config';
+
+const DOCS_BASE_URL = `${GITHUB_URLS.REPO}/blob/main/docs`;
 
 export const AboutSection: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  const docsUrl = i18n.language === 'zh'
+    ? `${DOCS_BASE_URL}/user-guide.md`
+    : `${DOCS_BASE_URL}/user-guide-en.md`;
 
   return (
     <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-8 shadow-sm border border-[#e1e3e4] dark:border-dark-border">
@@ -37,7 +43,7 @@ export const AboutSection: React.FC = () => {
             GitHub
           </a>
           <a
-            href={EXTERNAL_URLS.DOCS}
+            href={docsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-dark-bg-tertiary dark:hover:bg-dark-bg-card text-slate-700 dark:text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"

@@ -1,13 +1,15 @@
 {
   "app": {
     "name": "技能管理器",
-    "version": "v2.4.0-stable"
+    "version": "v1.0.0"
   },
   "nav": {
     "marketplace": "技能市场",
     "dashboard": "已安装技能",
     "githubBackup": "GitHub备份",
-    "settings": "设置"
+    "settings": "设置",
+    "expand": "展开",
+    "collapse": "收起"
   },
   "header": {
     "marketplace": "技能市场",
@@ -20,6 +22,7 @@
   "marketplace": {
     "title": "技能市场",
     "search": "搜索技能...",
+    "searchFull": "搜索技能名称、描述或分类...",
     "filterAll": "全部",
     "filterEnabled": "已启用",
     "filterDisabled": "已禁用",
@@ -49,10 +52,55 @@
       "disabled": "已禁用",
       "dedupeFooter": "已过滤 {{count}} 条重复"
     },
+    "agentsEnabled": "Agent 已启用",
+    "notInstalled": "未安装",
+    "agentEnabled": "已启用",
+    "agentDisabled": "未启用",
+    "openFolder": "打开技能文件夹",
+    "dragDrop": {
+      "release": "释放安装",
+      "hint": "文件夹需包含 SKILL.md"
+    },
+    "importing": "正在导入技能...",
+    "delete": {
+      "title": "删除确认",
+      "message": "确定要删除技能「{{name}}」吗？",
+      "description": "此操作将从 Skills Manager 根目录删除技能文件并移除所有符号链接，且不可撤销。",
+      "confirm": "确认删除"
+    },
+    "detail": {
+      "fileDirectory": "文件目录：",
+      "clickToView": "点击文件查看内容",
+      "loadingFiles": "加载文件列表中...",
+      "noFiles": "暂无文件",
+      "noFilesHint": "该技能目录下没有找到文件",
+      "agentStatus": "Agent 启用状态：",
+      "dragResize": "拖拽调整宽度",
+      "deleteSkill": "删除技能"
+    },
+    "source": {
+      "global": "Skills Manager根目录",
+      "removeFromRoot": "从根目录中移除",
+      "existsInRoot": "根目录中已存在",
+      "copyToRoot": "拷贝到根目录",
+      "collected": "已收录",
+      "collect": "收录",
+      "agentEnabled": "Agent 开启"
+    },
     "noSkillsFound": "未找到技能",
     "noSkillsHint": "尝试调整搜索或筛选条件",
     "retry": "重试",
-    "errorMessage": "请确保应用在 Tauri 环境中运行，而不是在浏览器中。"
+    "errorMessage": "请确保应用在 Tauri 环境中运行，而不是在浏览器中。",
+    "viewFlat": "平铺展示",
+    "viewBySource": "按来源展示",
+    "viewHelp": "视图说明",
+    "viewHelpFlat": "扫描本地所有 Agent，显示所有可用的 Skills（不区分 Agent 来源）",
+    "viewHelpBySource": "按照不同的 Agent 对 Skills 进行分类展示，可以清晰地看到每个 Agent 下有哪些 Skills",
+    "githubTipBefore": "收录至根目录的技能可以通过",
+    "githubTipLink": " GitHub 备份",
+    "githubTipAfter": "同步到远端仓库",
+    "dismiss": "知道了",
+    "noSkillsInSource": "该来源下暂无技能"
   },
   "githubBackup": {
     "title": "GitHub备份",
@@ -82,6 +130,39 @@
       "openTitle": "同步选项",
       "overwriteRemote": " 以本地版本覆盖远程",
       "overwriteRemoteHint": "勾选后：不把本地重置为远端再提交，而是按当前磁盘内容暂存（含删除）并强制推送，使 GitHub 上的技能目录与本地一致。分支若开启保护可能无法强制推送。"
+    },
+    "restoreMenu": {
+      "overwriteLocal": "以远端版本覆盖本地",
+      "overwriteLocalHint": "勾选后，本地独有的文件将被删除，完全以远端为准"
+    },
+    "confirm": {
+      "forceSyncTitle": "强制同步确认",
+      "forceSyncMessage": "当前已勾选「以本地版本覆盖远程」，同步后将强制推送本地内容到远端，远端仓库中的其他变更将被覆盖，且不可撤销。",
+      "confirmContinue": "确认要继续吗？",
+      "confirmSync": "确认同步",
+      "overwriteRestoreTitle": "覆盖恢复确认",
+      "overwriteRestoreMessage": "当前已勾选「以远端版本覆盖本地」，恢复后本地独有的文件将被删除，本地内容完全与远端一致，且不可撤销。",
+      "confirmRestore": "确认恢复"
+    },
+    "star": {
+      "starred": "已 Star",
+      "star": "Star"
+    },
+    "form": {
+      "connectedTitle": "已连接，点击编辑按钮修改配置"
+    },
+    "shared": {
+      "title": "分享给他人",
+      "subtitle": "通过 Claude Code Plugin Marketplace 让他人安装你的技能",
+      "claudeCode": "Claude Code",
+      "viaMarketplace": "via Plugin Marketplace",
+      "step1Title": "注册 Marketplace",
+      "step1Desc": "在 Claude Code 中运行以下命令注册 marketplace：",
+      "step2Title": "安装插件",
+      "step2Desc": "从 marketplace 安装插件：",
+      "copy": "复制",
+      "copied": "已复制",
+      "notice": "确认当前仓库为公开状态"
     },
     "buttons": {
       "testConnection": "测试连接",
@@ -158,8 +239,16 @@
   "settings": {
     "title": "设置",
     "tabGeneral": "通用",
+    "tabAgents": "Agents",
     "tabAbout": "关于",
     "tabChangelog": "更新日志",
+    "agents": {
+      "title": "Agents",
+      "subtitle": "点击 Agent 可打开其配置目录",
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "skillsManager": "Skills Manager"
+    },
     "appearance": "外观",
     "appearanceDescription": "自定义应用的外观和感觉",
     "language": "语言",
@@ -184,6 +273,23 @@
     "disable": "禁用",
     "enabled": "已启用",
     "disabled": "已禁用",
-    "required": "必填"
+    "required": "必填",
+    "notInstalled": "未安装",
+    "detected": "已检测"
+  },
+  "installDialog": {
+    "title": "安装技能: {{name}}",
+    "selectAgent": "选择要启用此技能的 Agent：",
+    "selectOne": "请至少选择一个 Agent",
+    "confirmInstall": "确认安装"
+  },
+  "githubSkillCard": {
+    "enabled": "已启用 ({{count}})",
+    "downloaded": "已下载",
+    "installable": "可安装",
+    "category": "分类",
+    "details": "详情",
+    "installed": "已安装",
+    "install": "安装"
   }
 }

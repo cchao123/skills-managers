@@ -76,7 +76,7 @@ export default function SideNavBar({ currentPage, setCurrentPage, isCollapsed, o
           transform: 'translate(-50%, -50%)',
           boxShadow: '1px 1px 1px rgba(0, 0, 0, 0.1)',
         }}
-        title={isCollapsed ? '展开' : '收起'}
+        title={isCollapsed ? t('nav.expand') : t('nav.collapse')}
       >
         <span className="material-symbols-outlined text-gray-400 dark:text-gray-500 text-xl">
           {isCollapsed ? 'chevron_right' : 'chevron_left'}

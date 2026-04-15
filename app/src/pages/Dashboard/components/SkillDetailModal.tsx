@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { SkillMetadata, AgentConfig, SkillFileEntry } from '@/types';
 import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
@@ -40,6 +41,8 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   onDelete,
   onResizeStart,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-dark-bg-card rounded-xl shadow-xl w-[65%] max-w-[1400px] max-h-[85vh] overflow-hidden flex flex-col">
@@ -76,7 +79,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
             {skillFiles.length > 0 ? (
               <div>
                 <div className="mb-2 flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">文件目录：</h3>
+                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">{t('dashboard.detail.fileDirectory')}</h3>
                   {skill.path && (
                     <p
                       className="text-xs text-blue-500 dark:text-blue-400 font-mono truncate flex-1 min-w-0 cursor-pointer hover:underline"
@@ -111,7 +114,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                       isResizing ? 'bg-[#b71422]' : ''
                     }`}
                     onMouseDown={onResizeStart}
-                    title="拖拽调整宽度"
+                    title={t('dashboard.detail.dragResize')}
                   >
                     {/* Drag handle indicator */}
                     <div className="flex flex-col gap-0.5">
@@ -138,7 +141,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                       <div className="h-full flex items-center justify-center text-slate-400 dark:text-gray-500">
                         <div className="text-center">
                           <span className="material-symbols-outlined text-3xl mb-2">description</span>
-                          <p className="text-xs">点击文件查看内容</p>
+                          <p className="text-xs">{t('dashboard.detail.clickToView')}</p>
                         </div>
                       </div>
                     )}
@@ -148,7 +151,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
             ) : (
               <div>
                 <div className="mb-2 flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">文件目录：</h3>
+                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">{t('dashboard.detail.fileDirectory')}</h3>
                   {skill.path && (
                     <p
                       className="text-xs text-blue-500 dark:text-blue-400 font-mono truncate flex-1 min-w-0 cursor-pointer hover:underline"
@@ -164,15 +167,15 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                     <div className="h-full flex items-center justify-center">
                       <div className="text-center">
                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 dark:border-dark-bg-secondary border-t-[#b71422] mb-3"></div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">加载文件列表中...</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.detail.loadingFiles')}</p>
                       </div>
                     </div>
                   ) : (
                     <div className="h-full flex items-center justify-center">
                       <div className="text-center">
                         <span className="material-symbols-outlined text-4xl text-gray-400 dark:text-gray-500 mb-2">folder_open</span>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">暂无文件</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">该技能目录下没有找到文件</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.detail.noFiles')}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{t('dashboard.detail.noFilesHint')}</p>
                       </div>
                     </div>
                   )}
@@ -182,7 +185,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
 
             {/* Agent Status */}
             <div>
-              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Agent 启用状态：</h3>
+              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">{t('dashboard.detail.agentStatus')}</h3>
               <div className="bg-[#fafafa] dark:bg-dark-bg-secondary rounded-lg px-3 py-3 relative pb-1">
                 {agents.map((agent, index) => {
                   const isLast = index === agents.length - 1;
@@ -210,13 +213,13 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
                             {!agent.detected && (
-                              <span className="text-[10px] text-slate-400 dark:text-gray-500">(未安装)</span>
+                              <span className="text-[10px] text-slate-400 dark:text-gray-500">({t('dashboard.notInstalled')})</span>
                             )}
                           </div>
                           <span className={`text-[10px] leading-tight ${
                             skill.agent_enabled[agent.name] ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-gray-500'
                           }`}>
-                            {skill.agent_enabled[agent.name] ? '已启用' : '未启用'}
+                            {skill.agent_enabled[agent.name] ? t('dashboard.agentEnabled') : t('dashboard.agentDisabled')}
                           </span>
                         </div>
                       </div>
@@ -245,7 +248,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
             <button
               onClick={onDelete}
               className="w-12 h-12 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors absolute left-1/2 -translate-x-1/2 bottom-4 shadow-lg"
-              title="删除技能"
+              title={t('dashboard.detail.deleteSkill')}
             >
               <span className="material-symbols-outlined text-lg">delete</span>
             </button>

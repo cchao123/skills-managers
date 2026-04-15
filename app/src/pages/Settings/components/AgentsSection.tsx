@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { agentsApi } from '@/api/tauri';
 import octopusIcon from '@/assets/agents/octopus.svg';
@@ -17,6 +18,7 @@ const KNOWN_AGENTS: { name: string; display_name: string; path: string }[] = [
 ];
 
 export const AgentsSection: React.FC<AgentsSectionProps> = ({ agents }) => {
+  const { t } = useTranslation();
   // 用后端检测结果标记 detected 状态
   const detectedSet = new Set(agents.filter(a => a.detected).map(a => a.name));
 
@@ -29,9 +31,9 @@ export const AgentsSection: React.FC<AgentsSectionProps> = ({ agents }) => {
       {/* Agents card */}
       <div className="bg-white dark:bg-dark-bg-card rounded-2xl border border-[#e1e3e4] dark:border-dark-border overflow-hidden">
         <div className="px-6 py-4 border-b border-[#e1e3e4] dark:border-dark-border">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Agents</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('settings.agents.title')}</h2>
           <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
-            Click an agent to open its directory
+            {t('settings.agents.subtitle')}
           </p>
         </div>
 
@@ -59,11 +61,11 @@ export const AgentsSection: React.FC<AgentsSectionProps> = ({ agents }) => {
                     </span>
                     {detected ? (
                       <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-semibold rounded-full">
-                        已安装
+                        {t('settings.agents.installed')}
                       </span>
                     ) : (
                       <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-dark-bg-tertiary text-slate-500 dark:text-gray-500 text-[10px] font-semibold rounded-full">
-                        未安装
+                        {t('settings.agents.notInstalled')}
                       </span>
                     )}
                   </div>
@@ -97,7 +99,7 @@ export const AgentsSection: React.FC<AgentsSectionProps> = ({ agents }) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-slate-900 dark:text-white">
-              Skills Manager
+              {t('settings.agents.skillsManager')}
             </span>
           </div>
           <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5 font-mono truncate">

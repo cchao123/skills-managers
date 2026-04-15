@@ -78,7 +78,7 @@ function GitHubBackup() {
             {saving && (
               <span className="text-xs text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
                 <span className="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-slate-200 dark:border-dark-bg-tertiary border-t-[#b71422]"></span>
-                保存中...
+                {t('githubBackup.buttons.saving')}
               </span>
             )}
             <StarButton
@@ -123,6 +123,9 @@ function GitHubBackup() {
               config={repoConfig}
               connected={connected}
               onChange={updateField}
+              onEditClick={() => {
+                showToast('info', t('githubBackup.messages.connectedHint'));
+              }}
             />
             {/* Action Buttons */}
             <ActionButtons

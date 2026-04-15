@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { GitHubSkill } from '@/types';
 
 interface GitHubSkillCardProps {
@@ -7,6 +8,7 @@ interface GitHubSkillCardProps {
 }
 
 export default function GitHubSkillCard({ skill, onInfo, onInstall }: GitHubSkillCardProps) {
+  const { t } = useTranslation();
 
   const getStatusBadge = () => {
     switch (skill.install_status) {
@@ -15,7 +17,7 @@ export default function GitHubSkillCard({ skill, onInfo, onInstall }: GitHubSkil
           <div className="flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-md">
             <span className="material-symbols-outlined text-sm text-green-600">check_circle</span>
             <span className="text-xs font-medium text-green-700">
-              已启用 ({skill.enabled_agents.length})
+              {t('githubSkillCard.enabled', { count: skill.enabled_agents.length })}
             </span>
           </div>
         );
@@ -23,14 +25,14 @@ export default function GitHubSkillCard({ skill, onInfo, onInstall }: GitHubSkil
         return (
           <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-md">
             <span className="material-symbols-outlined text-sm text-blue-600">download</span>
-            <span className="text-xs font-medium text-blue-700">已下载</span>
+            <span className="text-xs font-medium text-blue-700">{t('githubSkillCard.downloaded')}</span>
           </div>
         );
       default:
         return (
           <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
             <span className="material-symbols-outlined text-sm text-gray-500">download</span>
-            <span className="text-xs font-medium text-gray-500">可安装</span>
+            <span className="text-xs font-medium text-gray-500">{t('githubSkillCard.installable')}</span>
           </div>
         );
     }
@@ -61,7 +63,7 @@ export default function GitHubSkillCard({ skill, onInfo, onInstall }: GitHubSkil
 
         {/* 元信息 */}
         <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-4">
-          <span>分类: {skill.category}</span>
+          <span>{t('githubSkillCard.category')}: {skill.category}</span>
           <span>•</span>
           <span>⭐ {skill.stars}</span>
           <span>•</span>
@@ -74,14 +76,14 @@ export default function GitHubSkillCard({ skill, onInfo, onInstall }: GitHubSkil
             onClick={onInfo}
             className="flex-1 px-4 py-2 border border-[#e1e3e4] dark:border-dark-border rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary transition-colors"
           >
-            详情
+            {t('githubSkillCard.details')}
           </button>
           <button
             onClick={onInstall}
             className="flex-1 px-4 py-2 bg-[#dc2626] hover:bg-[#b91c1c] rounded-lg text-sm font-bold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={skill.install_status === 'installed'}
           >
-            {skill.install_status === 'installed' ? '已安装' : '安装'}
+            {skill.install_status === 'installed' ? t('githubSkillCard.installed') : t('githubSkillCard.install')}
           </button>
         </div>
       </div>

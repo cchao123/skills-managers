@@ -6,12 +6,14 @@ interface GitHubFormProps {
   config: RepoConfig;
   connected: boolean;
   onChange: (field: keyof RepoConfig, value: string) => void;
+  onEditClick?: () => void;
 }
 
 export const GitHubForm = ({
   config,
   connected,
   onChange,
+  onEditClick,
 }: GitHubFormProps) => {
   const { t } = useTranslation();
   const [showToken, setShowToken] = React.useState(false);
@@ -21,8 +23,9 @@ export const GitHubForm = ({
       <div className="relative">
         {connected && (
           <div
-            className="absolute inset-0 z-10 cursor-pointer"
-            onClick={() => console.log('Connected. Click Edit Config to modify')}
+            className="absolute inset-0 z-10 cursor-pointer rounded-xl"
+            onClick={onEditClick}
+            title={t('githubBackup.form.connectedTitle')}
           />
         )}
         <div className="space-y-6">

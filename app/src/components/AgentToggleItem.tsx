@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from 'react-material-symbols';
 import type { AgentConfig } from '@/types';
 
@@ -16,6 +17,7 @@ export const AgentToggleItem: React.FC<AgentToggleItemProps> = ({
   is_enabled,
   onToggle,
 }) => {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between p-2.5 bg-[#f9fafb] dark:bg-dark-bg-secondary rounded-lg">
       <div className="flex items-center gap-2">
@@ -45,7 +47,7 @@ export const AgentToggleItem: React.FC<AgentToggleItemProps> = ({
         {/* Not Detected Label */}
         {!agent.detected && (
           <span className="text-xs text-gray-400 dark:text-gray-500">
-            (未安装)
+            ({t('common.notInstalled')})
           </span>
         )}
       </div>

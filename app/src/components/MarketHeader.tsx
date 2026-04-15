@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 interface MarketHeaderProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
@@ -13,6 +15,7 @@ export default function MarketHeader({
   onCategoryChange,
   categories
 }: MarketHeaderProps) {
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-6">
@@ -23,7 +26,7 @@ export default function MarketHeader({
         </span>
         <input
           type="text"
-          placeholder="搜索技能名称、描述或分类..."
+          placeholder={t('marketplace.searchFull')}
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-xl py-3 pl-12 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-[#b71422]/20 focus:border-[#b71422] transition-all shadow-sm"
@@ -50,7 +53,7 @@ export default function MarketHeader({
                 : 'bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border text-[#5e5e5e] dark:text-gray-300 hover:bg-[#edeeef] dark:hover:bg-dark-bg-tertiary'
             }`}
           >
-            {category === 'All' ? '全部' : category}
+            {category === 'All' ? t('marketplace.filterAll') : category}
           </button>
         ))}
       </div>

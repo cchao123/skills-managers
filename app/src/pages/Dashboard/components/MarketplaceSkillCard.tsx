@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Skill } from '@/types/skills';
 
 interface MarketplaceSkillCardProps {
@@ -10,6 +11,8 @@ interface MarketplaceSkillCardProps {
 }
 
 function MarketplaceSkillCard({ skill, onInstall, onInfo, onDelete, onAddToRoot, isInRoot }: MarketplaceSkillCardProps) {
+  const { t } = useTranslation();
+
   return (
     <article className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 flex flex-col group overflow-hidden">
       <div className="p-4">
@@ -55,7 +58,7 @@ function MarketplaceSkillCard({ skill, onInstall, onInfo, onDelete, onAddToRoot,
                 radio_button_unchecked
               </span>
             )}
-            <span className="text-[#191c1d] dark:text-white">{skill.enabledAgentCount}/{skill.totalAgentCount} Agent 开启</span>
+            <span className="text-[#191c1d] dark:text-white">{skill.enabledAgentCount}/{skill.totalAgentCount} {t('dashboard.source.agentEnabled')}</span>
           </div>
           {skill.size != null && (
             <div className="flex items-center gap-1">
@@ -73,20 +76,20 @@ function MarketplaceSkillCard({ skill, onInstall, onInfo, onDelete, onAddToRoot,
               onClick={() => onDelete(skill.id)}
               className="flex-1 bg-[#b71422] hover:bg-red-700 text-white py-2 rounded-lg font-bold text-xs transition-colors"
             >
-              从跟目录中移除
+              {t('dashboard.source.removeFromRoot')}
             </button>
           ) : onAddToRoot ? (
             /* 拷贝到根目录按钮 — 其他来源 tab */
             isInRoot ? (
               <div className="flex-1 py-2 rounded-lg font-bold text-xs text-center bg-[#edeeef] dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed">
-                根目录中已存在
+                {t('dashboard.source.existsInRoot')}
               </div>
             ) : (
               <button
                 onClick={() => onAddToRoot(skill.id)}
                 className="flex-1 bg-[#b71422] text-white py-2 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity"
               >
-                拷贝到根目录
+                {t('dashboard.source.copyToRoot')}
               </button>
             )
           ) : (
@@ -95,7 +98,7 @@ function MarketplaceSkillCard({ skill, onInstall, onInfo, onDelete, onAddToRoot,
               onClick={() => onInstall(skill.id)}
               className="flex-1 bg-[#b71422] text-white py-2 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity"
             >
-              {skill.installed ? '已收录' : '收录'}
+              {skill.installed ? t('dashboard.source.collected') : t('dashboard.source.collect')}
             </button>
           )}
           <button

@@ -62,7 +62,7 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
       {viewMode === 'agent' && (
         <div className="flex flex-wrap items-center gap-2 h-[50px]">
           {[
-            { id: 'global', label: 'Skills Manager根目录', icon: octopusIcon },
+            { id: 'global', label: t('dashboard.source.global'), icon: octopusIcon },
             { id: 'claude', label: 'Claude Code', icon: getAgentIcon('claude') },
             { id: 'cursor', label: 'Cursor', icon: getAgentIcon('cursor') },
           ].map((item) => (
@@ -92,7 +92,7 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
       <button
         onClick={() => onNavigateToAgents?.()}
         className="flex items-center gap-1.5 bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary hover:border-[#b71422]/30 transition-all shadow-sm"
-        title="打开技能文件夹"
+        title={t('dashboard.openFolder')}
       >
         <span className="material-symbols-outlined text-lg">folder_open</span>
       </button>

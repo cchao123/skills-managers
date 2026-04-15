@@ -134,7 +134,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             onClick={() => { setRestoreMenuOpen(o => !o); setSyncMenuOpen(false); }}
             disabled={restoring || syncing}
             className="w-7 shrink-0 px-0 py-3 text-sm font-bold bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-            title="恢复选项"
+            title={t('githubBackup.buttons.restoreNow')}
           >
             <span
               className={`material-symbols-outlined text-[1.125rem] leading-none transition-transform ${restoreMenuOpen ? 'rotate-180' : ''}`}
@@ -160,7 +160,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
               className="box-border rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-white dark:bg-dark-bg-card py-2 px-2 shadow-lg"
             >
               <label
-                title="勾选后，本地独有的文件将被删除，完全以远端为准"
+                title={t('githubBackup.restoreMenu.overwriteLocalHint')}
                 className="flex cursor-pointer items-start gap-2 rounded-md px-1.5 py-1.5 text-left text-xs text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-dark-bg-tertiary"
               >
                 <input
@@ -170,7 +170,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                   onChange={(e) => setOverwriteLocal(e.target.checked)}
                   className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-slate-300 accent-[#b71422] focus:ring-2 focus:ring-[#b71422]/40 focus:ring-offset-0"
                 />
-                <span className="min-w-0 flex-1 leading-snug break-words">以远端版本覆盖远程本地</span>
+                <span className="min-w-0 flex-1 leading-snug break-words">{t('githubBackup.restoreMenu.overwriteLocal')}</span>
               </label>
             </div>,
             document.body
@@ -258,10 +258,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 warning
               </span>
             </div>
-            <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">强制同步确认</h3>
+            <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">{t('githubBackup.confirm.forceSyncTitle')}</h3>
             <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed mb-8 px-4">
-              当前已勾选「 以本地版本覆盖远程」，同步后将<strong className="text-slate-900 dark:text-white">强制推送本地内容到远端</strong>，远端仓库中的其他变更将被覆盖，且不可撤销。
-              <br />确认要继续吗？
+              {t('githubBackup.confirm.forceSyncMessage')}
+              <br />{t('githubBackup.confirm.confirmContinue')}
             </p>
             <div className="w-full flex gap-3">
               <button
@@ -271,13 +271,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 }}
                 className="w-full py-3.5 bg-[#b71422] hover:bg-[#a01220] text-white font-bold rounded-2xl shadow-lg shadow-[#b71422]/20 hover:brightness-110 active:scale-[0.98] transition-all"
               >
-                确认同步
+                {t('githubBackup.confirm.confirmSync')}
               </button>
               <button
                 onClick={() => setShowForceConfirm(false)}
                 className="w-full py-3.5 bg-slate-100 dark:bg-dark-bg-tertiary text-slate-700 dark:text-gray-300 font-semibold rounded-2xl hover:bg-slate-200 dark:hover:bg-dark-bg-secondary transition-colors"
               >
-                取消
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -295,10 +295,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 warning
               </span>
             </div>
-            <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">覆盖恢复确认</h3>
+            <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">{t('githubBackup.confirm.overwriteRestoreTitle')}</h3>
             <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed mb-8 px-4">
-              当前已勾选「以远端版本覆盖远程」，恢复后<strong className="text-slate-900 dark:text-white">本地独有的文件将被删除</strong>，本地内容完全与远端一致，且不可撤销。
-              <br />确认要继续吗？
+              {t('githubBackup.confirm.overwriteRestoreMessage')}
+              <br />{t('githubBackup.confirm.confirmContinue')}
             </p>
             <div className="w-full flex gap-3">
               <button
@@ -308,13 +308,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
                 }}
                 className="w-full py-3.5 bg-[#b71422] hover:bg-[#a01220] text-white font-bold rounded-2xl shadow-lg shadow-[#b71422]/20 hover:brightness-110 active:scale-[0.98] transition-all"
               >
-                确认恢复
+                {t('githubBackup.confirm.confirmRestore')}
               </button>
               <button
                 onClick={() => setShowRestoreConfirm(false)}
                 className="w-full py-3.5 bg-slate-100 dark:bg-dark-bg-tertiary text-slate-700 dark:text-gray-300 font-semibold rounded-2xl hover:bg-slate-200 dark:hover:bg-dark-bg-secondary transition-colors"
               >
-                取消
+                {t('common.cancel')}
               </button>
             </div>
           </div>

@@ -1,5 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import type { SkillMetadata } from '@/types';
-import { agentsApi } from '@/api/tauri';
 
 interface DeleteConfirmModalProps {
   target: SkillMetadata | null;
@@ -12,6 +12,8 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const { t } = useTranslation();
+
   if (!target) return null;
 
   return (
@@ -24,23 +26,23 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             error
           </span>
         </div>
-        <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">删除确认</h3>
+        <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">{t('dashboard.delete.title')}</h3>
         <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed mb-8 px-4">
-          确定要删除技能 <strong className="text-slate-900 dark:text-white">{target.name}</strong> 吗？
-          <br />此操作将从 <span className="text-blue-500 underline cursor-pointer" onClick={() => agentsApi.openFolderPath(target.path || '')}>Skills Manager</span> 根目录删除技能文件并移除所有符号链接，且不可撤销。
+          {t('dashboard.delete.message', { name: target.name })}
+          <br />{t('dashboard.delete.description')}
         </p>
         <div className="w-full flex gap-3">
           <button
             onClick={onConfirm}
             className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 hover:brightness-110 active:scale-[0.98] transition-all"
           >
-            确认删除
+            {t('dashboard.delete.confirm')}
           </button>
           <button
             onClick={onCancel}
             className="w-full py-3.5 bg-slate-100 dark:bg-dark-bg-tertiary text-slate-700 dark:text-gray-300 font-semibold rounded-2xl hover:bg-slate-200 dark:hover:bg-dark-bg-secondary transition-colors"
           >
-            取消
+            {t('common.cancel')}
           </button>
         </div>
       </div>

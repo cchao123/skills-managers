@@ -77,8 +77,8 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
   const helpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const viewTabs = [
-    { id: 'flat', label: '平铺展示', icon: 'grid_view' },
-    { id: 'agent', label: '按来源展示', icon: 'smart_toy' },
+    { id: 'flat', label: t('dashboard.viewFlat'), icon: 'grid_view' },
+    { id: 'agent', label: t('dashboard.viewBySource'), icon: 'smart_toy' },
   ];
 
   // 离开再进入 Dashboard（如去 GitHub 备份页）时保留视图与来源 Tab：写入 sessionStorage
@@ -303,7 +303,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
               onMouseEnter={handleHelpMouseEnter}
               onMouseLeave={handleHelpMouseLeave}
               className="rounded-xl p-2 transition-colors hover:bg-slate-100/80 dark:hover:bg-white/10"
-              title="视图说明"
+              title={t('dashboard.viewHelp')}
             >
               <span className="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">
                 help
@@ -405,18 +405,18 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
                     <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.67-.3-5.46-1.334-5.46-5.925 0-1.305.465-2.38 1.23-3.22-.12-.3-.54-1.53.12-3.18 0 0 1.005-.322 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.297-1.23 3.297-1.23.66 1.653.242 2.874.118 3.176.77.84 1.235 1.905 1.235 3.22 0 4.605-2.805 5.624-5.475 5.921.43.372.823 1.102.823 2.22 0 1.605-.015 2.89-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
                   </svg>
                   <p className="text-xs text-[#5e5e5e] dark:text-gray-400">
-                    收录至根目录的技能可以通过
+                    {t('dashboard.githubTipBefore')}
                     <span
                       className="text-[#2563eb] dark:text-blue-400 cursor-pointer hover:underline"
                       onClick={() => onNavigate('githubBackup')}
-                    > GitHub 备份</span>
-                    同步到远端仓库
+                    >{t('dashboard.githubTipLink')}</span>
+                    {t('dashboard.githubTipAfter')}
                   </p>
                   <button
                     onClick={() => { setGithubTipDismissed(true); sessionStorage.setItem('githubTipDismissed', 'true'); }}
                     className="text-xs text-[#5e5e5e] dark:text-gray-400 hover:text-[#b71422] dark:hover:text-[#b71422] transition-colors ml-1"
                   >
-                    知道了
+                    {t('dashboard.dismiss')}
                   </button>
                 </div>
               )}
@@ -451,7 +451,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
                 </div>
 
                 {marketplaceSkills.length === 0 && (
-                  <EmptyView message="该来源下暂无技能" />
+                  <EmptyView message={t('dashboard.noSkillsInSource')} />
                 )}
               </div>
             </div>
@@ -529,15 +529,15 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
                   </span>
                 </div>
                 <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-                  <p className="break-words text-sm font-bold text-slate-900 dark:text-white">视图说明</p>
+                  <p className="break-words text-sm font-bold text-slate-900 dark:text-white">{t('dashboard.viewHelp')}</p>
                   <div className="mt-1 space-y-3 text-xs leading-normal text-slate-500 dark:text-gray-400">
                     <div>
-                      <p className="mb-1 font-bold text-slate-800 dark:text-gray-200">平铺展示</p>
-                      <p>扫描本地所有 Agent，显示所有可用的 Skills（不区分 Agent 来源）</p>
+                      <p className="mb-1 font-bold text-slate-800 dark:text-gray-200">{t('dashboard.viewFlat')}</p>
+                      <p>{t('dashboard.viewHelpFlat')}</p>
                     </div>
                     <div>
-                      <p className="mb-1 font-bold text-slate-800 dark:text-gray-200">按来源展示</p>
-                      <p>按照不同的 Agent 对 Skills 进行分类展示，可以清晰地看到每个 Agent 下有哪些 Skills</p>
+                      <p className="mb-1 font-bold text-slate-800 dark:text-gray-200">{t('dashboard.viewBySource')}</p>
+                      <p>{t('dashboard.viewHelpBySource')}</p>
                     </div>
                   </div>
                 </div>

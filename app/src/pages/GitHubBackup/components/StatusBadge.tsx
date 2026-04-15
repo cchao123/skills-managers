@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { open as openUrl } from '@tauri-apps/plugin-shell';
 
 interface StatusBadgeProps {
   connected: boolean;
@@ -20,17 +21,18 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ connected, repoConfig 
         </span>
       )}
       {connected && repoConfig.owner && repoConfig.repo && (
-        <a
-          href={`https://github.com/${repoConfig.owner}/${repoConfig.repo}`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openUrl(`https://github.com/${repoConfig.owner}/${repoConfig.repo}`);
+          }}
           className="ml-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors"
-          onClick={(e) => e.stopPropagation()}
         >
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
           github.com/{repoConfig.owner}/{repoConfig.repo}
           <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-        </a>
+        </button>
       )}
     </>
   );

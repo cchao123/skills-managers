@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 interface StarButtonProps {
   starred: boolean;
   starring: boolean;
@@ -10,6 +12,7 @@ export const StarButton = ({
   starring,
   onStar,
 }: StarButtonProps) => {
+  const { t } = useTranslation();
   return (
     <button
       onClick={onStar}
@@ -23,7 +26,7 @@ export const StarButton = ({
         {starring ? 'hourglass_top' : 'star'}
       </span>
       <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
-        {starred ? '已 Star' : 'Star'}
+        {starred ? t('githubBackup.star.starred') : t('githubBackup.star.star')}
       </span>
     </button>
   );

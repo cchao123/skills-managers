@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { SkillMetadata, AgentConfig } from '@/types';
 import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
@@ -21,6 +22,8 @@ export const SkillCard: React.FC<SkillCardProps> = ({
   onToggleAgent,
   onShowDetail,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 overflow-hidden flex flex-col">
       {/* Top section: Icon + Info on left, STATUS + Toggle + Expand on right */}
@@ -79,7 +82,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
             </div>
           ))}
           <span className="text-[11px] text-slate-500 dark:text-black0 ml-1">
-            {agents.filter(a => skill.agent_enabled[a.name]).length}/{agents.length} Agent 已启用
+            {agents.filter(a => skill.agent_enabled[a.name]).length}/{agents.length} {t('dashboard.agentsEnabled')}
           </span>
         </div>
         <button className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded transition-colors cursor-pointer">
@@ -118,13 +121,13 @@ export const SkillCard: React.FC<SkillCardProps> = ({
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
                       {!agent.detected && (
-                        <span className="text-[10px] text-slate-400 dark:text-gray-500">(未安装)</span>
+                        <span className="text-[10px] text-slate-400 dark:text-gray-500">({t('dashboard.notInstalled')})</span>
                       )}
                     </div>
                     <span className={`text-[10px] leading-tight ${
                       skill.agent_enabled[agent.name] ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-gray-500'
                     }`}>
-                      {skill.agent_enabled[agent.name] ? '已启用' : '未启用'}
+                      {skill.agent_enabled[agent.name] ? t('dashboard.agentEnabled') : t('dashboard.agentDisabled')}
                     </span>
                   </div>
                 </div>
