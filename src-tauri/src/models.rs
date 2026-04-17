@@ -11,6 +11,8 @@ pub enum SkillSource {
     Global,   // ~/.skills-manager/skills/
     Cursor,   // ~/.cursor/skills/
     Claude,   // ~/.claude/plugins/cache/
+    OpenClaw, // ~/.openclaw/skills/
+    Codex,    // ~/.codex/skills/
 }
 
 /// 技能元数据 - Phase 1 新模型
@@ -56,6 +58,44 @@ pub struct AgentConfig {
     pub detected: bool,
 }
 
+impl SkillSource {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SkillSource::Global => "global",
+            SkillSource::Cursor => "cursor",
+            SkillSource::Claude => "claude",
+            SkillSource::OpenClaw => "openclaw",
+            SkillSource::Codex => "codex",
+        }
+    }
+
+    pub fn from_str_opt(s: &str) -> Option<Self> {
+        match s {
+            "global" => Some(SkillSource::Global),
+            "cursor" => Some(SkillSource::Cursor),
+            "claude" => Some(SkillSource::Claude),
+            "openclaw" => Some(SkillSource::OpenClaw),
+            "codex" => Some(SkillSource::Codex),
+            _ => None,
+        }
+    }
+}
+
+/// 生成 skill_states 的复合键：`source:skill_id`
+pub fn skill_state_key(source: &SkillSource, id: &str) -> String {
+    format!("{}:{}", source.as_str(), id)
+}
+
+/// 从 skill_states 中读取状态，优先复合键，fallback 旧键（向后兼容）
+pub fn get_skill_state<'a>(
+    skill_states: &'a HashMap<String, HashMap<String, bool>>,
+    source: &SkillSource,
+    id: &str,
+) -> Option<&'a HashMap<String, bool>> {
+    let composite = skill_state_key(source, id);
+    skill_states.get(&composite).or_else(|| skill_states.get(id))
+}
+
 /// 链接策略
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -73,6 +113,9 @@ pub struct AppConfig {
     pub skill_states: HashMap<String, HashMap<String, bool>>, // skill_id -> {agent_name -> enabled}
     #[serde(default = "default_language")]
     pub language: String,
+    /// 按前缀隐藏 skill 的规则（大小写不敏感）。前端与托盘菜单共享该列表。
+    #[serde(default)]
+    pub skill_hide_prefixes: Vec<String>,
 }
 
 fn default_language() -> String {
@@ -87,6 +130,7 @@ impl Default for AppConfig {
             agents: vec![],
             skill_states: HashMap::new(),
             language: default_language(),
+            skill_hide_prefixes: Vec::new(),
         }
     }
 }

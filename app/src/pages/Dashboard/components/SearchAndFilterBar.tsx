@@ -1,16 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import { StatsBar } from '@/pages/Dashboard/components/StatsBar';
-import { getAgentIcon } from '@/pages/Dashboard/utils/agentHelpers';
-
-import type { SkillMetadata } from '@/types';
+import { SourceTabs } from '@/pages/Dashboard/components/SourceTabs';
+import { VIEW_MODE, type ViewMode } from '@/pages/Dashboard/constants/viewMode';
+import type { FilterType } from '@/pages/Dashboard/constants/filterType';
+import type { SkillMetadata, AgentConfig } from '@/types';
 
 interface SearchAndFilterBarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  filterType: 'all' | 'enabled' | 'disabled';
-  onFilterChange: (type: 'all' | 'enabled' | 'disabled') => void;
+  filterType: FilterType;
+  onFilterChange: (type: FilterType) => void;
   skills: SkillMetadata[];
-  viewMode: 'flat' | 'agent';
+  agents: AgentConfig[];
+  viewMode: ViewMode;
   selectedSource: string;
   onSourceSelect: (source: string) => void;
 }
@@ -21,6 +23,7 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
   filterType,
   onFilterChange,
   skills,
+  agents,
   viewMode,
   selectedSource,
   onSourceSelect,
@@ -51,39 +54,18 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
         )}
       </div>
 
-      {viewMode === 'flat' && (
+      {viewMode === VIEW_MODE.Flat && (
         <div className="shrink-0">
           <StatsBar skills={skills} filterType={filterType} onFilterChange={onFilterChange} />
         </div>
       )}
 
-      {viewMode === 'agent' && (
-        <div className="flex flex-wrap items-center gap-2 h-[50px]">
-          {[
-            { id: 'global', label: t('dashboard.source.global'), icon: '/octopus-logo.png' },
-            { id: 'claude', label: 'Claude Code', icon: getAgentIcon('claude') },
-            { id: 'cursor', label: 'Cursor', icon: getAgentIcon('cursor') },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onSourceSelect(item.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                selectedSource === item.id
-                  ? 'bg-[#b71422] text-white font-bold'
-                  : 'bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border text-[#5e5e5e] dark:text-gray-300 hover:bg-[#edeeef] dark:hover:bg-dark-bg-tertiary'
-              }`}
-            >
-              {item.icon ? (
-                <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                  <img src={item.icon} alt={item.label} className="w-full h-full object-contain" />
-                </div>
-              ) : (
-                <span className="material-symbols-outlined text-base">inventory_2</span>
-              )}
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </div>
+      {viewMode === VIEW_MODE.Agent && (
+        <SourceTabs
+          agents={agents}
+          selectedSource={selectedSource}
+          onSelect={onSourceSelect}
+        />
       )}
     </div>
   );

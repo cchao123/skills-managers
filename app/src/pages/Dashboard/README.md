@@ -28,8 +28,9 @@ Dashboard/
 │   └── agentHelpers.ts      # Agent icon utilities
 └── constants/               # Constants
     ├── skillIcons.ts        # Skill icon and color pools
-    ├── agentIcons.ts        # Agent icon mappings
     └── panel.ts             # Panel size and z-index constants
+
+> Agent icons/metadata are centralized in `src/constants/agents.ts`.
 ```
 
 ## Key Features

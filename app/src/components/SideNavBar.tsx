@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { PROJECT_NAME, PROJECT_VERSION } from '@/constants';
+import { PROJECT_NAME, PROJECT_VERSION, PAGE, type Page } from '@/constants';
 
 interface SideNavBarProps {
-  currentPage: string;
-  setCurrentPage: (page: string) => void;
+  currentPage: Page;
+  setCurrentPage: (page: Page) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -11,12 +11,16 @@ interface SideNavBarProps {
 export default function SideNavBar({ currentPage, setCurrentPage, isCollapsed, onToggleCollapse }: SideNavBarProps) {
   const { t } = useTranslation();
 
-  const navItems = [
-    { id: 'dashboard', icon: 'extension', label: t('nav.dashboard') },
-    { id: 'githubBackup', icon: 'backup', label: t('nav.githubBackup') },
+  const navItems: Array<{ id: Page; icon: string; label: string }> = [
+    { id: PAGE.Dashboard, icon: 'extension', label: t('nav.dashboard') },
+    { id: PAGE.GitHubBackup, icon: 'backup', label: t('nav.githubBackup') },
   ];
 
-  const settingsItem = { id: 'settings', icon: 'settings', label: t('nav.settings') };
+  const settingsItem: { id: Page; icon: string; label: string } = {
+    id: PAGE.Settings,
+    icon: 'settings',
+    label: t('nav.settings'),
+  };
 
   return (
     <aside

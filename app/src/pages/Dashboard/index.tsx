@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useLayoutEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '@/components/PageHeader';
 import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
-import type { SkillMetadata, Skill } from '@/types';
-import { SESSION_STORAGE_KEYS } from '@/constants';
+import { useToast } from '@/components/Toast';
+import type { SkillMetadata, Skill, MergedSkillInfo } from '@/types';
+import { SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS, PAGE, type Page, getAgentRootPath } from '@/constants';
 import { TabSwitcher } from '@/components/TabSwitcher';
 
 // Hooks
@@ -27,46 +28,96 @@ import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelper
 import MarketplaceSkillCard from '@/pages/Dashboard/components/MarketplaceSkillCard';
 import { agentsApi } from '@/api/tauri';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
-function readPersistedDashboardNav(): { viewMode: 'flat' | 'agent'; selectedSource: string } {
+import { SOURCE, sourceDisplayName, isSource } from '@/pages/Dashboard/utils/source';
+import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
+import { VIEW_MODE, type ViewMode, isViewMode } from '@/pages/Dashboard/constants/viewMode';
+import { useColumnCount } from '@/hooks/useColumnCount';
+
+function readPersistedDashboardNav(): { viewMode: ViewMode; selectedSource: string } {
   try {
     const vm = sessionStorage.getItem(SESSION_STORAGE_KEYS.dashboardViewMode);
     const src = sessionStorage.getItem(SESSION_STORAGE_KEYS.dashboardSelectedSourceV2);
-    const viewMode: 'flat' | 'agent' = vm === 'agent' ? 'agent' : 'flat';
-    const selectedSource =
-      src === 'global' || src === 'claude' || src === 'cursor' ? src : 'global';
+    const viewMode: ViewMode = isViewMode(vm) ? vm : VIEW_MODE.Flat;
+    const selectedSource = isSource(src) ? src : SOURCE.Global;
     return { viewMode, selectedSource };
   } catch {
-    return { viewMode: 'flat', selectedSource: 'global' };
+    return { viewMode: VIEW_MODE.Flat, selectedSource: SOURCE.Global };
   }
 }
 
-/** 平铺去重：同 id 多来源时保留一条（优先 global），与列表展示逻辑一致 */
-function dedupeSkillsByIdPreferGlobal(skills: SkillMetadata[]): SkillMetadata[] {
-  const sourcePriority = (s: SkillMetadata): number => {
-    if (s.source === 'global') return 0;
-    if (s.source === 'claude') return 1;
-    if (s.source === 'cursor') return 2;
-    return 3;
-  };
-  const byId = new Map<string, SkillMetadata>();
+/** 平铺视图：同 id 多来源合并为一张卡片 */
+function mergeSkillsById(skills: SkillMetadata[]): MergedSkillInfo[] {
+  const byId = new Map<string, SkillMetadata[]>();
   for (const skill of skills) {
-    const cur = byId.get(skill.id);
-    if (!cur || sourcePriority(skill) < sourcePriority(cur)) {
-      byId.set(skill.id, skill);
-    }
+    const group = byId.get(skill.id) || [];
+    group.push(skill);
+    byId.set(skill.id, group);
   }
-  return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+
+  const sourcePriority = (s: string) => (s === SOURCE.Global ? 0 : s === SOURCE.Claude ? 1 : 2);
+
+  const result: MergedSkillInfo[] = [];
+  for (const [, group] of byId) {
+    const sorted = [...group].sort((a, b) =>
+      sourcePriority(a.source ?? SOURCE.Global) - sourcePriority(b.source ?? SOURCE.Global)
+    );
+    const primary = sorted[0];
+
+    const allSources = sorted.map(s => s.source ?? SOURCE.Global);
+    const nativeAgents = new Set(allSources.filter(src => src !== SOURCE.Global));
+    const allPaths = sorted
+      .filter(s => s.path)
+      .map(s => ({ source: s.source ?? SOURCE.Global, path: s.path! }));
+
+    const mergedAgentEnabled: Record<string, boolean> = {};
+    for (const skill of sorted) {
+      for (const [agent, enabled] of Object.entries(skill.agent_enabled || {})) {
+        mergedAgentEnabled[agent] = mergedAgentEnabled[agent] || enabled;
+      }
+    }
+    for (const agent of nativeAgents) {
+      mergedAgentEnabled[agent] = true;
+    }
+
+    result.push({
+      primary: {
+        ...primary,
+        agent_enabled: mergedAgentEnabled,
+        enabled: Object.values(mergedAgentEnabled).some(v => v),
+      },
+      sourceSkills: sorted,
+      allSources,
+      nativeAgents,
+      allPaths,
+    });
+  }
+
+  return result.sort((a, b) => a.primary.id.localeCompare(b.primary.id));
 }
 
-function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
+function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<SkillMetadata | null>(null);
-  const [viewMode, setViewMode] = useState<'flat' | 'agent'>(() => readPersistedDashboardNav().viewMode);
+  // deleteMultiSource removed: always show all source paths in delete modal
+  const [viewMode, setViewMode] = useState<ViewMode>(() => readPersistedDashboardNav().viewMode);
   const [selectedSource, setSelectedSource] = useState<string>(() => readPersistedDashboardNav().selectedSource);
   const [githubTipDismissed, setGithubTipDismissed] = useState(
     () => sessionStorage.getItem(SESSION_STORAGE_KEYS.githubTipDismissed) === 'true'
   );
+  const [advancedMode, setAdvancedMode] = useState(
+    () => localStorage.getItem(LOCAL_STORAGE_KEYS.advancedMode) === 'true'
+  );
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === LOCAL_STORAGE_KEYS.advancedMode) {
+        setAdvancedMode(e.newValue === 'true');
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
   /** 帮助气泡挂 Portal：与 Toast 一样在 body 层 fixed，backdrop-blur 才能作用到整窗，否则会透出下层 Tab 等 */
   const [helpPopover, setHelpPopover] = useState<{ open: boolean; anchor: DOMRect | null }>({
     open: false,
@@ -76,8 +127,8 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
   const helpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const viewTabs = [
-    { id: 'flat', label: t('dashboard.viewFlat'), icon: 'grid_view' },
-    { id: 'agent', label: t('dashboard.viewBySource'), icon: 'smart_toy' },
+    { id: VIEW_MODE.Flat, label: t('dashboard.viewFlat'), icon: 'grid_view' },
+    { id: VIEW_MODE.Agent, label: t('dashboard.viewBySource'), icon: 'smart_toy' },
   ];
 
   // 离开再进入 Dashboard（如去 GitHub 备份页）时保留视图与来源 Tab：写入 sessionStorage
@@ -91,7 +142,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
   }, [viewMode, selectedSource]);
 
   const handleViewModeChange = (mode: string) => {
-    setViewMode(mode === 'agent' ? 'agent' : 'flat');
+    setViewMode(isViewMode(mode) ? mode : VIEW_MODE.Flat);
   };
 
   // Custom hooks
@@ -140,16 +191,24 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
     };
   }, []);
   const { searchTerm, setSearchTerm, filterType, setFilterType, filteredSkills } = useSkillFilters(skills);
-  const { handleToggleSkill, handleToggleAgent, handleDeleteSkill, handleAddToRoot } = useSkillActions(skills, setSkills);
+  const { handleToggleSkill, handleToggleAgent, handleToggleSkillMerged, handleToggleAgentMerged, handleDeleteSkill, handleAddToRoot } = useSkillActions(skills, setSkills);
+  const detectedAgents = useDetectedAgents(agents);
 
-  /** 仅平铺视图：同 id 多来源时保留一条（优先 global），避免重复卡片；按来源 Tab 仍用完整 filteredSkills */
-  const filteredSkillsForFlat = useMemo(() => dedupeSkillsByIdPreferGlobal(filteredSkills), [filteredSkills]);
+  /** 平铺视图：同 id 多来源合并为一张卡片 */
+  const mergedSkillsForFlat = useMemo(() => mergeSkillsById(filteredSkills), [filteredSkills]);
 
-  /** 全量技能中与平铺去重相比多出的条数，用于平铺底部「已过滤 n 条重复」 */
-  const skillsFlatDedupeExtraCount = useMemo(
-    () => Math.max(0, skills.length - dedupeSkillsByIdPreferGlobal(skills).length),
-    [skills]
-  );
+  /**
+   * 手动瀑布流分列：按响应式断点把合并后的列表按 round-robin 拆成 N 列，
+   * 每列成为独立 DOM，展开/折叠某张卡片只影响本列高度，不会把后续卡片挤到相邻列。
+   */
+  const columnCount = useColumnCount();
+  const flatColumns = useMemo<MergedSkillInfo[][]>(() => {
+    const cols: MergedSkillInfo[][] = Array.from({ length: columnCount }, () => []);
+    mergedSkillsForFlat.forEach((m, i) => {
+      cols[i % columnCount].push(m);
+    });
+    return cols;
+  }, [mergedSkillsForFlat, columnCount]);
 
   // 将SkillMetadata转换为Marketplace的Skill格式
   const convertToMarketplaceSkill = (skill: SkillMetadata): Skill => {
@@ -163,20 +222,15 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
       icon: getSkillIcon(skill.id),
       iconColor: getSkillColor(skill.id),
       enabledAgentCount: enabledCount,
-      totalAgentCount: agents.filter(a => a.detected).length,
+      totalAgentCount: detectedAgents.length,
       size: skill.size,
       author: 'Skills Manager',
       installed: skill.enabled,
     };
   };
 
-  // 按来源过滤
-  const filteredBySource = filteredSkills.filter(skill => {
-    if (selectedSource === 'claude') return skill.source === 'claude';
-    if (selectedSource === 'cursor') return skill.source === 'cursor';
-    if (selectedSource === 'global') return skill.source === 'global';
-    return true;
-  });
+  // 按来源过滤：`selectedSource` 直接等于 skill.source 即可（'global' | 'cursor' | 'claude' | ...）
+  const filteredBySource = filteredSkills.filter(skill => skill.source === selectedSource);
 
   const marketplaceSkills = filteredBySource.map(convertToMarketplaceSkill);
   const {
@@ -193,7 +247,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
     handleReadFile,
   } = useSkillModal();
 
-  /** 弹窗内技能数据需与 skills 同步，否则开关只更新了列表状态、UI 仍引用打开时的旧对象 */
+  /** 弹窗内技能数据需与 skills 同步 */
   const detailSkillLive = useMemo((): SkillMetadata | null => {
     if (!detailSkill) return null;
     return (
@@ -201,6 +255,15 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
       skills.find((s) => s.id === detailSkill.id) ??
       detailSkill
     );
+  }, [skills, detailSkill]);
+
+  /** 弹窗中的合并来源信息（与 skills 状态同步重算） */
+  const detailMergedLive = useMemo((): MergedSkillInfo | undefined => {
+    if (!detailSkill) return undefined;
+    const group = skills.filter(s => s.id === detailSkill.id);
+    if (group.length <= 1) return undefined;
+    const merged = mergeSkillsById(group);
+    return merged[0];
   }, [skills, detailSkill]);
 
   // Esc：删除确认优先于技能详情关闭
@@ -222,28 +285,48 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [showDetailModal, deleteTarget, handleCloseDetailModal]);
 
-  const { isDragOver, importing } = useDragDrop(loadSkills);
+  const { isDragOver, importing } = useDragDrop(useCallback((importedNames: string[]) => {
+    loadSkills();
+    if (importedNames.length === 1) {
+      setSearchTerm(importedNames[0]);
+    }
+  }, [loadSkills, setSearchTerm]));
   const { leftPanelWidth, isResizing, handleMouseDown } = usePanelResize();
 
   // Handlers
-  const toggleExpand = (skillId: string) => {
+  const toggleExpand = (cardKey: string) => {
     setExpandedCards(prev => {
       const newExpanded = new Set(prev);
-      if (newExpanded.has(skillId)) {
-        newExpanded.delete(skillId);
+      if (newExpanded.has(cardKey)) {
+        newExpanded.delete(cardKey);
       } else {
-        newExpanded.add(skillId);
+        newExpanded.add(cardKey);
       }
       return newExpanded;
     });
   };
 
-  const handleDeleteConfirm = async () => {
-    const target = deleteTarget;
+  const handleDeleteConfirm = async (selected: SkillMetadata[]) => {
     setDeleteTarget(null);
     handleCloseDetailModal();
-    if (target) {
-      await handleDeleteSkill(target);
+
+    const succeeded: string[] = [];
+    const failed: string[] = [];
+    for (const s of selected) {
+      try {
+        await handleDeleteSkill(s, true);
+        succeeded.push(sourceDisplayName(s.source));
+      } catch {
+        failed.push(sourceDisplayName(s.source));
+      }
+    }
+
+    const name = selected[0]?.name ?? '';
+    if (succeeded.length > 0) {
+      showToast('success', `技能 "${name}" 已从 ${succeeded.join('、')} 删除`);
+    }
+    if (failed.length > 0) {
+      showToast('error', `技能 "${name}" 从 ${failed.join('、')} 删除失败`);
     }
   };
 
@@ -319,7 +402,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
                 } catch {
                   /* ignore */
                 }
-                onNavigate('settings');
+                onNavigate(PAGE.Settings);
               }}
               title={t('dashboard.openAgentSettings')}
             >
@@ -334,14 +417,15 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
 
       {/* 搜索栏 - 固定；overflow-visible 供统计条 hover 气泡向上伸出 */}
       <div className="overflow-visible bg-[#f8f9fa] dark:bg-dark-bg-secondary px-8 py-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl mx-auto">
           <SearchAndFilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             filterType={filterType}
             onFilterChange={setFilterType}
             skills={skills}
-            viewMode={viewMode as 'flat' | 'agent'}
+            agents={agents}
+            viewMode={viewMode}
             selectedSource={selectedSource}
             onSourceSelect={setSelectedSource}
           />
@@ -350,71 +434,43 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
 
       {/* 内容区域 - 可滚动 */}
       <div className={`relative flex-1 overflow-y-auto bg-[#f8f9fa] dark:bg-dark-bg-secondary ${isDragOver ? 'px-0 border-4 border-[#b71422] bg-white/90 dark:bg-dark-bg-primary rounded-xl mx-8' : 'px-8'}`}>
-        <div className="max-w-6xl mx-auto">
-          {viewMode === 'flat' && (
+        <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl mx-auto">
+          {viewMode === VIEW_MODE.Flat && (
             <>
-              {filteredSkillsForFlat.length === 0 ? (
+              {mergedSkillsForFlat.length === 0 ? (
                 <EmptyView message={searchTerm ? t('dashboard.search.noResults') : t('dashboard.filter.noResults')} />
               ) : (
-                <>
-                  <div className="flex flex-col lg:flex-row gap-4 items-start">
-                    {/* 奇偶分两列：卡片可展开，Grid 同行对齐易产生大块空白；独立纵列更自然 */}
-                    <div className="flex-1 space-y-4">
-                      {filteredSkillsForFlat.filter((_, i) => i % 2 === 0).map((skill) => (
-                        <SkillCard
-                          key={`${skill.id}:${skill.source ?? ''}`}
-                          skill={skill}
-                          agents={agents}
-                          expanded={expandedCards.has(skill.id)}
-                          onToggleExpand={toggleExpand}
-                          onToggleSkill={handleToggleSkill}
-                          onToggleAgent={handleToggleAgent}
-                          onShowDetail={handleShowSkillDetail}
-                        />
-                      ))}
-                      <div className="lg:hidden space-y-4">
-                        {filteredSkillsForFlat.filter((_, i) => i % 2 === 1).map((skill) => (
+                <div className="flex gap-4 items-start">
+                  {flatColumns.map((col, colIdx) => (
+                    <div key={colIdx} className="flex-1 min-w-0 space-y-4">
+                      {col.map((m) => {
+                        const cardKey = m.primary.id;
+                        return (
                           <SkillCard
-                            key={`${skill.id}:${skill.source ?? ''}`}
-                            skill={skill}
+                            key={cardKey}
+                            skill={m.primary}
                             agents={agents}
-                            expanded={expandedCards.has(skill.id)}
-                            onToggleExpand={toggleExpand}
+                            expanded={expandedCards.has(cardKey)}
+                            merged={m}
+                            onToggleExpand={() => toggleExpand(cardKey)}
                             onToggleSkill={handleToggleSkill}
                             onToggleAgent={handleToggleAgent}
+                            onToggleSkillMerged={handleToggleSkillMerged}
+                            onToggleAgentMerged={handleToggleAgentMerged}
                             onShowDetail={handleShowSkillDetail}
                           />
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                    <div className="flex-1 space-y-4 hidden lg:block">
-                      {filteredSkillsForFlat.filter((_, i) => i % 2 === 1).map((skill) => (
-                        <SkillCard
-                          key={`${skill.id}:${skill.source ?? ''}`}
-                          skill={skill}
-                          agents={agents}
-                          expanded={expandedCards.has(skill.id)}
-                          onToggleExpand={toggleExpand}
-                          onToggleSkill={handleToggleSkill}
-                          onToggleAgent={handleToggleAgent}
-                          onShowDetail={handleShowSkillDetail}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  {skillsFlatDedupeExtraCount > 0 && (
-                    <p className="mt-5 pb-2 text-center text-[11px] text-slate-400 dark:text-gray-500">
-                      {t('dashboard.stats.dedupeFooter', { count: skillsFlatDedupeExtraCount })}
-                    </p>
-                  )}
-                </>
+                  ))}
+                </div>
               )}
             </>
           )}
 
-          {viewMode === 'agent' && (
+          {viewMode === VIEW_MODE.Agent && (
             <div className="bg-[#f8f9fa] dark:bg-dark-bg-secondary">
-              {selectedSource === 'global' && (
+              {selectedSource === SOURCE.Global && (
                 <div className="mb-4 flex items-center gap-2">
                   <img src="/octopus-logo.png" alt="Skills Manager" className="w-4 h-4 flex-shrink-0" />
                   <p className="text-xs text-[#5e5e5e] dark:text-gray-400">
@@ -428,7 +484,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
                         {t('dashboard.githubTipMid')}
                         <span
                           className="text-[#2563eb] dark:text-blue-400 cursor-pointer hover:underline"
-                          onClick={() => onNavigate('githubBackup')}
+                          onClick={() => onNavigate(PAGE.GitHubBackup)}
                         >{t('dashboard.githubTipLink')}</span>
                         {t('dashboard.githubTipAfter')}
                       </>
@@ -447,11 +503,10 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
                   )}
                 </div>
               )}
-              {selectedSource !== 'global' && (() => {
-                const agentPaths: Record<string, string> = { claude: '~/.claude', cursor: '~/.cursor' };
-                const agentIcons: Record<string, string> = { claude: getAgentIcon('claude'), cursor: getAgentIcon('cursor') };
-                const path = agentPaths[selectedSource];
-                const icon = agentIcons[selectedSource];
+              {selectedSource !== SOURCE.Global && (() => {
+                // Source 名与 agent 名对齐（除 Global），直接用 selectedSource 作为 agent name 查询元信息
+                const path = getAgentRootPath(selectedSource);
+                const icon = getAgentIcon(selectedSource);
                 return path ? (
                   <div className="mb-4 flex items-center gap-2">
                     {icon ? (
@@ -471,27 +526,25 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
               })()}
               <div className="space-y-6 pb-8">
                 {/* Skills Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {marketplaceSkills.map((skill) => {
-                    const originalSkill = filteredBySource.find(s => s.id === skill.id);
-                    const isGlobalSource = originalSkill?.source === 'global';
-                    const existsInRoot = !isGlobalSource && skills.some(s => s.id === skill.id && s.source === 'global');
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                  {marketplaceSkills.map((skill, idx) => {
+                    const originalSkill = filteredBySource[idx];
+                    const isGlobalSource = originalSkill?.source === SOURCE.Global;
+                    const existsInRoot = !isGlobalSource && skills.some(s => s.id === skill.id && s.source === SOURCE.Global);
 
                     return (
                       <MarketplaceSkillCard
-                        key={skill.id}
+                        key={`${skill.id}:${originalSkill?.source ?? ''}`}
                         skill={skill}
                         onInstall={() => {
-                          const orig = skills.find(s => s.id === skill.id);
-                          if (orig) {
-                            handleToggleSkill(orig);
+                          if (originalSkill) {
+                            handleToggleSkill(originalSkill);
                           }
                         }}
                         onInfo={() => {
-                          const orig = filteredBySource.find((s) => s.id === skill.id);
-                          if (orig) handleShowSkillDetail(orig);
+                          if (originalSkill) handleShowSkillDetail(originalSkill);
                         }}
-                        onDelete={isGlobalSource ? () => originalSkill && setDeleteTarget(originalSkill) : undefined}
+                        onDelete={(isGlobalSource || advancedMode) ? () => { if (originalSkill) setDeleteTarget(originalSkill); } : undefined}
                         onAddToRoot={!isGlobalSource ? () => originalSkill && handleAddToRoot(originalSkill).then(() => refreshSkills()) : undefined}
                         isInRoot={!isGlobalSource ? existsInRoot : undefined}
                       />
@@ -517,7 +570,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
       {/* Skill Detail Modal */}
       {showDetailModal && detailSkillLive && (
         <SkillDetailModal
-          skill={detailSkillLive}
+          skill={detailMergedLive?.primary ?? detailSkillLive}
           agents={agents}
           skillFiles={skillFiles}
           loadingFiles={loadingFiles}
@@ -526,11 +579,15 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
           loadingFile={loadingFile}
           leftPanelWidth={leftPanelWidth}
           isResizing={isResizing}
+          merged={detailMergedLive}
           onClose={handleCloseDetailModal}
           onToggleFolder={toggleFolder}
           onReadFile={handleReadFile}
           onToggleAgent={handleToggleAgent}
-          onDelete={() => setDeleteTarget(detailSkillLive)}
+          onToggleAgentMerged={handleToggleAgentMerged}
+          onDelete={(detailSkillLive.source === SOURCE.Global || advancedMode) ? () => {
+            setDeleteTarget(detailSkillLive);
+          } : undefined}
           onResizeStart={handleMouseDown}
         />
       )}
@@ -539,6 +596,8 @@ function Dashboard({ onNavigate }: { onNavigate: (page: string) => void }) {
       {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         target={deleteTarget}
+        allSourceSkills={deleteTarget ? skills.filter(s => s.id === deleteTarget.id) : undefined}
+        advancedMode={advancedMode}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
       />

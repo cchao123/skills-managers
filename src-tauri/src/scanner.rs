@@ -1,4 +1,5 @@
-use crate::models::{Frontmatter, LegacySkillMetadata, SkillMetadata, LegacySkillSource, SkillSource};
+use crate::linker::is_junction_or_symlink;
+use crate::models::{Frontmatter, LegacySkillMetadata, SkillMetadata, LegacySkillSource, SkillSource, get_skill_state};
 use anyhow::{Context, Result};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
@@ -127,13 +128,10 @@ pub fn scan_skills_directory(
 
         match parse_skill_md(path, source.clone()) {
             Ok(mut skill) => {
-                // 填充 agent_enabled 状态
-                if let Some(states) = skill_states.get(&skill.id) {
-                    // 优先使用配置文件中的状态
+                if let Some(states) = get_skill_state(skill_states, &skill.source, &skill.id) {
                     skill.agent_enabled = states.clone();
                     eprintln!("Loaded agent states for skill {}: {:?}", skill.id, skill.agent_enabled);
                 } else {
-                    // 如果配置文件中没有该技能，根据来源设置默认状态
                     skill.agent_enabled = get_default_agent_states(&skill.source);
                     eprintln!("Set default agent states for skill {} (source: {:?}): {:?}", skill.id, skill.source, skill.agent_enabled);
                 }
@@ -163,21 +161,27 @@ fn sync_enabled_with_agent_toggles(skill: &mut SkillMetadata) {
 fn get_default_agent_states(source: &SkillSource) -> HashMap<String, bool> {
     let mut states = HashMap::new();
 
+    // 所有 agent 的默认 key；native source 会把自己的那个设为 true
+    let all_agents = ["claude", "cursor", "openclaw", "codex"];
+    for name in all_agents {
+        states.insert(name.to_string(), false);
+    }
+
     match source {
         SkillSource::Global => {
-            // 仅在中央目录：尚未链接/复制到各 Agent 前，默认可选 Agent 均为关，避免误以为已生效
-            states.insert("claude".to_string(), false);
-            states.insert("cursor".to_string(), false);
+            // 仅在中央目录：尚未链接/复制到各 Agent 前默认全部为关
         }
         SkillSource::Cursor => {
-            // Cursor来源的技能：默认只对Cursor启用
             states.insert("cursor".to_string(), true);
-            states.insert("claude".to_string(), false);
         }
         SkillSource::Claude => {
-            // Claude来源的技能：默认只对Claude启用
             states.insert("claude".to_string(), true);
-            states.insert("cursor".to_string(), false);
+        }
+        SkillSource::OpenClaw => {
+            states.insert("openclaw".to_string(), true);
+        }
+        SkillSource::Codex => {
+            states.insert("codex".to_string(), true);
         }
     }
 
@@ -222,6 +226,12 @@ pub fn scan_user_custom_skills(
                 continue;
             }
 
+            // 跳过 symlink / junction 目录：这些是从根目录链接过来的，已作为 Global 来源扫描
+            if is_junction_or_symlink(&path) {
+                eprintln!("Skipping symlink/junction directory: {:?}", path);
+                continue;
+            }
+
             // 检查是否有 SKILL.md
             let skill_md = path.join("SKILL.md");
             if !skill_md.exists() {
@@ -231,8 +241,7 @@ pub fn scan_user_custom_skills(
             // 解析技能
             match parse_skill_md(&skill_md, source.clone()) {
                 Ok(mut skill) => {
-                    // 填充 agent_enabled 状态
-                    if let Some(states) = skill_states.get(&skill.id) {
+                    if let Some(states) = get_skill_state(skill_states, &skill.source, &skill.id) {
                         skill.agent_enabled = states.clone();
                         eprintln!("Loaded agent states for skill {}: {:?}", skill.id, skill.agent_enabled);
                     } else {
@@ -309,6 +318,36 @@ pub fn scan_all_skill_sources(
                     seen_ids.insert(key.clone());
                     all_skills.push(skill);
                     eprintln!("✅ Added Cursor custom skill: {}", key.0);
+                }
+            }
+        }
+    }
+
+    // 3.5 扫描 OpenClaw 用户自定义技能目录
+    let openclaw_custom_path = std::path::PathBuf::from("~/.openclaw/skills");
+    if let Ok(expanded) = expand_tilde(&openclaw_custom_path) {
+        if let Ok(skills) = scan_user_custom_skills(&expanded, skill_states, SkillSource::OpenClaw) {
+            for skill in skills {
+                let key = (skill.id.clone(), SkillSource::OpenClaw);
+                if !seen_ids.contains(&key) {
+                    seen_ids.insert(key.clone());
+                    all_skills.push(skill);
+                    eprintln!("✅ Added OpenClaw custom skill: {}", key.0);
+                }
+            }
+        }
+    }
+
+    // 3.6 扫描 Codex 用户自定义技能目录
+    let codex_custom_path = std::path::PathBuf::from("~/.codex/skills");
+    if let Ok(expanded) = expand_tilde(&codex_custom_path) {
+        if let Ok(skills) = scan_user_custom_skills(&expanded, skill_states, SkillSource::Codex) {
+            for skill in skills {
+                let key = (skill.id.clone(), SkillSource::Codex);
+                if !seen_ids.contains(&key) {
+                    seen_ids.insert(key.clone());
+                    all_skills.push(skill);
+                    eprintln!("✅ Added Codex custom skill: {}", key.0);
                 }
             }
         }

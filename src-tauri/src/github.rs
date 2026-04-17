@@ -73,8 +73,12 @@ impl GitHubIntegrator {
 
     /// 推送本地技能到远程仓库（skills 目录本身就是 git repo）
     ///
-    /// `overwrite_remote`: 不把工作区重置为远端最新，按本地目录完整暂存（含对已跟踪文件的删除），
-    /// 必要时 `git push --force`，使远端分支与本地提交一致（解决「远端仍保留已删文件」的合并残留问题）。
+    /// `overwrite_remote`:
+    /// - false = **软备份（append-only）**：
+    ///   * fetch 远端但不 reset；若本地可 fast-forward 则前进 HEAD，歧路时保留本地 HEAD
+    ///   * 只将「工作区真实存在」的新增/修改文件写入索引（不对本地已删除的 tracked 文件做处理）
+    ///   * 结果：本地改动/新增都会被推到远端；本地删除/重命名不会波及远端（远端保留旧版本）
+    /// - true  = **镜像推送**：工作区完整暂存（含已跟踪文件的删除）+ `git push --force`，远端严格等于本地
     pub fn push_to_remote(&self, config: &GitHubRepoConfig, overwrite_remote: bool) -> Result<()> {
         eprintln!(
             "=== [sync] 开始同步 (overwrite_remote={}) ===",
@@ -84,23 +88,29 @@ impl GitHubIntegrator {
         let repo = if overwrite_remote {
             self.open_for_mirror_push(config)?
         } else {
-            self.open_or_init_repo(config)?
+            self.open_for_soft_backup(config)?
         };
 
         // 0. 自动生成 README.md
         generate_readme(&self.skills_dir);
 
-        // 1. 暂存变更：覆盖模式需 FORCE，才能把「工作区已删除、索引仍保留」的已跟踪文件从索引移除
-        let mut index = repo.index()?;
-        let add_opts = if overwrite_remote {
-            git2::IndexAddOption::DEFAULT | git2::IndexAddOption::FORCE
+        // 1. 暂存变更
+        if overwrite_remote {
+            // 镜像模式：-A --force（含 gitignore 命中文件、含 tracked 的删除）
+            let mut index = repo.index()?;
+            index.add_all(
+                ["*"].iter(),
+                git2::IndexAddOption::DEFAULT | git2::IndexAddOption::FORCE,
+                None,
+            )?;
+            index.write()?;
         } else {
-            git2::IndexAddOption::DEFAULT
-        };
-        index.add_all(["*"].iter(), add_opts, None)?;
-        index.write()?;
+            // 软备份：只 add 工作区真实存在的 新增/修改 文件
+            self.soft_add_workdir(&repo)?;
+        }
 
         // 2. 相对 HEAD 是否有暂存变更
+        let index = repo.index()?;
         let head_tree = repo.head()?.peel_to_commit()?.tree()?;
         let diff = repo.diff_tree_to_index(Some(&head_tree), Some(&index), None)?;
         let delta_count = diff.deltas().len();
@@ -111,12 +121,13 @@ impl GitHubIntegrator {
             return Ok(());
         }
 
-        // 3. 有变更则提交；覆盖模式且无变更时仍可能需 force push（例如仅想丢弃远端多出的提交）
+        // 3. 有变更则提交；镜像模式且无变更时仍可能需 force push（丢弃远端多出的提交）
         if delta_count > 0 {
             let parent = repo.head()?.peel_to_commit()?;
             let sig = Signature::now("Skills Manager", "skills-manager@local")
                 .unwrap_or_else(|_| Signature::now("SkillsManager", "skills-manager@local").unwrap());
 
+            let mut index = repo.index()?;
             let tree_id = index.write_tree()?;
             let tree = repo.find_tree(tree_id)?;
             let msg = if overwrite_remote {
@@ -149,8 +160,9 @@ impl GitHubIntegrator {
 
     /// 从远程仓库恢复技能到本地
     ///
-    /// `overwrite_local`: true = 完全以远端为准（mirror），本地多出的文件删除
-    ///                    false = merge 模式，远端覆盖同名文件，本地独有的保留
+    /// `overwrite_local`:
+    /// - true  = 完全以远端为准：tracked 文件对齐远端，本地 untracked/ignored 文件也会被删除
+    /// - false = merge 模式：远端覆盖同名 skill，本地独有（未在远端的）skill 目录保留
     pub fn pull_from_remote(&self, config: &GitHubRepoConfig, overwrite_local: bool) -> Result<u32> {
         eprintln!(
             "=== [restore] 开始从 GitHub 恢复 (overwrite_local={}) ===",
@@ -181,7 +193,13 @@ impl GitHubIntegrator {
         }
 
         // git fetch + hard reset（拉取远端最新）
-        let _repo = self.open_or_init_repo(config)?;
+        let repo = self.open_or_init_repo(config)?;
+
+        // 覆盖模式：reset --hard 只处理 tracked，untracked/ignored 还留在磁盘上。
+        // 这里额外做一次 "git clean -fdx" 语义的清理，保证"本地完全以远端为准"。
+        if overwrite_local {
+            self.clean_untracked_and_ignored(&repo)?;
+        }
 
         // 把之前暂存的本地独有目录移回
         if !local_only.is_empty() {
@@ -298,6 +316,125 @@ impl GitHubIntegrator {
         Ok(repo)
     }
 
+    /// 软备份模式：fetch 远端，若本地落后则 fast-forward，但不 reset，保留本地工作区所有改动
+    fn open_for_soft_backup(&self, config: &GitHubRepoConfig) -> Result<Repository> {
+        let git_dir = self.skills_dir.join(".git");
+        if !git_dir.exists() {
+            // 首次关联：本地尚无 commit，直接走 clone/init + reset 对齐远端没有副作用
+            return self.open_or_init_repo(config);
+        }
+        let repo = Repository::open(&self.skills_dir)?;
+        self.fetch_origin(&repo, config)?;
+        self.fast_forward_if_possible(&repo, config)?;
+        Ok(repo)
+    }
+
+    /// 若本地分支可 fast-forward 到 `origin/<branch>`，则前进 HEAD 并 safe-checkout 工作区；
+    /// 本地领先或同步：no-op；歧路：保留现状，后续 push 会自然 reject 并给出提示。
+    fn fast_forward_if_possible(&self, repo: &Repository, config: &GitHubRepoConfig) -> Result<()> {
+        let local_oid = match repo.head().ok().and_then(|h| h.target()) {
+            Some(oid) => oid,
+            None => return Ok(()), // 空仓库，无 HEAD
+        };
+
+        let branch_ref = format!("origin/{}", config.branch);
+        let remote_oid = match repo.revparse_single(&branch_ref) {
+            Ok(obj) => obj.id(),
+            Err(_) => return Ok(()), // 远端分支不存在（首次推送场景）
+        };
+
+        if local_oid == remote_oid {
+            return Ok(());
+        }
+
+        let (ahead, behind) = repo.graph_ahead_behind(local_oid, remote_oid)?;
+
+        if behind > 0 && ahead == 0 {
+            eprintln!("[sync] 本地落后远端 {} 个提交，尝试 fast-forward", behind);
+            let remote_commit = repo.find_commit(remote_oid)?;
+
+            // safe checkout：不覆盖本地未提交改动，冲突时返回错误
+            let mut opts = git2::build::CheckoutBuilder::new();
+            opts.safe();
+            repo.checkout_tree(remote_commit.as_object(), Some(&mut opts))
+                .map_err(|e| {
+                    anyhow!(
+                        "本地工作区与远端最新提交存在冲突，无法自动合并。建议先使用「从 GitHub 恢复」对齐本地，或勾选「以本地版本覆盖远程」强制推送。 (底层: {})",
+                        e.message()
+                    )
+                })?;
+
+            repo.reference(
+                &format!("refs/heads/{}", config.branch),
+                remote_oid,
+                true,
+                "skills-manager fast-forward",
+            )?;
+            repo.set_head(&format!("refs/heads/{}", config.branch))?;
+            eprintln!("[sync] fast-forward 完成");
+        } else if ahead > 0 && behind > 0 {
+            eprintln!(
+                "[sync] ⚠️ 本地与远端出现歧路（ahead={}, behind={}），保留本地 HEAD；若 push 被拒，请考虑勾选「以本地版本覆盖远程」",
+                ahead, behind
+            );
+        }
+        // ahead > 0 && behind == 0：本地领先，直接 push 即可
+        Ok(())
+    }
+
+    /// 软备份的 add：只把工作区**真实存在**的新增/修改文件写入索引。
+    /// 不处理 `WT_DELETED`（本地删除的 tracked 文件），使远端保留旧版本。
+    /// 默认尊重 `.gitignore`（不包含 ignored 文件）。
+    fn soft_add_workdir(&self, repo: &Repository) -> Result<()> {
+        let mut opts = git2::StatusOptions::new();
+        opts.include_untracked(true)
+            .recurse_untracked_dirs(true)
+            .include_ignored(false)
+            .include_unmodified(false);
+
+        let statuses = repo.statuses(Some(&mut opts))?;
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| anyhow!("仓库没有工作目录"))?
+            .to_path_buf();
+
+        let mut index = repo.index()?;
+        let mut added: usize = 0;
+        for entry in statuses.iter() {
+            let status = entry.status();
+
+            // 跳过：本地删除的 tracked 文件（WT_DELETED）——这是"软备份"的关键
+            if status.contains(git2::Status::WT_DELETED) {
+                continue;
+            }
+
+            // 只关心工作区的新增/修改/重命名/类型变化
+            let is_wt_change = status.contains(git2::Status::WT_NEW)
+                || status.contains(git2::Status::WT_MODIFIED)
+                || status.contains(git2::Status::WT_RENAMED)
+                || status.contains(git2::Status::WT_TYPECHANGE);
+            if !is_wt_change {
+                continue;
+            }
+
+            let Some(rel) = entry.path() else { continue };
+            let abs = workdir.join(rel);
+            if !abs.is_file() {
+                // 目录本身不直接 add，libgit2 会在枚举 untracked 时展开到文件层级
+                continue;
+            }
+
+            if let Err(e) = index.add_path(std::path::Path::new(rel)) {
+                eprintln!("[sync] add_path 失败 {}: {}", rel, e);
+                continue;
+            }
+            added += 1;
+        }
+        index.write()?;
+        eprintln!("[sync] 软备份已暂存 {} 个文件（不含本地删除）", added);
+        Ok(())
+    }
+
     pub fn add_repository(&self, config: &GitHubRepoConfig, _repo_name: &str) -> Result<()> {
         // 直接在 skills 目录操作，等价于 restore
         self.open_or_init_repo(config)?;
@@ -320,6 +457,57 @@ impl GitHubIntegrator {
         } else {
             Ok(vec![])
         }
+    }
+
+    /// 等价于 `git clean -fdx`：删除工作区内所有 untracked 和 ignored 的文件/目录。
+    /// 保留 `.git/` 目录（libgit2 本身不会把它列入 status）。
+    fn clean_untracked_and_ignored(&self, repo: &Repository) -> Result<()> {
+        let mut opts = git2::StatusOptions::new();
+        opts.include_untracked(true)
+            .recurse_untracked_dirs(true)
+            .include_ignored(true)
+            .recurse_ignored_dirs(true)
+            .include_unmodified(false);
+
+        let statuses = repo.statuses(Some(&mut opts))?;
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| anyhow!("仓库没有工作目录"))?
+            .to_path_buf();
+
+        // 先收集再删除，避免迭代过程中结构变化
+        let mut to_remove: Vec<PathBuf> = Vec::new();
+        for entry in statuses.iter() {
+            let status = entry.status();
+            if !(status.contains(git2::Status::WT_NEW)
+                || status.contains(git2::Status::IGNORED))
+            {
+                continue;
+            }
+            let Some(rel) = entry.path() else { continue };
+            // 防守：绝不误删 .git 本身
+            if rel.starts_with(".git/") || rel == ".git" {
+                continue;
+            }
+            to_remove.push(workdir.join(rel));
+        }
+
+        for path in to_remove {
+            if !path.exists() {
+                continue;
+            }
+            let result = if path.is_dir() {
+                fs::remove_dir_all(&path)
+            } else {
+                fs::remove_file(&path)
+            };
+            match result {
+                Ok(_) => eprintln!("[restore] 清理: {}", path.display()),
+                Err(e) => eprintln!("[restore] 清理失败 {}: {}", path.display(), e),
+            }
+        }
+
+        Ok(())
     }
 
     /// 列出本地 skills 目录下的所有 skill 子目录名

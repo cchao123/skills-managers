@@ -269,7 +269,7 @@ fn recursive_copy(source: &Path, target: &Path) -> Result<(), LinkerError> {
 }
 
 /// 检查路径是否为 NTFS Junction（reparse point 且非 symlink）或 symlink
-fn is_junction_or_symlink(path: &Path) -> bool {
+pub fn is_junction_or_symlink(path: &Path) -> bool {
     if path.is_symlink() {
         return true;
     }

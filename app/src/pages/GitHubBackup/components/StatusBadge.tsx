@@ -11,7 +11,7 @@ interface StatusBadgeProps {
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ connected, repoConfig }) => {
   const { t } = useTranslation();
-
+  const path = `${repoConfig.owner}/${repoConfig.repo}`;
   return (
     <>
       {connected && (
@@ -20,17 +20,18 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ connected, repoConfig 
           {t('githubBackup.messages.connectionSuccess')}
         </span>
       )}
+      
       {connected && repoConfig.owner && repoConfig.repo && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            openUrl(`https://github.com/${repoConfig.owner}/${repoConfig.repo}`);
+            openUrl(`https://github.com/${path}`);
           }}
           className="ml-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-          github.com/{repoConfig.owner}/{repoConfig.repo}
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+          {path}
           <span className="material-symbols-outlined text-[14px]">open_in_new</span>
         </button>
       )}

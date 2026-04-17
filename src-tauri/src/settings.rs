@@ -268,6 +268,20 @@ impl AppSettingsManager {
         Ok(())
     }
 
+    /// 设置 skill 隐藏前缀列表（用于托盘菜单与前端共享）。
+    /// 做一次 trim + 去空 + 去重，保持稳定顺序。
+    pub fn set_skill_hide_prefixes(&mut self, prefixes: Vec<String>) -> Result<(), AppSettingsError> {
+        let mut seen = std::collections::HashSet::new();
+        let normalized: Vec<String> = prefixes
+            .into_iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty() && seen.insert(s.clone()))
+            .collect();
+        self.config.skill_hide_prefixes = normalized;
+        self.save()?;
+        Ok(())
+    }
+
     /// 获取技能管理器基础目录
     pub fn get_skills_manager_dir() -> PathBuf {
         dirs::home_dir()

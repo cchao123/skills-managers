@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { SkillMetadata, GitHubConfig, AgentConfig, AppConfig, SkillFileEntry, GitHubSkill } from '@/types';
+import type { SkillMetadata, GitHubConfig, AgentConfig, AppConfig, SkillFileEntry, GitHubSkill, LinkType } from '@/types';
 import { adaptSkillMetadataList, BackendSkillMetadata } from '@/adapters/skillAdapter';
 
 export const skillsApi = {
@@ -8,24 +8,24 @@ export const skillsApi = {
     return adaptSkillMetadataList(data);
   },
 
-  enable: async (skillId: string, agent?: string): Promise<void> => {
-    await invoke('enable_skill', { skillId, agent });
+  enable: async (skillId: string, agent?: string, source?: string): Promise<void> => {
+    await invoke('enable_skill', { skillId, agent, source });
   },
 
-  disable: async (skillId: string, agent?: string): Promise<void> => {
-    await invoke('disable_skill', { skillId, agent });
+  disable: async (skillId: string, agent?: string, source?: string): Promise<void> => {
+    await invoke('disable_skill', { skillId, agent, source });
   },
 
   getContent: async (skillId: string): Promise<string> => {
     return await invoke('get_skill_content', { skillId });
   },
 
-  getFiles: async (skillId: string): Promise<SkillFileEntry[]> => {
-    return await invoke('get_skill_files', { skillId });
+  getFiles: async (skillId: string, source?: string): Promise<SkillFileEntry[]> => {
+    return await invoke('get_skill_files', { skillId, source });
   },
 
-  readFile: async (skillId: string, filePath: string): Promise<string> => {
-    return await invoke('read_skill_file', { skillId, filePath });
+  readFile: async (skillId: string, filePath: string, source?: string): Promise<string> => {
+    return await invoke('read_skill_file', { skillId, filePath, source });
   },
 
   rescan: async (): Promise<SkillMetadata[]> => {
@@ -33,8 +33,8 @@ export const skillsApi = {
     return adaptSkillMetadataList(data);
   },
 
-  delete: async (skillId: string): Promise<void> => {
-    await invoke('delete_skill', { skillId });
+  delete: async (skillId: string, source?: string): Promise<void> => {
+    await invoke('delete_skill', { skillId, source });
   },
 
   importFolder: async (folderPath: string): Promise<string> => {
@@ -74,7 +74,7 @@ export const agentsApi = {
   /**
    * Set the file linking strategy
    */
-  setLinkingStrategy: async (strategy: 'Symlink' | 'Copy'): Promise<void> => {
+  setLinkingStrategy: async (strategy: LinkType): Promise<void> => {
     await invoke('set_linking_strategy', { strategy });
   },
 
@@ -98,6 +98,15 @@ export const agentsApi = {
    */
   detect: async (): Promise<AgentConfig[]> => {
     return await invoke<AgentConfig[]>('detect_agents');
+  },
+
+  /**
+   * Persist skill hide prefixes to backend config and refresh the tray menu.
+   * Frontend still reads localStorage as the source of truth for UI; this only
+   * keeps the native tray in sync.
+   */
+  setSkillHidePrefixes: async (prefixes: string[]): Promise<void> => {
+    await invoke('set_skill_hide_prefixes', { prefixes });
   },
 };
 
@@ -135,7 +144,7 @@ export const githubApi = {
   },
 
   restoreFromGithub: async (name: string, overwriteLocal = false): Promise<number> => {
-    return await invoke<number>('restore_from_github', { request: { name, overwriteRemote: overwriteLocal } });
+    return await invoke<number>('restore_from_github', { request: { name, overwriteLocal } });
   },
 
   getConfig: async (): Promise<GitHubConfig> => {

@@ -3,7 +3,7 @@ import { skillsApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
-export const useDragDrop = (onImportComplete?: () => void) => {
+export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void) => {
   const { showToast } = useToast();
   const [isDragOver, setIsDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -14,15 +14,13 @@ export const useDragDrop = (onImportComplete?: () => void) => {
     importingRef.current = true;
     setImporting(true);
 
-    const allPaths = paths;
-    let successCount = 0;
+    const importedNames: string[] = [];
     let errorMsg = '';
 
-    for (const folder of allPaths) {
+    for (const folder of paths) {
       try {
         const name = await skillsApi.importFolder(folder);
-        successCount++;
-        console.log(`Imported skill: ${name}`);
+        importedNames.push(name);
       } catch (error) {
         const msg = typeof error === 'string' ? error : (error as Error)?.message || '导入失败';
         errorMsg = msg;
@@ -30,9 +28,9 @@ export const useDragDrop = (onImportComplete?: () => void) => {
       }
     }
 
-    if (successCount > 0) {
-      showToast('success', `成功导入 ${successCount} 个技能`);
-      onImportComplete?.();
+    if (importedNames.length > 0) {
+      showToast('success', `成功导入 ${importedNames.length} 个技能`);
+      onImportComplete?.(importedNames);
     }
     if (errorMsg) {
       showToast('error', errorMsg);

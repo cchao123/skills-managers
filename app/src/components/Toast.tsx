@@ -1,7 +1,14 @@
 import { useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
 import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
 
-export type ToastType = 'info' | 'warning' | 'error' | 'success';
+export const TOAST_TYPE = {
+  Info: 'info',
+  Warning: 'warning',
+  Error: 'error',
+  Success: 'success',
+} as const;
+
+export type ToastType = typeof TOAST_TYPE[keyof typeof TOAST_TYPE];
 
 interface ToastItem {
   id: number;
@@ -12,22 +19,22 @@ interface ToastItem {
 }
 
 const typeConfig: Record<ToastType, { icon: string; iconBg: string; iconColor: string }> = {
-  info: {
+  [TOAST_TYPE.Info]: {
     icon: 'info',
     iconBg: 'bg-info/10 dark:bg-info/20',
     iconColor: 'text-info',
   },
-  success: {
+  [TOAST_TYPE.Success]: {
     icon: 'check_circle',
     iconBg: 'bg-success/10 dark:bg-success/20',
     iconColor: 'text-success',
   },
-  warning: {
+  [TOAST_TYPE.Warning]: {
     icon: 'warning',
     iconBg: 'bg-warning/10 dark:bg-warning/20',
     iconColor: 'text-warning',
   },
-  error: {
+  [TOAST_TYPE.Error]: {
     icon: 'error',
     iconBg: 'bg-error/10 dark:bg-error/20',
     iconColor: 'text-error',
@@ -68,7 +75,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="fixed top-20 right-6 z-[9999] flex flex-col items-end gap-3 pointer-events-none w-[360px]">
         {toasts.map(toast => {
           const cfg = typeConfig[toast.type];
-          const isCompact = !toast.description && toast.type === 'info';
+          const isCompact = !toast.description && toast.type === TOAST_TYPE.Info;
           return (
             <div
               key={toast.id}

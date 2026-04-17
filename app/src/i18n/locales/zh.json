@@ -56,6 +56,9 @@
     "notInstalled": "未安装",
     "agentEnabled": "已启用",
     "agentDisabled": "未启用",
+    "nativeSource": "原生目录",
+    "alwaysEnabled": "始终启用",
+    "nativeSourceTip": "原生目录无法关闭共享，如不需要可以开启高级模式后进行删除",
     "openFolder": "打开技能文件夹",
     "dragDrop": {
       "release": "释放安装",
@@ -65,8 +68,10 @@
     "delete": {
       "title": "删除确认",
       "message": "确定要删除技能「{{name}}」吗？",
-      "description": "此操作将从 Skills Manager 根目录删除技能文件并移除所有符号链接，且不可撤销。",
-      "confirm": "确认删除"
+      "selectSources": "该技能存在于多个来源，请选择要删除的目录：",
+      "description": "此操作将删除上述目录及其所有文件，并移除关联的符号链接，且不可撤销。",
+      "confirm": "确认删除",
+      "advancedRequired": "删除非根目录来源的技能需要在设置中开启「高级模式」"
     },
     "detail": {
       "fileDirectory": "文件目录：",
@@ -74,12 +79,12 @@
       "loadingFiles": "加载文件列表中...",
       "noFiles": "暂无文件",
       "noFilesHint": "该技能目录下没有找到文件",
-      "agentStatus": "Agent 启用状态：",
+      "agentStatus": "Agent 共享启用状态：",
       "dragResize": "拖拽调整宽度",
       "deleteSkill": "删除技能"
     },
     "source": {
-      "global": "Skills Manager 根目录",
+      "global": "根目录",
       "removeFromRoot": "从根目录中移除",
       "existsInRoot": "根目录中已存在",
       "copyToRoot": "拷贝到根目录",
@@ -136,7 +141,7 @@
     },
     "restoreMenu": {
       "overwriteLocal": "以远端版本覆盖本地",
-      "overwriteLocalHint": "勾选后，本地独有的文件将被删除，完全以远端为准"
+      "overwriteLocalHint": "勾选后，本地目录将完全以远端为准（本地独有/未跟踪的文件也会被删除）"
     },
     "confirm": {
       "forceSyncTitle": "强制同步确认",
@@ -251,7 +256,20 @@
       "subtitle": "点击 Agent 可打开其配置目录",
       "installed": "已安装",
       "notInstalled": "未安装",
-      "skillsManager": "Skills Manager"
+      "skillsManager": "Skills Manager",
+      "scanPaths": "技能扫描目录",
+      "scanPathsEmpty": "该 Agent 暂无专门的扫描目录",
+      "expand": "展开扫描目录",
+      "collapse": "收起扫描目录"
+    },
+    "skillFilter": {
+      "title": "按前缀隐藏技能",
+      "subtitle": "隐藏 ID 以指定前缀开头的技能（例如飞书 CLI 注入的 lark-* 技能）。",
+      "placeholder": "输入前缀，例如 lark-",
+      "add": "添加",
+      "empty": "尚未配置前缀，所有技能均会显示。",
+      "remove": "移除 {{prefix}}",
+      "hint": "按回车或逗号添加；输入框为空时按退格可删除最后一个标签。匹配不区分大小写。"
     },
     "appearance": "外观",
     "appearanceDescription": "自定义应用的外观和感觉",
@@ -271,7 +289,15 @@
       "oneClickHubTitle": "一键沉淀",
       "oneClickHubDescription": "云端同步 GitHub，构建专属的Skills Hub。"
     },
-    "builtWith": "基于"
+    "builtWith": "基于",
+    "advanced": {
+      "title": "高级模式",
+      "description": "面向进阶用户的操作权限控制",
+      "modeLabel": "高级模式",
+      "disabledHint": "默认关闭，仅可删除 Skills Manager 根目录下的技能",
+      "enabledHint": "已开启，可对所有来源的技能执行删除操作",
+      "warning": "开启高级模式后，详情页面将出现删除按钮，可删除来自 Cursor、Claude 等 Agent 原生目录的技能。请谨慎操作，误删可能导致 Agent 功能异常。"
+    }
   },
   "common": {
     "loading": "加载中...",

@@ -8,9 +8,10 @@ import { ToastProvider } from './components/Toast';
 import { invoke } from '@tauri-apps/api/core';
 import i18n from './i18n/config';
 import { isTauri } from '@/lib/tauri-env';
+import { PAGE, type Page } from '@/constants';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState<Page>(PAGE.Dashboard);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // 启动时同步前端语言到托盘
@@ -35,9 +36,9 @@ function App() {
             isSidebarCollapsed ? 'ml-20' : 'ml-64'
           }`}
         >
-          {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} />}
-          {currentPage === 'githubBackup' && <GitHubBackup />}
-          {currentPage === 'settings' && <Settings />}
+          {currentPage === PAGE.Dashboard && <Dashboard onNavigate={setCurrentPage} />}
+          {currentPage === PAGE.GitHubBackup && <GitHubBackup />}
+          {currentPage === PAGE.Settings && <Settings />}
         </main>
       </div>
       </ToastProvider>

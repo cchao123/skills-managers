@@ -1,43 +1,46 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '@/lib/tauri-env';
-
-type Theme = 'light' | 'dark' | 'auto';
+import { THEME, isTheme, type Theme, type ResolvedTheme } from '@/constants';
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (nextTheme: Theme, event?: React.MouseEvent) => void;
-  resolvedTheme: 'light' | 'dark';
+  resolvedTheme: ResolvedTheme;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children, defaultTheme = 'auto', storageKey = 'vite-ui-theme' }: {
+const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+
+const getSystemResolvedTheme = (): ResolvedTheme =>
+  window.matchMedia(DARK_MEDIA_QUERY).matches ? THEME.Dark : THEME.Light;
+
+const resolveTheme = (t: Theme): ResolvedTheme =>
+  t === THEME.Auto ? getSystemResolvedTheme() : t;
+
+export function ThemeProvider({ children, defaultTheme = THEME.Auto, storageKey = 'vite-ui-theme' }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
 }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
+    const stored = localStorage.getItem(storageKey);
+    return isTheme(stored) ? stored : defaultTheme;
   });
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
-    if (theme === 'auto') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return theme;
-  });
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
 
   // Efficient system theme detection (cc-switch pattern)
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia(DARK_MEDIA_QUERY);
 
     const handleChange = () => {
-      if (theme !== 'auto') return;
+      if (theme !== THEME.Auto) return;
       const root = window.document.documentElement;
-      const isDark = mediaQuery.matches;
-      root.classList.toggle('dark', isDark);
-      root.classList.toggle('light', !isDark);
-      setResolvedTheme(isDark ? 'dark' : 'light');
+      const next: ResolvedTheme = mediaQuery.matches ? THEME.Dark : THEME.Light;
+      root.classList.toggle(THEME.Dark, next === THEME.Dark);
+      root.classList.toggle(THEME.Light, next === THEME.Light);
+      setResolvedTheme(next);
     };
 
     mediaQuery.addEventListener('change', handleChange);
@@ -48,29 +51,17 @@ export function ThemeProvider({ children, defaultTheme = 'auto', storageKey = 'v
   useEffect(() => {
     const root = window.document.documentElement;
 
-    // Remove both classes first to prevent conflicts
-    root.classList.remove('light', 'dark');
+    root.classList.remove(THEME.Light, THEME.Dark);
 
-    if (theme === 'auto') {
-      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.add(isDark ? 'dark' : 'light');
-      setResolvedTheme(isDark ? 'dark' : 'light');
-
-      if (isTauri()) {
-        invoke('set_window_theme', { theme: isDark ? 'dark' : 'light' }).catch(() => {});
-      }
-      return;
-    }
-
-    root.classList.add(theme);
-    setResolvedTheme(theme);
+    const next = resolveTheme(theme);
+    root.classList.add(next);
+    setResolvedTheme(next);
 
     if (isTauri()) {
-      invoke('set_window_theme', { theme }).catch(() => {});
+      invoke('set_window_theme', { theme: next }).catch(() => {});
     }
   }, [theme]);
 
-  // Simple theme transition without animation
   const setTheme = (nextTheme: Theme, _event?: React.MouseEvent) => {
     setThemeState(nextTheme);
     localStorage.setItem(storageKey, nextTheme);

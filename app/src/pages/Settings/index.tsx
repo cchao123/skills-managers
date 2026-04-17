@@ -4,14 +4,16 @@ import { open } from '@tauri-apps/plugin-shell';
 import PageHeader from '@/components/PageHeader';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSettingsData } from './hooks/useSettingsData';
-import { GITHUB_URLS, DEFAULT_TAB, type TabType, type Theme } from './constants/config';
+import { GITHUB_URLS, DEFAULT_TAB, TAB_TYPE, type TabType, type Theme } from './constants/config';
 import { LanguageSection } from './components/LanguageSection';
 import { AppearanceSection } from './components/AppearanceSection';
 import { AgentsSection } from './components/AgentsSection';
+import { SkillFilterSection } from './components/SkillFilterSection';
 import { AboutSection } from './components/AboutSection';
+import { AdvancedSection } from './components/AdvancedSection';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '@/lib/tauri-env';
-import { SESSION_STORAGE_KEYS } from '@/constants';
+import { SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS } from '@/constants';
 
 function Settings() {
   const { t, i18n } = useTranslation();
@@ -28,6 +30,16 @@ function Settings() {
 
   const { agents } = useSettingsData();
 
+  const [advancedMode, setAdvancedMode] = useState(() =>
+    localStorage.getItem(LOCAL_STORAGE_KEYS.advancedMode) === 'true'
+  );
+
+  const handleAdvancedModeToggle = (value: boolean) => {
+    setAdvancedMode(value);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.advancedMode, String(value));
+    window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_KEYS.advancedMode, newValue: String(value) }));
+  };
+
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
   };
@@ -40,10 +52,10 @@ function Settings() {
     }
   };
 
-  const tabs = [
-    { id: 'general' as TabType, label: t('settings.tabGeneral'), icon: 'tune' },
-    { id: 'agents' as TabType, label: t('settings.tabAgents'), icon: 'smart_toy' },
-    { id: 'about' as TabType, label: t('settings.tabAbout'), icon: 'info' },
+  const tabs: Array<{ id: TabType; label: string; icon: string }> = [
+    { id: TAB_TYPE.General, label: t('settings.tabGeneral'), icon: 'tune' },
+    { id: TAB_TYPE.Agents, label: t('settings.tabAgents'), icon: 'smart_toy' },
+    { id: TAB_TYPE.About, label: t('settings.tabAbout'), icon: 'info' },
   ];
 
   return (
@@ -108,7 +120,7 @@ function Settings() {
 
           {/* Tab Content */}
           <div className="space-y-6">
-            {activeTab === 'general' && (
+            {activeTab === TAB_TYPE.General && (
               <>
                 <LanguageSection
                   currentLanguage={i18n.language}
@@ -118,14 +130,21 @@ function Settings() {
                   currentTheme={theme}
                   onThemeChange={handleThemeChange}
                 />
+                <AdvancedSection
+                  advancedMode={advancedMode}
+                  onToggle={handleAdvancedModeToggle}
+                />
               </>
             )}
 
-            {activeTab === 'agents' && (
-              <AgentsSection agents={agents} />
+            {activeTab === TAB_TYPE.Agents && (
+              <>
+                <AgentsSection agents={agents} />
+                <SkillFilterSection />
+              </>
             )}
 
-            {activeTab === 'about' && <AboutSection />}
+            {activeTab === TAB_TYPE.About && <AboutSection />}
           </div>
         </div>
       </div>

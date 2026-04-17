@@ -1,7 +1,11 @@
 import { useCallback } from 'react';
 import { skillsApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
-import type { SkillMetadata } from '@/types';
+import type { SkillMetadata, MergedSkillInfo } from '@/types';
+import { SOURCE } from '@/pages/Dashboard/utils/source';
+
+const matchSkill = (s: SkillMetadata, skill: SkillMetadata) =>
+  s.id === skill.id && s.source === skill.source;
 
 export const useSkillActions = (
   _skills: SkillMetadata[],
@@ -14,17 +18,15 @@ export const useSkillActions = (
       const newState = !skill.enabled;
 
       if (newState === false) {
-        // Turn off main switch -> backup current config, then turn off all sub-switches
         console.log('Turning off main switch, backing up config and disabling all sub-switches');
 
         const agentsToDisable = Object.keys(skill.agent_enabled || {}).filter(
           agent => skill.agent_enabled[agent] === true
         );
 
-        // Immediately update local state
         setSkills(prevSkills =>
           prevSkills.map(s =>
-            s.id === skill.id
+            matchSkill(s, skill)
               ? {
                   ...s,
                   enabled: false,
@@ -38,14 +40,12 @@ export const useSkillActions = (
           )
         );
 
-        // Async call API to disable all agents
         agentsToDisable.forEach(agent => {
-          skillsApi.disable(skill.id, agent).catch(error => {
+          skillsApi.disable(skill.id, agent, skill.source).catch(error => {
             console.error(`Failed to disable ${skill.id} for agent ${agent}:`, error);
           });
         });
       } else {
-        // Turn on main switch -> restore previous config
         console.log('Turning on main switch, restoring previous config');
 
         const agentStatesToRestore = skill.agent_enabled_backup || skill.agent_enabled || {};
@@ -53,10 +53,9 @@ export const useSkillActions = (
           agent => agentStatesToRestore[agent] === true
         );
 
-        // Immediately update local state
         setSkills(prevSkills =>
           prevSkills.map(s =>
-            s.id === skill.id
+            matchSkill(s, skill)
               ? {
                   ...s,
                   enabled: true,
@@ -67,9 +66,8 @@ export const useSkillActions = (
           )
         );
 
-        // Async call API to enable all agents
         agentsToEnable.forEach(agent => {
-          skillsApi.enable(skill.id, agent).catch(error => {
+          skillsApi.enable(skill.id, agent, skill.source).catch(error => {
             console.error(`Failed to enable ${skill.id} for agent ${agent}:`, error);
           });
         });
@@ -91,10 +89,9 @@ export const useSkillActions = (
         (newState === true && skill.enabled === false) ||
         (newState === false && newEnabledCount === 0);
 
-      // Immediately update local state
       setSkills(prevSkills =>
         prevSkills.map(s =>
-          s.id === skill.id
+          matchSkill(s, skill)
             ? {
                 ...s,
                 agent_enabled: {
@@ -107,15 +104,14 @@ export const useSkillActions = (
         )
       );
 
-      // Async call API
       if (isEnabled) {
         console.log(`Disabling skill ${skill.name} for agent ${agentName}`);
-        skillsApi.disable(skill.id, agentName).catch(error => {
+        skillsApi.disable(skill.id, agentName, skill.source).catch(error => {
           console.error('Failed to disable skill:', error);
         });
       } else {
         console.log(`Enabling skill ${skill.name} for agent ${agentName}`);
-        skillsApi.enable(skill.id, agentName).catch(error => {
+        skillsApi.enable(skill.id, agentName, skill.source).catch(error => {
           console.error('Failed to enable skill:', error);
         });
       }
@@ -124,20 +120,34 @@ export const useSkillActions = (
     }
   }, [setSkills]);
 
-  const handleDeleteSkill = useCallback(async (skill: SkillMetadata) => {
-    try {
-      if (skill.source !== 'global') {
-        showToast('warning', '只能删除 Skills Manager 根目录中的技能');
-        return;
-      }
+  /** 合并卡片：toggle 主开关 → 对所有 sourceSkills 执行 */
+  const handleToggleSkillMerged = useCallback(async (merged: MergedSkillInfo) => {
+    const newState = !merged.primary.enabled;
+    for (const sourceSkill of merged.sourceSkills) {
+      const adapted = { ...sourceSkill, enabled: merged.primary.enabled, agent_enabled: merged.primary.agent_enabled };
+      await handleToggleSkill(adapted);
+    }
+    void newState;
+  }, [handleToggleSkill]);
 
-      await skillsApi.delete(skill.id);
-      setSkills(prevSkills => prevSkills.filter(s => !(s.id === skill.id && s.source === 'global')));
-      showToast('success', `技能 "${skill.name}" 已删除`);
+  /** 合并卡片：toggle 某个 agent → 找到正确的 sourceSkill 路由 */
+  const handleToggleAgentMerged = useCallback(async (merged: MergedSkillInfo, agentName: string) => {
+    if (merged.nativeAgents.has(agentName)) return;
+
+    const sourceSkill = merged.sourceSkills.find(s => s.source === SOURCE.Global)
+      || merged.sourceSkills[0];
+    await handleToggleAgent(sourceSkill, agentName);
+  }, [handleToggleAgent]);
+
+  const handleDeleteSkill = useCallback(async (skill: SkillMetadata, silent = false) => {
+    try {
+      await skillsApi.delete(skill.id, skill.source);
+      setSkills(prevSkills => prevSkills.filter(s => !matchSkill(s, skill)));
+      if (!silent) showToast('success', `技能 "${skill.name}" 已删除`);
       console.log(`Skill ${skill.name} deleted`);
     } catch (error) {
       console.error('Failed to delete skill:', error);
-      showToast('error', '删除技能失败');
+      if (!silent) showToast('error', '删除技能失败');
     }
   }, [setSkills, showToast]);
 
@@ -158,6 +168,8 @@ export const useSkillActions = (
   return {
     handleToggleSkill,
     handleToggleAgent,
+    handleToggleSkillMerged,
+    handleToggleAgentMerged,
     handleDeleteSkill,
     handleAddToRoot,
   };

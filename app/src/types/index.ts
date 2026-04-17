@@ -1,7 +1,7 @@
 export type { Skill, SkillCategory } from './skills';
 
 // Skill source type
-export type SkillSource = 'global' | 'cursor' | 'claude';
+export type SkillSource = 'global' | 'cursor' | 'claude' | 'openclaw' | 'codex';
 
 // Skill Metadata (matches backend Phase 1)
 export interface SkillMetadata {
@@ -43,10 +43,20 @@ export interface AgentConfig {
   detected: boolean;             // Whether agent is installed on system
 }
 
+// Linking strategy: how to "link" skills from Skills Manager root into agent directories.
+// Backend uses PascalCase (matches Rust enum variants), keep that form for IPC compatibility.
+export const LINK_TYPE = {
+  Symlink: 'Symlink',
+  Copy: 'Copy',
+} as const;
+
+export type LinkType = typeof LINK_TYPE[keyof typeof LINK_TYPE];
+
 // Application Configuration (matches backend Phase 1)
 export interface AppConfig {
-  linking_strategy: 'Symlink' | 'Copy';  // File linking strategy
+  linking_strategy: LinkType;             // File linking strategy
   agents: AgentConfig[];                  // List of configured agents
+  skill_hide_prefixes?: string[];         // Prefix rules used to hide skills in UI and tray
 }
 
 export interface GitHubRepoConfig {
@@ -81,3 +91,17 @@ export interface GitHubSkill {
 
 // 安装状态
 export type InstallStatus = 'installed' | 'downloaded' | 'available';
+
+// 合并后的多来源 Skill 信息（平铺视图使用）
+export interface SourcePathInfo {
+  source: string;
+  path: string;
+}
+
+export interface MergedSkillInfo {
+  primary: SkillMetadata;
+  sourceSkills: SkillMetadata[];
+  allSources: string[];
+  nativeAgents: Set<string>;
+  allPaths: SourcePathInfo[];
+}

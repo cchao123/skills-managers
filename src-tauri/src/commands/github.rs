@@ -25,9 +25,12 @@ pub struct RemoveRepoRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SyncRepoRequest {
     pub name: String,
-    /// 为 true 时：不将工作区重置为远端，按本地磁盘完整暂存（含删除）后提交，并 force push，使远端与本地一致。
+    /// （仅 sync）为 true 时：不将工作区重置为远端，按本地磁盘完整暂存（含删除）后提交，并 force push，使远端与本地一致。
     #[serde(default)]
     pub overwrite_remote: bool,
+    /// （仅 restore）为 true 时：tracked 与 untracked/ignored 文件都清掉，工作区完全对齐远端。
+    #[serde(default)]
+    pub overwrite_local: bool,
 }
 
 pub struct GitHubConfigManager {
@@ -323,7 +326,7 @@ pub async fn restore_from_github(
         .map_err(|e| e.to_string())?;
 
     let count = tokio::task::spawn_blocking(move || {
-        integrator.pull_from_remote(&repo_config, request.overwrite_remote)
+        integrator.pull_from_remote(&repo_config, request.overwrite_local)
             .map_err(|e| e.to_string())
     })
     .await

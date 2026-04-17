@@ -16,16 +16,24 @@ export const LANGUAGES = [
   { code: 'en', name: 'English', abbr: 'EN' },
 ] as const;
 
-// Theme options configuration
-export type Theme = 'light' | 'dark' | 'auto';
+// Theme options: 重用 @/constants/theme 中的 THEME / Theme
+import { THEME, type Theme } from '@/constants';
+export { THEME, type Theme };
 
 export const THEME_OPTIONS = [
-  { value: 'light' as Theme, labelKey: 'settings.themeLight', icon: 'light_mode' },
-  { value: 'dark' as Theme, labelKey: 'settings.themeDark', icon: 'dark_mode' },
-  { value: 'auto' as Theme, labelKey: 'settings.themeAuto', icon: 'brightness_auto' },
-] as const;
+  { value: THEME.Light, labelKey: 'settings.themeLight', icon: 'light_mode' },
+  { value: THEME.Dark, labelKey: 'settings.themeDark', icon: 'dark_mode' },
+  { value: THEME.Auto, labelKey: 'settings.themeAuto', icon: 'brightness_auto' },
+] as const satisfies ReadonlyArray<{ value: Theme; labelKey: string; icon: string }>;
 
-// Tab types
-export type TabType = 'general' | 'agents' | 'about' | 'changelog';
+// Settings 页签
+export const TAB_TYPE = {
+  General: 'general',
+  Agents: 'agents',
+  About: 'about',
+  Changelog: 'changelog',
+} as const;
 
-export const DEFAULT_TAB: TabType = 'general';
+export type TabType = typeof TAB_TYPE[keyof typeof TAB_TYPE];
+
+export const DEFAULT_TAB: TabType = TAB_TYPE.General;

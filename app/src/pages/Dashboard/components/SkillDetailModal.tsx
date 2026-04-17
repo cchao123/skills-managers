@@ -1,7 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import type { SkillMetadata, AgentConfig, SkillFileEntry } from '@/types';
+import type { SkillMetadata, AgentConfig, SkillFileEntry, MergedSkillInfo } from '@/types';
 import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
+import { badgeClass, sourceLabel, SOURCE } from '@/pages/Dashboard/utils/source';
+import { getAgentDisplayName } from '@/constants';
+import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
+import { useMergedView } from '@/pages/Dashboard/hooks/useMergedView';
 import CardFileTree from '@/components/CardFileTree';
 import { FILE_TREE_HEIGHT } from '@/pages/Dashboard/constants/panel';
 import { agentsApi } from '@/api/tauri';
@@ -16,12 +20,18 @@ interface SkillDetailModalProps {
   loadingFile: boolean;
   leftPanelWidth: number;
   isResizing: boolean;
+  merged?: MergedSkillInfo;
   onClose: () => void;
   onToggleFolder: (path: string) => void;
   onReadFile: (path: string) => void;
   onToggleAgent: (skill: SkillMetadata, agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
-  onDelete: () => void;
+  onToggleAgentMerged?: (merged: MergedSkillInfo, agentName: string) => void;
+  onDelete?: () => void;
   onResizeStart: (e: React.MouseEvent) => void;
+}
+
+function normalizePath(p: string, isWindows: boolean): string {
+  return isWindows ? p.replace(/\//g, '\\') : p;
 }
 
 export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
@@ -34,24 +44,33 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   loadingFile,
   leftPanelWidth,
   isResizing,
+  merged,
   onClose,
   onToggleFolder,
   onReadFile,
   onToggleAgent,
+  onToggleAgentMerged,
   onDelete,
   onResizeStart,
 }) => {
   const { t } = useTranslation();
   const isWindows = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
-  const normalizedSkillPath = skill.path
-    ? (isWindows ? skill.path.replace(/\//g, '\\') : skill.path)
-    : null;
+  const { allSources, nativeAgents, allPaths } = useMergedView(skill, merged);
+  const detectedAgents = useDetectedAgents(agents);
+
+  const handleAgentToggle = (agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (merged && onToggleAgentMerged) {
+      onToggleAgentMerged(merged, agentName);
+    } else {
+      onToggleAgent(skill, agentName, e);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-dark-bg-card rounded-xl shadow-xl w-[65%] max-w-[1400px] max-h-[85vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 dark:border-dark-border">
+        <div className="p-6 pb-3 border-b border-gray-200 dark:border-dark-border">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className={`w-12 h-12 rounded-lg ${getSkillColor(skill.id)} flex items-center justify-center`}>
@@ -60,18 +79,41 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                 </span>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-black dark:text-white">{skill.name}</h2>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h2 className="text-xl font-bold text-black dark:text-white">{skill.name}</h2>
+                  {allSources.map(src => (
+                    <span key={src} className={`text-[10px] font-bold py-0.5 px-1.5 rounded flex-shrink-0 ${badgeClass(src)}`}>
+                      {sourceLabel(src)}
+                    </span>
+                  ))}
+                </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  {skill.source && skill.source !== 'global' && getAgentIcon(skill.source) ? (
-                    <img src={getAgentIcon(skill.source)} alt={skill.source} className={`w-3.5 h-3.5 object-contain ${needsInvertInDark(skill.source) ? 'dark:invert' : ''}`} />
-                  ) : (
-                    <img src="/octopus-logo.png" alt="Skills Manager" className="w-3.5 h-3.5" />
-                  )}
-                  <span className="text-sm text-gray-500 dark:text-gray-400">From{" "}
-                    {skill.source === 'global' ? t('dashboard.source.global') :
-                     skill.source === 'claude' ? 'Claude Code' :
-                     skill.source === 'cursor' ? 'Cursor' : skill.source}
-                  </span>
+                  {(() => {
+                    const sourceToFullName = (s: string) =>
+                      s === SOURCE.Global
+                        ? t('dashboard.source.global')
+                        : getAgentDisplayName(s);
+                    const isSingle = allSources.length === 1;
+                    const showAgentIcon = isSingle && skill.source && skill.source !== SOURCE.Global && getAgentIcon(skill.source);
+                    return (
+                      <>
+                        {showAgentIcon ? (
+                          <img
+                            src={getAgentIcon(skill.source!)}
+                            alt={skill.source}
+                            className={`w-3.5 h-3.5 object-contain ${needsInvertInDark(skill.source!) ? 'dark:invert' : ''}`}
+                          />
+                        ) : (
+                          <img src="/octopus-logo.png" alt="Skills Manager" className="w-3.5 h-3.5" />
+                        )}
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {isSingle
+                            ? `From ${sourceToFullName(skill.source ?? SOURCE.Global)}`
+                            : `From ${allSources.map(sourceToFullName).join(' + ')}`}
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -87,23 +129,30 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 pb-20">
+        <div className="flex-1 overflow-y-auto p-6 pb-20 py-3">
           <div className="space-y-4">
-            {/* Path */}
             {/* File Tree with Content Preview - Split View */}
             {skillFiles.length > 0 ? (
               <div>
-                <div className="mb-2 flex items-center gap-2">
+                <div className="mb-2 space-y-1">
                   <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">{t('dashboard.detail.fileDirectory')}</h3>
-                  {normalizedSkillPath && (
-                    <p
-                      className="text-xs text-blue-500 dark:text-blue-400 font-mono truncate flex-1 min-w-0 cursor-pointer hover:underline"
-                      title={normalizedSkillPath}
-                      onClick={() => agentsApi.openFolderPath(normalizedSkillPath)}
-                    >
-                      {normalizedSkillPath}
-                    </p>
-                  )}
+                  {allPaths.map(({ source, path }) => {
+                    const display = normalizePath(path, isWindows);
+                    return (
+                      <div key={`${source}:${path}`} className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold py-0.5 px-1 rounded ${badgeClass(source)}`}>
+                          {sourceLabel(source)}
+                        </span>
+                        <p
+                          className="text-xs text-blue-500 dark:text-blue-400 font-mono truncate flex-1 min-w-0 cursor-pointer hover:underline"
+                          title={display}
+                          onClick={() => agentsApi.openFolderPath(display)}
+                        >
+                          {display}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="bg-[#fafafa] dark:bg-dark-bg-secondary rounded-lg flex overflow-hidden relative" style={{ height: FILE_TREE_HEIGHT }}>
                   {/* Left: File Tree */}
@@ -131,7 +180,6 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                     onMouseDown={onResizeStart}
                     title={t('dashboard.detail.dragResize')}
                   >
-                    {/* Drag handle indicator */}
                     <div className="flex flex-col gap-0.5">
                       <div className="w-0.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:bg-white transition-colors"></div>
                       <div className="w-0.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:bg-white transition-colors"></div>
@@ -165,17 +213,25 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
               </div>
             ) : (
               <div>
-                <div className="mb-2 flex items-center gap-2">
+                <div className="mb-2 space-y-1">
                   <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">{t('dashboard.detail.fileDirectory')}</h3>
-                  {normalizedSkillPath && (
-                    <p
-                      className="text-xs text-blue-500 dark:text-blue-400 font-mono truncate flex-1 min-w-0 cursor-pointer hover:underline"
-                      title={normalizedSkillPath}
-                      onClick={() => agentsApi.openFolderPath(normalizedSkillPath)}
-                    >
-                      {normalizedSkillPath}
-                    </p>
-                  )}
+                  {allPaths.map(({ source, path }) => {
+                    const display = normalizePath(path, isWindows);
+                    return (
+                      <div key={`${source}:${path}`} className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold py-0.5 px-1 rounded ${badgeClass(source)}`}>
+                          {sourceLabel(source)}
+                        </span>
+                        <p
+                          className="text-xs text-blue-500 dark:text-blue-400 font-mono truncate flex-1 min-w-0 cursor-pointer hover:underline"
+                          title={display}
+                          onClick={() => agentsApi.openFolderPath(display)}
+                        >
+                          {display}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="bg-[#fafafa] dark:bg-dark-bg-secondary rounded-lg p-6" style={{ height: FILE_TREE_HEIGHT }}>
                   {loadingFiles ? (
@@ -202,22 +258,20 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
             <div>
               <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">{t('dashboard.detail.agentStatus')}</h3>
               <div className="bg-[#fafafa] dark:bg-dark-bg-secondary rounded-lg px-3 py-3 relative pb-1">
-                {agents.map((agent, index) => {
-                  const isLast = index === agents.length - 1;
+                {detectedAgents.map((agent, index) => {
+                  const isLast = index === detectedAgents.length - 1;
+                  const isNativeAgent = nativeAgents.has(agent.name);
                   return (
                     <div key={agent.name} className="relative flex items-center justify-between py-2">
-                      {/* Vertical line: full height for non-last, half for last (├ / └) */}
                       <div
                         className="absolute w-px bg-slate-300 dark:bg-dark-border"
                         style={{ left: '12px', top: 0, height: isLast ? '50%' : '100%' }}
                       />
-                      {/* Horizontal branch (──) */}
                       <div
                         className="absolute h-px bg-slate-300 dark:bg-dark-border"
                         style={{ left: '12px', top: '50%', width: '20px', transform: 'translateY(-0.5px)' }}
                       />
 
-                      {/* Content with indent for tree */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 pl-9">
                         <div className="relative flex-shrink-0 z-10">
                           <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center">
@@ -227,28 +281,50 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
-                            {!agent.detected && (
-                              <span className="text-[10px] text-slate-400 dark:text-gray-500">({t('dashboard.notInstalled')})</span>
+                            {isNativeAgent && (
+                              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                                <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>home</span>
+                                {t('dashboard.nativeSource')}
+                              </span>
                             )}
                           </div>
                           <span className={`text-[10px] leading-tight ${
-                            skill.agent_enabled[agent.name] ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-gray-500'
+                            isNativeAgent
+                              ? 'font-bold text-amber-600 dark:text-amber-400'
+                              : skill.agent_enabled[agent.name] ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-gray-500'
                           }`}>
-                            {skill.agent_enabled[agent.name] ? t('dashboard.agentEnabled') : t('dashboard.agentDisabled')}
+                            {isNativeAgent
+                              ? t('dashboard.alwaysEnabled')
+                              : skill.agent_enabled[agent.name] ? t('dashboard.agentEnabled') : t('dashboard.agentDisabled')}
                           </span>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => onToggleAgent(skill, agent.name, e)}
-                        disabled={!agent.detected}
-                        className={`relative w-8 h-[18px] rounded-full transition-colors flex-shrink-0 ${
-                          skill.agent_enabled[agent.name] ? 'bg-[#b71422]' : 'bg-gray-300 dark:bg-gray-600'
-                        } ${!agent.detected ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                      >
-                        <span className={`absolute top-[1px] left-[1px] w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
-                          skill.agent_enabled[agent.name] ? 'translate-x-[14px]' : 'translate-x-0'
-                        }`} />
-                      </button>
+                      {isNativeAgent ? (
+                        <div className="relative group/tip flex-shrink-0">
+                          <div className="w-8 h-[18px] rounded-full bg-amber-500 dark:bg-amber-500 cursor-not-allowed">
+                            <span className="absolute top-[1px] left-[1px] w-4 h-4 bg-white rounded-full shadow-sm translate-x-[14px]" />
+                          </div>
+                          <div className="hidden group-hover/tip:flex absolute bottom-full right-0 mb-2 w-56 pointer-events-none z-50">
+                            <div className="bg-white dark:bg-dark-bg-card border border-amber-200 dark:border-amber-500/30 rounded-lg shadow-lg p-2.5 flex gap-2 items-start">
+                              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
+                                <span className="material-symbols-outlined text-sm text-amber-600 dark:text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                              </div>
+                              <p className="text-[11px] leading-relaxed text-slate-600 dark:text-gray-300">{t('dashboard.nativeSourceTip')}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => handleAgentToggle(agent.name, e)}
+                          className={`relative w-8 h-[18px] rounded-full transition-colors flex-shrink-0 cursor-pointer ${
+                            skill.agent_enabled[agent.name] ? 'bg-[#b71422]' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
+                          <span className={`absolute top-[1px] left-[1px] w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                            skill.agent_enabled[agent.name] ? 'translate-x-[14px]' : 'translate-x-0'
+                          }`} />
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -259,7 +335,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
 
         {/* Footer */}
         <div className="border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-bg-secondary relative">
-          {skill.source === 'global' && (
+          {onDelete && (
             <button
               onClick={onDelete}
               className="w-12 h-12 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors absolute left-1/2 -translate-x-1/2 bottom-4 shadow-lg"

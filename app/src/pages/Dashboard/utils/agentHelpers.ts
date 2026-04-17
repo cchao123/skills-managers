@@ -1,22 +1,18 @@
-import { AGENT_ICONS, DEFAULT_AGENT_ICON, NEEDS_INVERT_IN_DARK } from '@/pages/Dashboard/constants/agentIcons';
+import { agentNeedsInvertInDark, getAgentIconUrl } from '@/constants/agents';
 
 /**
  * Get agent icon SVG path
  */
-export const getAgentIcon = (name: string): string => {
-  return AGENT_ICONS[name] || DEFAULT_AGENT_ICON;
-};
+export const getAgentIcon = (name: string): string => getAgentIconUrl(name);
 
 /**
  * Check if agent needs color inversion in dark mode
  */
-export const needsInvertInDark = (agentName: string): boolean => {
-  return NEEDS_INVERT_IN_DARK.has(agentName);
-};
+export const needsInvertInDark = (agentName: string): boolean =>
+  agentNeedsInvertInDark(agentName);
 
 /**
  * Get CSS classes for agent icon
  */
-export const getAgentIconClasses = (agentName: string): string => {
-  return needsInvertInDark(agentName) ? 'dark:invert' : '';
-};
+export const getAgentIconClasses = (agentName: string): string =>
+  needsInvertInDark(agentName) ? 'dark:invert' : '';

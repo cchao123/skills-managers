@@ -12,6 +12,7 @@ mod installer;
 mod github;
 
 use commands::skills::AppState;
+use models::SkillMetadata;
 use settings::AppSettingsManager;
 use std::sync::Mutex;
 use tauri::{
@@ -51,7 +52,49 @@ fn rebuild_tray_menu<R: Runtime, M: Manager<R>>(manager: &M, lang: &str) -> Resu
     let config = state.settings_manager.lock().unwrap().get_config().clone();
     let skill_states = config.skill_states.clone();
     let agents = config.agents.clone();
-    let skills = scanner::scan_all_skill_sources(&skill_states, &agents).unwrap_or_default();
+    let all_skills = scanner::scan_all_skill_sources(&skill_states, &agents).unwrap_or_default();
+
+    // 与前端 matchesAnyPrefix 一致：大小写不敏感的 id 前缀匹配
+    let hide_prefixes: Vec<String> = config
+        .skill_hide_prefixes
+        .iter()
+        .map(|p| p.trim().to_lowercase())
+        .filter(|p| !p.is_empty())
+        .collect();
+    let filtered: Vec<_> = if hide_prefixes.is_empty() {
+        all_skills
+    } else {
+        all_skills
+            .into_iter()
+            .filter(|s| {
+                let lower = s.id.to_lowercase();
+                !hide_prefixes.iter().any(|p| lower.starts_with(p))
+            })
+            .collect()
+    };
+
+    // 跨 source 按 id 合并（与 Dashboard 合并视图语义一致）：
+    // agent_enabled 做 OR，保留首次出现的元数据作为展示基底，避免同名技能在托盘里重复。
+    let skills: Vec<SkillMetadata> = {
+        let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let mut merged: Vec<SkillMetadata> = Vec::with_capacity(filtered.len());
+        for skill in filtered {
+            match seen.get(&skill.id).copied() {
+                Some(idx) => {
+                    for (agent_name, enabled) in &skill.agent_enabled {
+                        if *enabled {
+                            merged[idx].agent_enabled.insert(agent_name.clone(), true);
+                        }
+                    }
+                }
+                None => {
+                    seen.insert(skill.id.clone(), merged.len());
+                    merged.push(skill);
+                }
+            }
+        }
+        merged
+    };
 
     let mut menu_builder = MenuBuilder::new(app);
 
@@ -62,14 +105,13 @@ fn rebuild_tray_menu<R: Runtime, M: Manager<R>>(manager: &M, lang: &str) -> Resu
             .count();
 
         let submenu = SubmenuBuilder::new(app, &format!("{} ({}/{})", agent.display_name, enabled_count, skills.len()));
-        let submenu = if skills.is_empty() {
+        let submenu = if enabled_count == 0 {
             submenu.text("empty", texts.no_skills)
         } else {
             let mut sb = submenu;
             for skill in &skills {
-                let is_enabled = skill.agent_enabled.get(&agent.name) == Some(&true);
-                let label = if is_enabled { format!("✓ {}", skill.name) } else { format!("  {}", skill.name) };
-                sb = sb.text(format!("skill-{}-{}", agent.name, skill.id), &label);
+                if skill.agent_enabled.get(&agent.name) != Some(&true) { continue; }
+                sb = sb.text(format!("skill-{}-{}", agent.name, skill.id), &skill.name);
             }
             sb
         };
@@ -96,6 +138,23 @@ fn update_tray_language(app: tauri::AppHandle, lang: String) -> Result<(), Strin
     if let Ok(mut mgr) = state.settings_manager.lock() {
         let _ = mgr.update_language(&lang);
     }
+    Ok(())
+}
+
+/// 前端调用：更新 skill 隐藏前缀并重建托盘菜单
+#[tauri::command]
+fn set_skill_hide_prefixes(app: tauri::AppHandle, prefixes: Vec<String>) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let lang = {
+        let mut mgr = state
+            .settings_manager
+            .lock()
+            .map_err(|e| format!("Failed to acquire lock: {}", e))?;
+        mgr.set_skill_hide_prefixes(prefixes)
+            .map_err(|e| format!("Failed to save skill hide prefixes: {}", e))?;
+        mgr.get_config().language.clone()
+    };
+    rebuild_tray_menu(&app, &lang).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -227,6 +286,7 @@ pub fn run() {
             commands::theme::set_window_theme,
             // Tray commands
             update_tray_language,
+            set_skill_hide_prefixes,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

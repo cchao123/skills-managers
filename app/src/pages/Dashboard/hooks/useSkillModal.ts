@@ -13,13 +13,12 @@ export const useSkillModal = () => {
   const [currentFile, setCurrentFile] = useState<{ path: string; content: string } | null>(null);
   const [loadingFile, setLoadingFile] = useState(false);
 
-  const loadSkillFiles = useCallback(async (skillId: string) => {
+  const loadSkillFiles = useCallback(async (skillId: string, source?: string) => {
     try {
       setLoadingFiles(true);
-      const files = await skillsApi.getFiles(skillId);
+      const files = await skillsApi.getFiles(skillId, source);
       setSkillFiles(files);
 
-      // Auto-expand first level folders
       const firstLevelFolders = new Set<string>();
       files.forEach(file => {
         if (file.is_dir) {
@@ -28,7 +27,6 @@ export const useSkillModal = () => {
       });
       setExpandedFolders(firstLevelFolders);
 
-      // Find SKILL.md recursively
       const findSkillMd = (entries: SkillFileEntry[]): SkillFileEntry | null => {
         for (const entry of entries) {
           if (entry.name === 'SKILL.md' && !entry.is_dir) {
@@ -42,12 +40,11 @@ export const useSkillModal = () => {
         return null;
       };
 
-      // Load SKILL.md by default
       const skillMd = findSkillMd(files);
       if (skillMd) {
         try {
           console.log('Loading SKILL.md from:', skillMd.path);
-          const content = await skillsApi.readFile(skillId, skillMd.path);
+          const content = await skillsApi.readFile(skillId, skillMd.path, source);
           setCurrentFile({ path: skillMd.path, content });
         } catch (error) {
           console.error('Failed to load SKILL.md:', error);
@@ -68,7 +65,7 @@ export const useSkillModal = () => {
       setDetailSkill(skill);
       setShowDetailModal(true);
       setCurrentFile(null);
-      loadSkillFiles(skill.id);
+      loadSkillFiles(skill.id, skill.source);
     } catch (error) {
       console.error('Failed to load skill detail:', error);
       showToast('error', '加载技能详情失败');
@@ -102,7 +99,7 @@ export const useSkillModal = () => {
       if (showLoading) {
         setLoadingFile(true);
       }
-      const content = await skillsApi.readFile(detailSkill.id, filePath);
+      const content = await skillsApi.readFile(detailSkill.id, filePath, detailSkill.source);
       setCurrentFile({ path: filePath, content });
       if (showLoading) {
         setLoadingFile(false);

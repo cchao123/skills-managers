@@ -56,6 +56,9 @@
     "notInstalled": "Not Installed",
     "agentEnabled": "Enabled",
     "agentDisabled": "Disabled",
+    "nativeSource": "Native",
+    "alwaysEnabled": "Always enabled",
+    "nativeSourceTip": "Native sources can't be unshared. If you don't need it, enable Advanced Mode to delete it",
     "openFolder": "Open Skills Folder",
     "dragDrop": {
       "release": "Drop to Install",
@@ -65,8 +68,10 @@
     "delete": {
       "title": "Delete Confirmation",
       "message": "Are you sure you want to delete skill \"{{name}}\"?",
-      "description": "This will delete skill files from the Skills Manager root directory and remove all symbolic links. This cannot be undone.",
-      "confirm": "Confirm Delete"
+      "selectSources": "This skill exists in multiple sources. Select which to delete:",
+      "description": "This will delete the directory above and all its files, remove associated symbolic links. This cannot be undone.",
+      "confirm": "Confirm Delete",
+      "advancedRequired": "Deleting non-root source skills requires enabling \"Advanced Mode\" in Settings"
     },
     "detail": {
       "fileDirectory": "File Directory:",
@@ -74,12 +79,12 @@
       "loadingFiles": "Loading file list...",
       "noFiles": "No Files",
       "noFilesHint": "No files found in this skill directory",
-      "agentStatus": "Agent Enable Status:",
+      "agentStatus": "Shared with Agents:",
       "dragResize": "Drag to resize",
       "deleteSkill": "Delete Skill"
     },
     "source": {
-      "global": "Skills Manager Root",
+      "global": "Root",
       "removeFromRoot": "Remove from Root",
       "existsInRoot": "Already in Root",
       "copyToRoot": "Copy to Root",
@@ -136,7 +141,7 @@
     },
     "restoreMenu": {
       "overwriteLocal": "Overwrite local with remote",
-      "overwriteLocalHint": "When checked, local-only files will be deleted to match the remote exactly"
+      "overwriteLocalHint": "When checked, your local folder is reset to exactly match remote (local-only and untracked files are removed too)"
     },
     "confirm": {
       "forceSyncTitle": "Force Sync Confirmation",
@@ -251,7 +256,20 @@
       "subtitle": "Click an agent to open its directory",
       "installed": "Installed",
       "notInstalled": "Not Installed",
-      "skillsManager": "Skills Manager"
+      "skillsManager": "Skills Manager",
+      "scanPaths": "Skill Scan Paths",
+      "scanPathsEmpty": "No dedicated scan paths for this agent",
+      "expand": "Expand scan paths",
+      "collapse": "Collapse scan paths"
+    },
+    "skillFilter": {
+      "title": "Hide Skills by Prefix",
+      "subtitle": "Hide skills whose ID starts with the given prefix (e.g. skills injected by the Lark CLI).",
+      "placeholder": "Enter a prefix, e.g. lark-",
+      "add": "Add",
+      "empty": "No prefixes configured. All skills are visible.",
+      "remove": "Remove {{prefix}}",
+      "hint": "Press Enter or comma to add; press Backspace in an empty input to remove the last tag. Matching is case-insensitive."
     },
     "appearance": "Appearance",
     "appearanceDescription": "Customize the application's appearance and feel",
@@ -271,7 +289,15 @@
       "oneClickHubTitle": "One-Click Curation",
       "oneClickHubDescription": "Sync to GitHub in the cloud and build your own Skills Hub."
     },
-    "builtWith": "Built with"
+    "builtWith": "Built with",
+    "advanced": {
+      "title": "Advanced Mode",
+      "description": "Access control for advanced operations",
+      "modeLabel": "Advanced Mode",
+      "disabledHint": "Off by default. Only skills in the Skills Manager root directory can be deleted.",
+      "enabledHint": "Enabled. You can delete skills from any source.",
+      "warning": "With Advanced Mode on, a delete button will appear on detail pages for all skills, including those from Cursor, Claude, and other agents' native directories. Use with caution — accidental deletion may affect agent functionality."
+    }
   },
   "common": {
     "loading": "Loading...",
