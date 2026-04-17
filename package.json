@@ -1,6 +1,6 @@
 {
   "name": "skills-manager",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Skills Manager for Claude Code - Tauri Desktop App",
   "license": "MIT",
   "type": "module",
@@ -9,7 +9,9 @@
     "build": "tsc && vite build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "version:sync": "node scripts/sync-version.mjs",
+    "release": "node scripts/sync-version.mjs"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",

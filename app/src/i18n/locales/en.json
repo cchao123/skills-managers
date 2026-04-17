@@ -281,6 +281,19 @@
     "themeAuto": "System",
     "about": "About",
     "aboutDescription": "A desktop application for managing Claude Code skills and plugins. Browse, install, and enable skills from the marketplace, or sync custom skills from GitHub repositories.",
+    "version": {
+      "current": "Current",
+      "latest": "Latest",
+      "checking": "Checking…",
+      "upToDate": "Up to date",
+      "updateAvailable": "Update available",
+      "checkFailed": "Check failed (hover for details)",
+      "noRelease": "No release yet",
+      "unknown": "Unknown",
+      "recheck": "Re-check",
+      "goDownload": "Download update",
+      "viewOnGithub": "View on GitHub"
+    },
     "aboutHighlights": {
       "visualSchedulingTitle": "Visual Scheduling",
       "visualSchedulingDescription": "One-stop management for multi-agent desktop applications;",

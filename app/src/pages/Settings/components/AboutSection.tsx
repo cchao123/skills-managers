@@ -1,10 +1,20 @@
 import { useTranslation } from 'react-i18next';
+import { open } from '@tauri-apps/plugin-shell';
 import { GITHUB_URLS } from '../constants/config';
+import { useVersionCheck } from '../hooks/useVersionCheck';
 
 const DOCS_BASE_URL = `${GITHUB_URLS.REPO}/blob/main/docs`;
 
 export const AboutSection: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const {
+    current,
+    latest,
+    status,
+    error,
+    releaseUrl,
+    checkNow,
+  } = useVersionCheck();
 
   const docsUrl = i18n.language === 'zh'
     ? `${DOCS_BASE_URL}/user-guide.md`
@@ -24,6 +34,40 @@ export const AboutSection: React.FC = () => {
     },
   ];
 
+  const withV = (v: string) => (v.startsWith('v') ? v : `v${v}`);
+  const displayCurrent = withV(current);
+  const displayLatest = latest ? withV(latest) : '--';
+
+  let statusLabel: string;
+  let statusTone: string;
+  switch (status) {
+    case 'checking':
+      statusLabel = t('settings.version.checking');
+      statusTone = 'text-slate-500 dark:text-gray-400';
+      break;
+    case 'update-available':
+      statusLabel = t('settings.version.updateAvailable');
+      statusTone = 'text-[#b71422] dark:text-red-400';
+      break;
+    case 'up-to-date':
+      statusLabel = t('settings.version.upToDate');
+      statusTone = 'text-emerald-600 dark:text-emerald-400';
+      break;
+    case 'no-release':
+      statusLabel = t('settings.version.noRelease');
+      statusTone = 'text-slate-500 dark:text-gray-400';
+      break;
+    case 'error':
+      statusLabel = t('settings.version.checkFailed');
+      statusTone = 'text-amber-600 dark:text-amber-400';
+      break;
+    default:
+      statusLabel = t('settings.version.unknown');
+      statusTone = 'text-slate-500 dark:text-gray-400';
+  }
+
+  const checking = status === 'checking';
+
   return (
     <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-8 shadow-sm border border-[#e1e3e4] dark:border-dark-border">
       <div className="flex flex-col items-center text-center">
@@ -33,9 +77,69 @@ export const AboutSection: React.FC = () => {
         <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
           {t('app.name')}
         </h2>
-        <p className="text-lg text-slate-600 dark:text-gray-300 mb-6">
-          {t('app.version')}
-        </p>
+
+        {/* 版本区域 */}
+        <div className="w-full max-w-md mb-6">
+          <div className="flex items-center justify-center gap-3 text-sm">
+            <span className="text-slate-500 dark:text-gray-400">
+              {t('settings.version.current')}
+            </span>
+            <span className="font-bold text-slate-900 dark:text-white">
+              {displayCurrent}
+            </span>
+            <span className="text-slate-300 dark:text-gray-600">·</span>
+            <span className="text-slate-500 dark:text-gray-400">
+              {t('settings.version.latest')}
+            </span>
+            <span className="font-bold text-slate-900 dark:text-white">
+              {displayLatest}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center justify-center gap-2 text-xs">
+            <span
+              className={`font-semibold ${statusTone}`}
+              title={status === 'error' && error ? error : undefined}
+            >
+              {statusLabel}
+            </span>
+            <button
+              onClick={() => void checkNow()}
+              disabled={checking}
+              className="text-slate-500 dark:text-gray-400 hover:text-[#b71422] dark:hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+              title={t('settings.version.recheck')}
+            >
+              <span className={`material-symbols-outlined text-sm ${checking ? 'animate-spin' : ''}`}>
+                refresh
+              </span>
+              {t('settings.version.recheck')}
+            </button>
+          </div>
+
+          {status === 'update-available' && releaseUrl && (
+            <div className="mt-3 flex justify-center">
+              <button
+                onClick={() => open(releaseUrl)}
+                className="px-4 py-2 bg-[#b71422] hover:bg-[#a01220] text-white rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">download</span>
+                {t('settings.version.goDownload')}
+              </button>
+            </div>
+          )}
+
+          {(status === 'no-release' || status === 'error') && (
+            <div className="mt-3 flex justify-center">
+              <button
+                onClick={() => open(GITHUB_URLS.RELEASES)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-dark-bg-tertiary dark:hover:bg-dark-bg-card text-slate-700 dark:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">open_in_new</span>
+                {t('settings.version.viewOnGithub')}
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="w-16 h-1 bg-gradient-to-r from-[#b71422] to-[#a01220] rounded-full mb-6"></div>
         <div className="text-sm text-slate-600 dark:text-gray-300 space-y-2">
           <ul className="list-disc pl-5 text-left space-y-2 marker:text-[#b71422] marker:font-bold">

@@ -281,6 +281,19 @@
     "themeAuto": "跟随系统",
     "about": "关于",
     "aboutDescription": "一个用于管理 Claude Code 技能和插件的桌面应用程序。支持从技能市场浏览、安装和启用技能，也可以从 GitHub 仓库同步自定义技能。",
+    "version": {
+      "current": "当前版本",
+      "latest": "最新版本",
+      "checking": "检查中…",
+      "upToDate": "已是最新",
+      "updateAvailable": "发现新版本",
+      "checkFailed": "检查失败（将鼠标悬停查看详情）",
+      "noRelease": "暂无发布版本",
+      "unknown": "未知",
+      "recheck": "重新检查",
+      "goDownload": "前往更新",
+      "viewOnGithub": "在 GitHub 查看"
+    },
     "aboutHighlights": {
       "visualSchedulingTitle": "可视化调度",
       "visualSchedulingDescription": "一站式管理多 Agent 桌面应用；",

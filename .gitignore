@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Lockfile conflicts: 本项目统一使用 pnpm，避免 npm/yarn 再生成锁文件
+package-lock.json
+yarn.lock
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
