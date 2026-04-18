@@ -90,6 +90,19 @@ cd skills-managers
 npm install
 ```
 
+### Optional: enable analytics & monitoring (Aptabase + Sentry)
+
+```bash
+cp .env.example .env
+```
+
+Fill in what you need:
+
+- `APTABASE_APP_KEY`: product events (frontend `trackEvent` + Rust lifecycle events)
+- `VITE_SENTRY_DSN`: frontend React error reporting
+- `SENTRY_DSN`: Rust panic / error reporting
+- `VITE_ENABLE_TELEMETRY=false`: hard-disable frontend telemetry
+
 ### Development
 
 ```bash

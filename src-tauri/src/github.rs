@@ -96,8 +96,29 @@ impl GitHubIntegrator {
 
         // 1. 暂存变更
         if overwrite_remote {
-            // 镜像模式：-A --force（含 gitignore 命中文件、含 tracked 的删除）
+            // 镜像模式：先将本地已删除的 tracked 文件从索引中移除，再 add 所有文件
             let mut index = repo.index()?;
+
+            // 收集本地已删除的 tracked 文件
+            let mut opts = git2::StatusOptions::new();
+            opts.include_untracked(false)
+                .include_unmodified(false)
+                .recurse_untracked_dirs(false);
+            let statuses = repo.statuses(Some(&mut opts))?;
+
+            for entry in statuses.iter() {
+                let status = entry.status();
+                // 如果文件在索引中存在但工作区已删除，从索引中移除
+                if status.contains(git2::Status::WT_DELETED) {
+                    if let Some(path) = entry.path() {
+                        if let Err(e) = index.remove_path(std::path::Path::new(path)) {
+                            eprintln!("[sync] remove_path 失败 {}: {}", path, e);
+                        }
+                    }
+                }
+            }
+
+            // 然后添加所有工作区文件（包括 gitignore 命中的文件）
             index.add_all(
                 ["*"].iter(),
                 git2::IndexAddOption::DEFAULT | git2::IndexAddOption::FORCE,

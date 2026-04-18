@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RepoConfig } from '../hooks/useGitHubConfig';
+import { GITHUB_TOKENS_URL } from '../constants/config';
 
 interface GitHubFormProps {
   config: RepoConfig;
@@ -103,7 +104,7 @@ export const GitHubForm = ({
             <p className="text-xs text-slate-500 dark:text-gray-400 mt-1.5">
               {t('githubBackup.config.tokenHelperBefore')}
               <a
-                href="https://github.com/settings/personal-access-tokens"
+                href={GITHUB_TOKENS_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"

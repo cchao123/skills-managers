@@ -92,6 +92,19 @@ cd skills-managers
 npm install
 ```
 
+### 可选：启用统计与监控（Aptabase + Sentry）
+
+```bash
+cp .env.example .env
+```
+
+按需填写以下变量：
+
+- `APTABASE_APP_KEY`：事件统计（前端 `trackEvent` + Rust 生命周期事件）
+- `VITE_SENTRY_DSN`：前端 React 错误上报
+- `SENTRY_DSN`：Rust 侧 panic / error 上报
+- `VITE_ENABLE_TELEMETRY=false`：可一键关闭前端 telemetry
+
 ### 开发调试
 
 ```bash

@@ -9,6 +9,7 @@ import { invoke } from '@tauri-apps/api/core';
 import i18n from './i18n/config';
 import { isTauri } from '@/lib/tauri-env';
 import { PAGE, type Page } from '@/constants';
+import { trackEvent } from '@/lib/telemetry';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>(PAGE.Dashboard);
@@ -18,6 +19,7 @@ function App() {
   useEffect(() => {
     if (isTauri()) {
       invoke('update_tray_language', { lang: i18n.language }).catch(() => {});
+      trackEvent('app_opened', { page: PAGE.Dashboard });
     }
   }, []);
 

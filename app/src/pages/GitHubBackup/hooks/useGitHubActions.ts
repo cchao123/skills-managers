@@ -5,7 +5,7 @@ import { githubApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
 import { STAR_REPO_OWNER, STAR_REPO_NAME, STAR_REPO_URL } from '../constants/config';
 
-export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boolean) => void) => {
+export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boolean) => void, onSaveConfig?: () => void | Promise<void>) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [testing, setTesting] = useState(false);
@@ -30,6 +30,10 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
       });
       showToast('success', t('githubBackup.messages.connectionSuccess'));
       setConnected?.(true);
+      // Auto-save config after successful connection test
+      if (onSaveConfig) {
+        await onSaveConfig();
+      }
     } catch (error) {
       console.error('Connection test failed:', error);
       const errMsg = typeof error === 'string' ? error : (error as Error)?.message || t('githubBackup.messages.connectionFailed');
@@ -38,7 +42,7 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
     } finally {
       setTesting(false);
     }
-  }, [repoConfig, showToast, setConnected]);
+  }, [repoConfig, showToast, setConnected, onSaveConfig]);
 
   const handleSync = useCallback(async (hasDefaultRepo: boolean, overwriteRemote = false) => {
     if (!hasDefaultRepo) {
@@ -57,7 +61,7 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
     } finally {
       setSyncing(false);
     }
-  }, [repoConfig, showToast]);
+  }, [repoConfig, showToast, t]);
 
   const handleRestore = useCallback(async (hasDefaultRepo: boolean, overwriteLocal = false) => {
     if (!hasDefaultRepo) {
@@ -80,7 +84,7 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
     } finally {
       setRestoring(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const handleStar = useCallback(async () => {
     if (starred || starring) return;

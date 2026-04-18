@@ -11,9 +11,11 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "version:sync": "node scripts/sync-version.mjs",
-    "release": "node scripts/sync-version.mjs"
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
+    "@aptabase/tauri": "latest",
+    "@sentry/react": "latest",
     "@tailwindcss/typography": "^0.5.19",
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-shell": "^2.0.0",

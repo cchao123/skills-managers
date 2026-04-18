@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Collapse } from '@/components/Collapse';
+import { GITHUB_TOKENS_URL, GITHUB_NEW_REPO_URL } from '../constants/config';
 
 export const ConfigGuide: React.FC = () => {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ export const ConfigGuide: React.FC = () => {
           <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step1.title')}</h3>
           <p className="text-sm text-slate-600 dark:text-gray-300">
             {t('githubBackup.guide.step1.description')}{' '}
-            <a href="https://github.com/new" target="_blank" rel="noopener noreferrer" className="text-[#b71422] hover:underline font-medium">
+            <a href={GITHUB_NEW_REPO_URL} target="_blank" rel="noopener noreferrer" className="text-[#b71422] hover:underline font-medium">
               {t('githubBackup.guide.step1.link')} →
             </a>
           </p>
@@ -38,10 +39,34 @@ export const ConfigGuide: React.FC = () => {
           <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step2.title')}</h3>
           <p className="text-sm text-slate-600 dark:text-gray-300">
             {t('githubBackup.guide.step2.description')}{' '}
-            <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-[#b71422] hover:underline font-medium">
+            <a href={GITHUB_TOKENS_URL} target="_blank" rel="noopener noreferrer" className="text-[#b71422] hover:underline font-medium">
               {t('githubBackup.guide.step2.link')} →
             </a>
           </p>
+          <ul className="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-gray-400">
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#b71422] mt-1.5 flex-shrink-0"></span>
+              <span>{t('githubBackup.guide.step2.detail1')}</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#b71422] mt-1.5 flex-shrink-0"></span>
+              <span>
+                <a
+                  href={GITHUB_TOKENS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                >
+                  {t('githubBackup.guide.step2.detail2Link')}
+                </a>
+                {' '}{t('githubBackup.guide.step2.detail2')}
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#b71422] mt-1.5 flex-shrink-0"></span>
+              <span>{t('githubBackup.guide.step2.detail3')}</span>
+            </li>
+          </ul>
         </div>
       </div>
 
@@ -61,13 +86,16 @@ export const ConfigGuide: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-5 bg-[#20c997] dark:bg-teal-700/30 rounded-xl p-4 flex gap-4">
-        <span className="material-symbols-outlined text-white text-2xl flex-shrink-0">info</span>
-        <div>
-          <p className="text-white text-sm font-medium leading-relaxed">
-            {t('githubBackup.guide.notice')}
-          </p>
-        </div>
+      <div className="mt-5 flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
+        <span
+          className="material-symbols-outlined text-base text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
+          style={{ fontVariationSettings: "'FILL' 1" }}
+        >
+          warning
+        </span>
+        <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+          {t('githubBackup.guide.notice')}
+        </p>
       </div>
     </Collapse>
   );

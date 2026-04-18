@@ -32,6 +32,13 @@ jobs:
     runs-on: ${{ matrix.platform }}
     env:
       TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+      # Telemetry / Monitoring
+      VITE_ENABLE_TELEMETRY: ${{ vars.VITE_ENABLE_TELEMETRY || 'true' }}
+      VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+      VITE_SENTRY_ENVIRONMENT: ${{ vars.VITE_SENTRY_ENVIRONMENT || 'production' }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      SENTRY_ENVIRONMENT: ${{ vars.SENTRY_ENVIRONMENT || 'production' }}
+      APTABASE_APP_KEY: ${{ secrets.APTABASE_APP_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -84,19 +91,20 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
           spctl -a -vv "$APP_PATH" || true
 
-          # 产出 app.tar.gz
-          tar -C "$(dirname "$APP_PATH")" -czf "dist/${APP_NAME}_${VERSION}_${{ matrix.arch }}.app.tar.gz" "$(basename "$APP_PATH")"
+          # 产出 app.tar.gz（文件名格式：Skills-Manager-macOS-arm64-v1.0.4.app.tar.gz）
+          ARCH_NAME="${{ matrix.arch == 'aarch64' && 'arm64' || 'x64' }}"
+          tar -C "$(dirname "$APP_PATH")" -czf "dist/Skills-Manager-macOS-${ARCH_NAME}-v${VERSION}.app.tar.gz" "$(basename "$APP_PATH")"
 
           # 产出 dmg（带 Applications 快捷方式）
           STAGE_DIR="$(mktemp -d)"
           cp -R "$APP_PATH" "$STAGE_DIR/"
           ln -s /Applications "$STAGE_DIR/Applications"
           hdiutil create \
-            -volname "$APP_NAME" \
+            -volname "Skills Manager" \
             -srcfolder "$STAGE_DIR" \
             -ov \
             -format UDZO \
-            "dist/${APP_NAME}_${VERSION}_${{ matrix.arch }}.dmg"
+            "dist/Skills-Manager-macOS-${ARCH_NAME}-v${VERSION}.dmg"
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
@@ -105,8 +113,10 @@ jobs:
           set -euxo pipefail
           pnpm tauri build --target ${{ matrix.target }} --bundles nsis,msi
           mkdir -p dist
-          cp src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe dist/ || true
-          cp src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi dist/ || true
+          # 重命名 Windows 安装包（格式：Skills-Manager-windows-x64-v1.0.4-setup.exe）
+          VERSION="${TAG_NAME#v}"
+          cp src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe "dist/Skills-Manager-windows-x64-v${VERSION}-setup.exe" || true
+          cp src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi "dist/Skills-Manager-windows-x64-v${VERSION}.msi" || true
 
       - name: Upload CI artifacts
         uses: actions/upload-artifact@v4

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { agentsApi } from '@/api/tauri';
-import octopusIcon from '@/assets/agents/octopus.svg';
 import type { AgentConfig } from '@/types';
 import { getAgentScanPaths } from '@/pages/Settings/constants/agentScanPaths';
 import { KNOWN_AGENTS } from '@/constants';
@@ -164,7 +163,7 @@ export const AgentsSection: React.FC<AgentsSectionProps> = ({ agents }) => {
       >
         <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-dark-bg-tertiary flex items-center justify-center shrink-0 overflow-hidden">
           <img
-            src={octopusIcon}
+            src="/octopus-logo.png"
             alt="Skills Manager"
             className="w-6 h-6 object-contain"
           />

@@ -1,7 +1,6 @@
 // External URLs
 export const GITHUB_NEW_REPO_URL = 'https://github.com/new';
 export const GITHUB_TOKENS_URL = 'https://github.com/settings/personal-access-tokens';
-export const GITHUB_DOCS_URL = 'https://docs.anthropic.com';
 
 // Form defaults
 export const DEFAULT_REPO_CONFIG = {

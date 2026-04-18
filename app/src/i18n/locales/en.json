@@ -68,6 +68,8 @@
     "delete": {
       "title": "Delete Confirmation",
       "message": "Are you sure you want to delete skill \"{{name}}\"?",
+      "fromRootTitle": "Delete from Root Directory",
+      "fromRootMessage": "Are you sure you want to delete skill \"{{name}}\" from root directory?",
       "selectSources": "This skill exists in multiple sources. Select which to delete:",
       "description": "This will delete the directory above and all its files, remove associated symbolic links. This cannot be undone.",
       "confirm": "Confirm Delete",
@@ -200,7 +202,11 @@
       "step2": {
         "title": "Generate Access Token (PAT)",
         "description": "Go to GitHub Settings and generate a classic token or fine-grained token, make sure to check the repo permission so the app can read and write content.",
-        "link": "Generate Token"
+        "link": "Generate Token",
+        "detail1": "GitHub avatar → Click Settings → Go to Developer Settings",
+        "detail2Link": "Personal access tokens",
+        "detail2": "→ Click Generate new token",
+        "detail3": "Fill in basic info → Only select repositories select the prepared repository → Add permissions [Contents]"
       },
       "step3": {
         "title": "Fill and Save",
@@ -302,7 +308,7 @@
     },
     "aboutHighlights": {
       "visualSchedulingTitle": "Visual Scheduling",
-      "visualSchedulingDescription": "One-stop management for multi-agent desktop applications;",
+      "visualSchedulingDescription": "One-stop management for multi-agent skills desktop applications;",
       "cleanReuseTitle": "Clean Reuse",
       "cleanReuseDescription": "One skill, zero-intrusion reuse across platforms, while keeping native environments clean;",
       "oneClickHubTitle": "One-Click Curation",

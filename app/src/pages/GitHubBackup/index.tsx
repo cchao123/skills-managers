@@ -25,6 +25,7 @@ function GitHubBackup() {
     setConnected,
     loadConfig,
     updateField,
+    triggerAutoSave,
   } = useGitHubConfig();
 
   const {
@@ -38,7 +39,10 @@ function GitHubBackup() {
     handleRestore,
     handleStar,
     setStarred,
-  } = useGitHubActions(repoConfig, setConnected);
+  } = useGitHubActions(repoConfig, setConnected, async () => {
+    // Trigger auto-save after connection test
+    await triggerAutoSave(repoConfig);
+  });
 
   useEffect(() => {
     loadConfig();

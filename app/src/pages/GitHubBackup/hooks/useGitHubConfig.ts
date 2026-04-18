@@ -137,6 +137,21 @@ export const useGitHubConfig = () => {
       path: newConfig.path.startsWith('/') ? newConfig.path.slice(1) : newConfig.path,
       token: newConfig.token || undefined,
     });
+    // Update local config state after successful save
+    setConfig((prev: { repositories: Record<string, unknown> }) => ({
+      ...prev,
+      repositories: {
+        ...prev.repositories,
+        'default': {
+          owner: newConfig.owner,
+          repo: newConfig.repo,
+          branch: newConfig.branch,
+          path: newConfig.path.startsWith('/') ? newConfig.path.slice(1) : newConfig.path,
+          enabled: true,
+          token: newConfig.token || undefined,
+        }
+      }
+    }));
     setSaving(false);
   }, [useMock]);
 
@@ -170,5 +185,6 @@ export const useGitHubConfig = () => {
     loadConfig,
     updateField,
     setRepoConfig,
+    triggerAutoSave,
   };
 };

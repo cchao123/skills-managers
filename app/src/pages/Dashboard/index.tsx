@@ -529,24 +529,50 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                   {marketplaceSkills.map((skill, idx) => {
                     const originalSkill = filteredBySource[idx];
-                    const isGlobalSource = originalSkill?.source === SOURCE.Global;
-                    const existsInRoot = !isGlobalSource && skills.some(s => s.id === skill.id && s.source === SOURCE.Global);
+
+                    // 基础props：始终存在
+                    const baseProps = {
+                      key: `${skill.id}:${originalSkill?.source ?? ''}`,
+                      skill,
+                      onInfo: () => {
+                        if (originalSkill) handleShowSkillDetail(originalSkill);
+                      },
+                    };
+
+                    // 根据不同情况添加按钮props
+                    if (originalSkill?.source === SOURCE.Global) {
+                      // 情况1：根目录tab → 只提供删除功能
+                      return (
+                        <MarketplaceSkillCard
+                          {...baseProps}
+                          onDelete={() => setDeleteTarget(originalSkill)}
+                        />
+                      );
+                    }
+
+                    // 情况2：其他tab (Cursor/agent) → 提供添加功能
+                    // 检查技能是否已存在于根目录
+                    const existsInRoot = skills.some(s => s.id === skill.id && s.source === SOURCE.Global);
 
                     return (
                       <MarketplaceSkillCard
-                        key={`${skill.id}:${originalSkill?.source ?? ''}`}
-                        skill={skill}
-                        onInstall={() => {
-                          if (originalSkill) {
-                            handleToggleSkill(originalSkill);
+                        {...baseProps}
+                        onAddToRoot={(skillId) => {
+                          console.log(`[DEBUG] 点击拷贝到根目录: ${skill.name} (ID: ${skillId})`);
+                          const targetSkill = skills.find(s => s.id === skillId && s.source === selectedSource);
+                          if (targetSkill) {
+                            console.log(`[DEBUG] 找到技能:`, targetSkill);
+                            handleAddToRoot(targetSkill).then(() => {
+                              console.log(`[DEBUG] 拷贝完成，刷新中...`);
+                              refreshSkills().then(() => {
+                                console.log(`[DEBUG] 刷新完成`);
+                              });
+                            });
+                          } else {
+                            console.error(`[DEBUG] 未找到技能: ${skillId}`);
                           }
                         }}
-                        onInfo={() => {
-                          if (originalSkill) handleShowSkillDetail(originalSkill);
-                        }}
-                        onDelete={(isGlobalSource || advancedMode) ? () => { if (originalSkill) setDeleteTarget(originalSkill); } : undefined}
-                        onAddToRoot={!isGlobalSource ? () => originalSkill && handleAddToRoot(originalSkill).then(() => refreshSkills()) : undefined}
-                        isInRoot={!isGlobalSource ? existsInRoot : undefined}
+                        isInRoot={existsInRoot}
                       />
                     );
                   })}
@@ -596,7 +622,14 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
       {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         target={deleteTarget}
-        allSourceSkills={deleteTarget ? skills.filter(s => s.id === deleteTarget.id) : undefined}
+        allSourceSkills={
+          deleteTarget && deleteTarget.source === SOURCE.Global
+            ? [deleteTarget]  // 根目录tab中只删除根目录技能，不显示多选框
+            : deleteTarget
+              ? skills.filter(s => s.id === deleteTarget.id)
+              : undefined
+        }
+        purpose={deleteTarget?.source === SOURCE.Global ? 'root-only' : 'multi-source'}
         advancedMode={advancedMode}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}

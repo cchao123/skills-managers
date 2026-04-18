@@ -120,24 +120,39 @@ export const useSkillActions = (
     }
   }, [setSkills]);
 
-  /** 合并卡片：toggle 主开关 → 对所有 sourceSkills 执行 */
+  /** 合并卡片：toggle 主开关 → 只对 Global 来源执行 */
   const handleToggleSkillMerged = useCallback(async (merged: MergedSkillInfo) => {
     const newState = !merged.primary.enabled;
-    for (const sourceSkill of merged.sourceSkills) {
-      const adapted = { ...sourceSkill, enabled: merged.primary.enabled, agent_enabled: merged.primary.agent_enabled };
-      await handleToggleSkill(adapted);
+
+    // 检查是否会影响原生 agent（关闭时）
+    if (newState === false && merged.nativeAgents.size > 0) {
+      const agentNames = Array.from(merged.nativeAgents).join('、');
+      showToast('warning', `属于${agentNames}原生目录，无法一键关闭`);
+      return;
     }
-    void newState;
-  }, [handleToggleSkill]);
+
+    // 只对 Global 来源的技能执行 toggle
+    const globalSourceSkill = merged.sourceSkills.find(s => s.source === SOURCE.Global);
+    if (globalSourceSkill) {
+      await handleToggleSkill(globalSourceSkill);
+    } else {
+      // 如果没有 Global 来源，就操作第一个
+      await handleToggleSkill(merged.sourceSkills[0]);
+    }
+  }, [handleToggleSkill, showToast]);
 
   /** 合并卡片：toggle 某个 agent → 找到正确的 sourceSkill 路由 */
   const handleToggleAgentMerged = useCallback(async (merged: MergedSkillInfo, agentName: string) => {
-    if (merged.nativeAgents.has(agentName)) return;
+    // 检查是否是 agent 原生技能
+    if (merged.nativeAgents.has(agentName)) {
+      showToast('warning', `属于${agentName}原生目录，无法一键关闭`);
+      return;
+    }
 
     const sourceSkill = merged.sourceSkills.find(s => s.source === SOURCE.Global)
       || merged.sourceSkills[0];
     await handleToggleAgent(sourceSkill, agentName);
-  }, [handleToggleAgent]);
+  }, [handleToggleAgent, showToast]);
 
   const handleDeleteSkill = useCallback(async (skill: SkillMetadata, silent = false) => {
     try {
@@ -154,12 +169,16 @@ export const useSkillActions = (
   const handleAddToRoot = useCallback(async (skill: SkillMetadata) => {
     try {
       if (!skill.path) {
+        console.error('[handleAddToRoot] 技能路径为空:', skill);
         showToast('error', '无法获取技能路径');
         return;
       }
+      console.log('[handleAddToRoot] 开始拷贝技能:', skill.name, '路径:', skill.path);
       await skillsApi.importFolder(skill.path);
       showToast('success', `技能 "${skill.name}" 已拷贝到根目录`);
+      console.log('[handleAddToRoot] 拷贝完成');
     } catch (error) {
+      console.error('[handleAddToRoot] 拷贝失败:', error);
       const msg = typeof error === 'string' ? error : (error as Error)?.message || '拷贝到根目录失败';
       showToast('error', msg);
     }

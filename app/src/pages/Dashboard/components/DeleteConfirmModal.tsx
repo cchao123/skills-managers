@@ -3,10 +3,13 @@ import { useTranslation } from 'react-i18next';
 import type { SkillMetadata } from '@/types';
 import { badgeClass, sourceLabel, SOURCE } from '@/pages/Dashboard/utils/source';
 
+type DeletePurpose = 'root-only' | 'multi-source';
+
 interface DeleteConfirmModalProps {
   target: SkillMetadata | null;
   allSourceSkills?: SkillMetadata[];
   advancedMode?: boolean;
+  purpose?: DeletePurpose;
   onConfirm: (selected: SkillMetadata[]) => void;
   onCancel: () => void;
 }
@@ -15,6 +18,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   target,
   allSourceSkills,
   advancedMode = false,
+  purpose = 'multi-source',
   onConfirm,
   onCancel,
 }) => {
@@ -24,6 +28,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
   const items = allSourceSkills && allSourceSkills.length > 0 ? allSourceSkills : target ? [target] : [];
   const isMulti = items.length > 1;
+  const isRootOnly = purpose === 'root-only';
 
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
@@ -51,7 +56,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
     if (selected.length > 0) onConfirm(selected);
   };
 
-  const hasSelection = checked.size > 0;
+  const hasSelection = isRootOnly ? true : checked.size > 0;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10 backdrop-blur-[2px]">
@@ -63,25 +68,31 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             error
           </span>
         </div>
-        <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">{t('dashboard.delete.title')}</h3>
+        <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">
+          {isRootOnly ? t('dashboard.delete.fromRootTitle') : t('dashboard.delete.title')}
+        </h3>
         <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed mb-3 px-4">
-          {t('dashboard.delete.message', { name: target.name })}
+          {isRootOnly
+            ? t('dashboard.delete.fromRootMessage', { name: target.name })
+            : t('dashboard.delete.message', { name: target.name })
+          }
         </p>
 
         <div className="w-full text-left mb-3 space-y-2">
-          {isMulti && (
+          {isMulti && !isRootOnly && (
             <p className="text-xs text-slate-500 dark:text-gray-400 mb-1 px-1">{t('dashboard.delete.selectSources')}</p>
           )}
           {items.map(s => {
             const key = `${s.source}:${s.id}`;
             const isChecked = checked.has(key);
             const isLocked = s.source !== SOURCE.Global && !advancedMode;
+            const isClickDisabled = isLocked || isRootOnly; // 单选模式下禁止点击
             return (
               <div key={key} className="relative group/del">
                 <label
                   className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all ${
-                    isLocked
-                      ? 'cursor-not-allowed opacity-50 border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-bg-secondary'
+                    isClickDisabled
+                      ? 'cursor-default border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-bg-secondary'
                       : isChecked
                         ? 'cursor-pointer border-red-300 dark:border-red-500/40 bg-red-50/60 dark:bg-red-900/15'
                         : 'cursor-pointer border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg-secondary hover:border-gray-300 dark:hover:border-gray-600'
@@ -91,12 +102,14 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                     type="checkbox"
                     checked={isChecked}
                     disabled={isLocked}
-                    onChange={() => !isLocked && toggleCheck(key)}
-                    className={`w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 flex-shrink-0 disabled:opacity-40 ${!isMulti && !isLocked ? 'hidden' : ''}`}
+                    onChange={() => !isClickDisabled && toggleCheck(key)}
+                    className={`w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500 focus:ring-red-500/30 focus:ring-offset-0 accent-red-600 flex-shrink-0 disabled:opacity-40 ${isRootOnly ? 'hidden' : ''}`}
                   />
-                  <span className={`text-[10px] font-bold py-0.5 px-1.5 rounded flex-shrink-0 ${badgeClass(s.source)}`}>
-                    {sourceLabel(s.source ?? SOURCE.Global)}
-                  </span>
+                  {isMulti && !isRootOnly && (
+                    <span className={`text-[10px] font-bold py-0.5 px-1.5 rounded flex-shrink-0 ${badgeClass(s.source)}`}>
+                      {sourceLabel(s.source ?? SOURCE.Global)}
+                    </span>
+                  )}
                   <span className={`text-xs font-mono truncate min-w-0 flex-1 ${isLocked ? 'text-slate-400 dark:text-gray-500' : 'text-red-500 dark:text-red-400'}`}>
                     {s.path ? norm(s.path) : s.id}
                   </span>

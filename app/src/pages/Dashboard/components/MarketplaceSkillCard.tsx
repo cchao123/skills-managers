@@ -3,14 +3,13 @@ import type { Skill } from '@/types';
 
 interface MarketplaceSkillCardProps {
   skill: Skill;
-  onInstall: (skillId: string) => void;
   onInfo: (skillId: string) => void;
   onDelete?: (skillId: string) => void;
   onAddToRoot?: (skillId: string) => void;
   isInRoot?: boolean;
 }
 
-function MarketplaceSkillCard({ skill, onInstall, onInfo, onDelete, onAddToRoot, isInRoot }: MarketplaceSkillCardProps) {
+function MarketplaceSkillCard({ skill, onInfo, onDelete, onAddToRoot, isInRoot }: MarketplaceSkillCardProps) {
   const { t } = useTranslation();
 
   return (
@@ -70,37 +69,35 @@ function MarketplaceSkillCard({ skill, onInstall, onInfo, onDelete, onAddToRoot,
 
         {/* Buttons */}
         <div className="flex gap-2">
-          {onDelete ? (
-            /* 删除按钮 — 根目录 tab */
+          {/* 情况1：根目录tab → 显示删除按钮 */}
+          {onDelete && (
             <button
               onClick={() => onDelete(skill.id)}
               className="flex-1 bg-[#b71422] hover:bg-red-700 text-white py-2 rounded-lg font-bold text-xs transition-colors"
             >
               {t('dashboard.source.removeFromRoot')}
             </button>
-          ) : onAddToRoot ? (
-            /* 拷贝到根目录按钮 — 其他来源 tab */
-            isInRoot ? (
-              <div className="flex-1 py-2 rounded-lg font-bold text-xs text-center bg-[#edeeef] dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed">
-                {t('dashboard.source.existsInRoot')}
-              </div>
-            ) : (
-              <button
-                onClick={() => onAddToRoot(skill.id)}
-                className="flex-1 bg-[#b71422] text-white py-2 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity"
-              >
-                {t('dashboard.source.copyToRoot')}
-              </button>
-            )
-          ) : (
-            /* Install 按钮 — 原有逻辑兜底 */
-            <button
-              onClick={() => onInstall(skill.id)}
-              className="flex-1 bg-[#b71422] text-white py-2 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity"
-            >
-              {skill.installed ? t('dashboard.source.collected') : t('dashboard.source.collect')}
-            </button>
           )}
+
+          {/* 情况2：其他tab (Cursor/Agent) → 显示拷贝或已存在状态 */}
+          {!onDelete && onAddToRoot && (
+            <>
+              {isInRoot ? (
+                <div className="flex-1 py-2 rounded-lg font-bold text-xs text-center bg-[#edeeef] dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed">
+                  {t('dashboard.source.existsInRoot')}
+                </div>
+              ) : (
+                <button
+                  onClick={() => onAddToRoot(skill.id)}
+                  className="flex-1 bg-[#b71422] text-white py-2 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity"
+                >
+                  {t('dashboard.source.copyToRoot')}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* 信息按钮：始终显示 */}
           <button
             onClick={() => onInfo(skill.id)}
             className="w-9 h-9 border border-[#e1e3e4] dark:border-dark-border bg-[#f3f4f5] dark:bg-dark-bg-tertiary text-slate-600 dark:text-gray-300 rounded-lg flex items-center justify-center hover:bg-[#edeeef] dark:hover:bg-dark-hover transition-colors"

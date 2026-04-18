@@ -20,6 +20,27 @@ use tauri::{
     tray::TrayIconBuilder,
     Manager, Runtime,
 };
+use tauri_plugin_aptabase::EventTracker;
+
+fn init_sentry() -> Option<sentry::ClientInitGuard> {
+    let dsn = std::env::var("SENTRY_DSN").ok()?;
+    let dsn = dsn.trim();
+    if dsn.is_empty() {
+        return None;
+    }
+
+    let environment = std::env::var("SENTRY_ENVIRONMENT").ok();
+    let guard = sentry::init((
+        dsn.to_string(),
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            environment: environment.map(Into::into),
+            ..Default::default()
+        },
+    ));
+    log::info!("Sentry initialized");
+    Some(guard)
+}
 
 // 托盘多语言支持
 struct TrayTexts {
@@ -160,7 +181,17 @@ fn set_skill_hide_prefixes(app: tauri::AppHandle, prefixes: Vec<String>) -> Resu
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app = tauri::Builder::default()
+    let aptabase_key = std::env::var("APTABASE_APP_KEY").ok().and_then(|key| {
+        let trimmed = key.trim().to_string();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        }
+    });
+    let aptabase_enabled = aptabase_key.is_some();
+
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.show();
@@ -169,8 +200,15 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_shell::init())
-        .setup(|app| {
+        .plugin(tauri_plugin_shell::init());
+
+    if let Some(app_key) = aptabase_key {
+        builder = builder.plugin(tauri_plugin_aptabase::Builder::new(&app_key).build());
+        log::info!("Aptabase initialized");
+    }
+
+    let app = builder
+        .setup(move |app| {
             // 初始化 AppSettingsManager
             let config_path = AppSettingsManager::get_config_path();
             let settings_manager = AppSettingsManager::load_or_create(&config_path)
@@ -189,6 +227,9 @@ pub fn run() {
             app.manage(AppState {
                 settings_manager: Mutex::new(settings_manager),
             });
+            if aptabase_enabled {
+                let _ = app.handle().track_event("app_started", None);
+            }
 
             // 先构建托盘图标（不设菜单）
             let _tray = TrayIconBuilder::with_id("main-tray")
@@ -291,7 +332,20 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(|_app_handle, _event| {});
+    app.run(move |app_handle, event| {
+        if aptabase_enabled {
+            match event {
+                tauri::RunEvent::Exit { .. } => {
+                    let _ = app_handle.track_event("app_exited", None);
+                    app_handle.flush_events_blocking();
+                }
+                tauri::RunEvent::Ready => {
+                    let _ = app_handle.track_event("app_ready", None);
+                }
+                _ => {}
+            }
+        }
+    });
 }
 
 #[cfg(not(mobile))]
@@ -300,6 +354,7 @@ fn main() {
     env_logger::init();
 
     log::info!("Skills Manager starting...");
+    let _sentry_guard = init_sentry();
 
     run();
 }

@@ -269,39 +269,135 @@ fn recursive_copy(source: &Path, target: &Path) -> Result<(), LinkerError> {
 }
 
 /// 检查路径是否为 NTFS Junction（reparse point 且非 symlink）或 symlink
+/// 重要：使用 symlink_metadata() 而不是 is_symlink()，因为后者对断链的 symlink 可能返回 false
 pub fn is_junction_or_symlink(path: &Path) -> bool {
-    if path.is_symlink() {
-        return true;
+    eprintln!("=== IS_JUNCTION_OR_SYMLINK DEBUG ===");
+    eprintln!("Checking path: {:?}", path);
+
+    // 先尝试标准检查
+    let is_symlink_std = path.is_symlink();
+    eprintln!("path.is_symlink(): {}", is_symlink_std);
+
+    // 使用 symlink_metadata() 可以检测断链的 symlink
+    match fs::symlink_metadata(path) {
+        Ok(metadata) => {
+            eprintln!("symlink_metadata OK");
+            let file_type = metadata.file_type();
+            eprintln!("file_type.is_symlink(): {}", file_type.is_symlink());
+            eprintln!("file_type.is_dir(): {}", file_type.is_dir());
+            eprintln!("file_type.is_file(): {}", file_type.is_file());
+
+            // 检查 file_type 是否是 symlink
+            if file_type.is_symlink() {
+                eprintln!("✅ Detected as symlink via symlink_metadata");
+                eprintln!("=== END IS_JUNCTION_OR_SYMLINK ===");
+                return true;
+            }
+        }
+        Err(e) => {
+            eprintln!("symlink_metadata failed: {}", e);
+        }
     }
+
     // Junction 在 Windows 上 is_symlink() 返回 false，但 metadata 的 file_attributes 带 REPARSE_POINT
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
         const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
         if let Ok(meta) = fs::symlink_metadata(path) {
-            return meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0;
+            let is_reparse = meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0;
+            eprintln!("Windows reparse point: {}", is_reparse);
+            if is_reparse {
+                eprintln!("=== END IS_JUNCTION_OR_SYMLINK ===");
+                return true;
+            }
         }
     }
+
+    eprintln!("❌ Not detected as junction or symlink");
+    eprintln!("=== END IS_JUNCTION_OR_SYMLINK ===");
     false
 }
 
 /// 移除链接（安全版本，只删除 symlink / junction，不删真实目录）
 pub fn remove_link(target: &Path) -> Result<(), LinkerError> {
-    if !target.exists() && !is_junction_or_symlink(target) {
-        return Ok(());
-    }
+    eprintln!("=== REMOVE_LINK START ===");
+    eprintln!("Target path: {:?}", target);
+    eprintln!("Target exists: {}", target.exists());
 
+    // 先检查是否是 symlink/junction（即使断链也能检测到）
     if is_junction_or_symlink(target) {
-        eprintln!("✅ Removing symlink/junction: {:?}", target);
-        // Junction / symlink to dir: remove_dir 只删链接本身，不递归删目标内容
-        if target.is_dir() {
-            fs::remove_dir(target)?;
-        } else {
-            fs::remove_file(target)?;
+        eprintln!("✅ Confirmed symlink/junction, proceeding with removal");
+
+        #[cfg(windows)]
+        {
+            // Windows 特殊处理：Junction 必须用 remove_dir
+            eprintln!("Windows: Using remove_dir for Junction");
+            let result = fs::remove_dir(target);
+            match result {
+                Ok(_) => {
+                    eprintln!("✅ Successfully removed: {:?}", target);
+                    eprintln!("=== REMOVE_LINK SUCCESS ===");
+                    return Ok(());
+                }
+                Err(e) => {
+                    eprintln!("⚠️  Warning: Failed to remove {:?}: {}, but continuing", target, e);
+                    eprintln!("=== REMOVE_LINK DONE (WITH WARNING) ===");
+                    return Ok(());
+                }
+            }
         }
+
+        #[cfg(unix)]
+        {
+            // Unix/macOS 特殊处理：Symlink 可能需要 remove_file
+            eprintln!("Unix: Determining removal method for symlink");
+
+            // 获取文件类型信息
+            let file_type = fs::symlink_metadata(target)
+                .map(|m| {
+                    eprintln!("Metadata: is_dir={}, is_file={}, is_symlink={}",
+                        m.file_type().is_dir(),
+                        m.file_type().is_file(),
+                        m.file_type().is_symlink()
+                    );
+                    m.file_type()
+                })
+                .ok();
+
+            // Unix 上，symlink 通常需要用 remove_file 删除（即使指向目录）
+            let result = if file_type.map_or(false, |ft| ft.is_file()) {
+                eprintln!("Using remove_file (confirmed file)");
+                fs::remove_file(target)
+            } else {
+                // 对于目录类型或不确定类型（断链），先尝试 remove_file
+                // 因为 Unix 上 symlink（即使指向目录）应该用 remove_file 删除
+                eprintln!("Using remove_file for symlink (directory or broken)");
+                fs::remove_file(target)
+            };
+
+            match result {
+                Ok(_) => {
+                    eprintln!("✅ Successfully removed: {:?}", target);
+                    eprintln!("=== REMOVE_LINK SUCCESS ===");
+                    Ok(())
+                }
+                Err(e) => {
+                    eprintln!("⚠️  Warning: Failed to remove {:?}: {}, but continuing", target, e);
+                    eprintln!("=== REMOVE_LINK DONE (WITH WARNING) ===");
+                    Ok(())
+                }
+            }
+        }
+    } else if target.exists() {
+        // 存在但不是 symlink/junction，拒绝删除以防误删真实数据
+        eprintln!("⚠️  Warning: Target exists but is not a symlink/junction, refusing to delete: {:?}", target);
+        eprintln!("=== REMOVE_LINK ABORTED (NOT A SYMLINK) ===");
         Ok(())
     } else {
-        eprintln!("⚠️  Warning: Target is not a symlink/junction, refusing to delete: {:?}", target);
+        // 不存在且不是 symlink/junction，可能已经被删除了
+        eprintln!("ℹ️  Target does not exist (may already be removed): {:?}", target);
+        eprintln!("=== REMOVE_LINK DONE (ALREADY GONE) ===");
         Ok(())
     }
 }

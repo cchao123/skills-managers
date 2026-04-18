@@ -68,6 +68,8 @@
     "delete": {
       "title": "删除确认",
       "message": "确定要删除技能「{{name}}」吗？",
+      "fromRootTitle": "从根目录中删除",
+      "fromRootMessage": "确定要从根目录中删除技能「{{name}}」吗？",
       "selectSources": "该技能存在于多个来源，请选择要删除的目录：",
       "description": "此操作将删除上述目录及其所有文件，并移除关联的符号链接，且不可撤销。",
       "confirm": "确认删除",
@@ -200,7 +202,11 @@
       "step2": {
         "title": "生成访问令牌 (PAT)",
         "description": "访问 GitHub 设置，生成一个经典令牌或细粒度令牌，确保勾选 repo 权限以便应用可以读取和写入内容。",
-        "link": "生成令牌"
+        "link": "生成令牌",
+        "detail1": "Github 头像 → 点击 Settings → 进入 Developer Settings",
+        "detail2Link": "Personal access tokens",
+        "detail2": "→ 点击 Generate new token",
+        "detail3": "填写基础信息 → Only select repositories 选中准备好的仓库 → Add permissions [Contents]"
       },
       "step3": {
         "title": "填写并保存",
@@ -302,7 +308,7 @@
     },
     "aboutHighlights": {
       "visualSchedulingTitle": "可视化调度",
-      "visualSchedulingDescription": "一站式管理多 Agent 桌面应用；",
+      "visualSchedulingDescription": "一站式管理多 Agent Skills桌面应用；",
       "cleanReuseTitle": "纯净复用",
       "cleanReuseDescription": "一个技能，零侵入多端复用，保持环境原生纯净；",
       "oneClickHubTitle": "一键沉淀",
