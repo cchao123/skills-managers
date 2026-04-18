@@ -1,6 +1,6 @@
 [package]
 name = "skills-manager"
-version = "1.0.3"
+version = "1.0.4"
 description = "Skills Manager for Claude Code"
 authors = ["Claude Skills Manager"]
 license = "MIT"
