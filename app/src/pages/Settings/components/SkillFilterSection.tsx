@@ -49,8 +49,8 @@ export const SkillFilterSection: React.FC = () => {
       <div className="px-6 py-5 space-y-4">
         {/* 输入行 */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[#e1e3e4] dark:border-dark-border bg-white dark:bg-dark-bg-card shadow-sm focus-within:ring-2 focus-within:ring-[#b71422]/20 focus-within:border-[#b71422] transition-all">
-            <span className="material-symbols-outlined text-base text-slate-400 dark:text-gray-500 shrink-0">
+          <div className="relative flex-1">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-400">
               add
             </span>
             <input
@@ -60,7 +60,7 @@ export const SkillFilterSection: React.FC = () => {
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={t('settings.skillFilter.placeholder')}
-              className="flex-1 bg-transparent text-sm font-mono text-slate-700 dark:text-gray-200 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none"
+              className="w-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-xl py-2.5 pl-12 pr-4 text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-[#b71422]/20 focus:border-[#b71422] transition-all shadow-sm"
             />
           </div>
           <button

@@ -29,7 +29,6 @@ export const Shared: React.FC<{ owner: string; repo: string }> = ({ owner, repo 
 
   return (
     <Collapse
-      maxHeight="600px"
       title={
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -72,14 +71,33 @@ export const Shared: React.FC<{ owner: string; repo: string }> = ({ owner, repo 
         </div>
       </div>
 
-      <div className="mt-5 bg-[#20c997] dark:bg-teal-700/30 rounded-xl p-4 flex gap-4">
-        <span className="material-symbols-outlined text-white text-2xl flex-shrink-0">info</span>
-        <div>
-          <p className="text-white text-sm font-medium leading-relaxed">
-            {t('githubBackup.shared.notice')}
-          </p>
+      {/* https://cursor.com/cn/docs/skills#github  转化成点mdc效果不好 */}
+      
+      {/* <h3 className="pt-8 text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+        <span className="material-symbols-outlined text-base text-[#b71422]">terminal</span>
+        {t('githubBackup.shared.cursor')}
+        <span className="text-xs font-normal text-slate-400 dark:text-gray-500">{t('githubBackup.shared.viaRemoteRule')}</span>
+      </h3>
+
+      <div className="flex gap-4 py-4">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-sm">1</div>
+        <div className="flex-1">
+          <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.shared.cursorStep1Title')}</h3>
+          <p className="text-sm text-slate-600 dark:text-gray-300">{t('githubBackup.shared.cursorStep1Desc')}</p>
         </div>
       </div>
+
+      <div className="flex gap-4 py-4">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-sm">2</div>
+        <div className="flex-1">
+          <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.shared.cursorStep2Title')}</h3>
+          <p className="text-sm text-slate-600 dark:text-gray-300 mb-2">{t('githubBackup.shared.cursorStep2Desc')}</p>
+          <div className="relative">
+            <code className="block bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2 pr-9 text-sm font-mono text-[#b71422] break-all">https://github.com/{marketplacePath}</code>
+            <CopyButton text={`https://github.com/${marketplacePath}`} />
+          </div>
+        </div>
+      </div> */}
     </Collapse>
   );
 };

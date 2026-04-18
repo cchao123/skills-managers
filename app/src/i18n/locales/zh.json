@@ -170,7 +170,13 @@
       "step2Desc": "从 marketplace 安装插件：",
       "copy": "复制",
       "copied": "已复制",
-      "notice": "确认当前仓库为公开状态"
+      "notice": "确认当前仓库为公开状态",
+      "cursor": "Cursor",
+      "viaRemoteRule": "via Remote Rule",
+      "cursorStep1Title": "打开设置并添加规则",
+      "cursorStep1Desc": "打开 Cursor Settings → Rules，在 Project Rules 部分点击 Add Rule，选择 Remote Rule (Github)",
+      "cursorStep2Title": "输入仓库地址",
+      "cursorStep2Desc": "输入以下 GitHub 仓库的 URL"
     },
     "buttons": {
       "testConnection": "测试连接",

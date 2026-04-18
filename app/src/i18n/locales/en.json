@@ -170,7 +170,13 @@
       "step2Desc": "Install a plugin from the marketplace:",
       "copy": "Copy",
       "copied": "Copied",
-      "notice": "Make sure the repository is public"
+      "notice": "Make sure the repository is public",
+      "cursor": "Cursor",
+      "viaRemoteRule": "via Remote Rule",
+      "cursorStep1Title": "Open Settings & Add Rule",
+      "cursorStep1Desc": "Open Cursor Settings → Rules, click Add Rule in Project Rules section, select Remote Rule (Github)",
+      "cursorStep2Title": "Enter Repository URL",
+      "cursorStep2Desc": "Enter the GitHub repository URL below"
     },
     "buttons": {
       "testConnection": "Test Connection",
