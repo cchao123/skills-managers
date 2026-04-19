@@ -1,6 +1,6 @@
 {
   "name": "skills-manager",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Skills Manager for Claude Code - Tauri Desktop App",
   "license": "MIT",
   "type": "module",
