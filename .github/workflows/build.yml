@@ -69,10 +69,19 @@ jobs:
       - name: Debug environment variables
         run: |
           echo "=== Vite Environment Variables ==="
-          echo "VITE_ENABLE_TELEMETRY=$VITE_ENABLE_TELEMETRY"
-          echo "VITE_APTABASE_APP_KEY=$( [ -n "$VITE_APTABASE_APP_KEY" ] && echo "***SET***" || echo "***NOT SET***" )"
-          echo "VITE_SENTRY_DSN=$( [ -n "$VITE_SENTRY_DSN" ] && echo "***SET***" || echo "***NOT SET***" )"
-          echo "VITE_SENTRY_ENVIRONMENT=$VITE_SENTRY_ENVIRONMENT"
+          echo "VITE_ENABLE_TELEMETRY: $VITE_ENABLE_TELEMETRY"
+          if [ -n "$VITE_APTABASE_APP_KEY" ]; then
+            echo "VITE_APTABASE_APP_KEY: ***SET*** (length: ${#VITE_APTABASE_APP_KEY})"
+          else
+            echo "VITE_APTABASE_APP_KEY: ***NOT SET***"
+          fi
+          if [ -n "$VITE_SENTRY_DSN" ]; then
+            echo "VITE_SENTRY_DSN: ***SET***"
+          else
+            echo "VITE_SENTRY_DSN: ***NOT SET***"
+          fi
+          echo "VITE_SENTRY_ENVIRONMENT: $VITE_SENTRY_ENVIRONMENT"
+          echo "TAG_NAME: $TAG_NAME"
           echo "================================"
 
       - name: Build (macOS)
