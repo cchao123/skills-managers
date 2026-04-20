@@ -7,6 +7,23 @@ import { TelemetryEvent } from '@/constants/events';
 import { trackEvent } from '@/lib/telemetry';
 import { STAR_REPO_OWNER, STAR_REPO_NAME, STAR_REPO_URL } from '../constants/config';
 
+// 辅助函数：检测是否是认证错误
+const isAuthError = (errorMsg: string): boolean => {
+  const authErrorPatterns = [
+    /401/,
+    /403/,
+    /unauthorized/i,
+    /authentication/i,
+    /token.*invalid/i,
+    /token.*expired/i,
+    /credentials/i,
+    /认证/,
+    /token.*无效/,
+    /token.*过期/,
+  ];
+  return authErrorPatterns.some(pattern => pattern.test(errorMsg));
+};
+
 export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boolean) => void, onSaveConfig?: () => void | Promise<void>) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -33,6 +50,9 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
       showToast('success', t('githubBackup.messages.connectionSuccess'));
       setConnected?.(true);
 
+      // 保存连接状态到 localStorage
+      localStorage.setItem('github_connected', 'true');
+
       // 追踪测试连接事件
       trackEvent(TelemetryEvent.GITHUB_TEST_LINK_CLICKED, {
         repo: `${repoConfig.owner}/${repoConfig.repo}`,
@@ -45,6 +65,10 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
       }
     } catch (error) {
       console.error('Connection test failed:', error);
+      // 测试连接失败时，清除 localStorage 中的连接状态
+      localStorage.removeItem('github_connected');
+      setConnected?.(false);
+
       const errMsg = typeof error === 'string' ? error : (error as Error)?.message || t('githubBackup.messages.connectionFailed');
       showToast('error', errMsg);
       throw error;
@@ -73,12 +97,20 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
       showToast('success', `${t('githubBackup.messages.syncSuccess')}\nhttps://github.com/${repoConfig.owner}/${repoConfig.repo}`);
     } catch (error: any) {
       console.error('Sync failed:', error);
-      showToast('error', `${t('githubBackup.messages.syncFailed')}: ${error?.message || error}`);
+      const errMsg = error?.message || error;
+
+      // 检查是否是认证错误，如果是则清除连接状态
+      if (isAuthError(errMsg)) {
+        localStorage.removeItem('github_connected');
+        setConnected?.(false);
+      }
+
+      showToast('error', `${t('githubBackup.messages.syncFailed')}: ${errMsg}`);
       throw error;
     } finally {
       setSyncing(false);
     }
-  }, [repoConfig, showToast, t]);
+  }, [repoConfig, showToast, t, setConnected]);
 
   const handleRestore = useCallback(async (hasDefaultRepo: boolean, overwriteLocal = false) => {
     if (!hasDefaultRepo) {
@@ -104,12 +136,20 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
       }
     } catch (error: any) {
       console.error('Restore failed:', error);
-      showToast('error', `${t('githubBackup.messages.restoreFailed')}: ${error?.message || error}`);
+      const errMsg = error?.message || error;
+
+      // 检查是否是认证错误，如果是则清除连接状态
+      if (isAuthError(errMsg)) {
+        localStorage.removeItem('github_connected');
+        setConnected?.(false);
+      }
+
+      showToast('error', `${t('githubBackup.messages.restoreFailed')}: ${errMsg}`);
       throw error;
     } finally {
       setRestoring(false);
     }
-  }, [showToast, t]);
+  }, [showToast, t, setConnected]);
 
   const handleStar = useCallback(async () => {
     if (starred || starring) return;
