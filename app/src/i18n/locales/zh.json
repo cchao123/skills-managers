@@ -71,7 +71,7 @@
     "agentDisabled": "未启用",
     "nativeSource": "原生目录",
     "alwaysEnabled": "始终启用",
-    "nativeSourceTip": "原生目录无法关闭共享，如不需要可以开启高级模式后进行删除",
+    "nativeSourceTip": "原生目录无法关闭共享，如不需要可以开启高阶模式后进行删除",
     "openFolder": "打开技能文件夹",
     "dragDrop": {
       "release": "释放安装",
@@ -86,7 +86,7 @@
       "selectSources": "该技能存在于多个来源，请选择要删除的目录：",
       "description": "此操作将删除上述目录及其所有文件，并移除关联的符号链接，且不可撤销。",
       "confirm": "确认删除",
-      "advancedRequired": "删除非根目录来源的技能需要在设置中开启「高级模式」"
+      "advancedRequired": "删除非根目录来源的技能需要在设置中开启「高阶模式」"
     },
     "detail": {
       "fileDirectory": "文件目录：",
@@ -111,7 +111,7 @@
     "noSkillsHint": "尝试调整搜索或筛选条件",
     "retry": "重试",
     "errorMessage": "请确保应用在 Tauri 环境中运行，而不是在浏览器中。",
-    "localAgentDirectory": "查看各Agent根目录",
+    "localAgentDirectory": "本地Agent详情",
     "viewFlat": "平铺展示",
     "viewBySource": "按来源展示",
     "openAgentSettings": "打开设置中的 Agents",
@@ -277,6 +277,7 @@
   "settings": {
     "title": "设置",
     "tabGeneral": "通用",
+    "tabAdvanced": "高级",
     "tabAgents": "Agents",
     "tabAbout": "关于",
     "tabChangelog": "更新日志",
@@ -287,6 +288,7 @@
       "installed": "已安装",
       "notInstalled": "未安装",
       "skillsManager": "Skills Manager",
+      "appRoot": "软件根目录",
       "scanPaths": "技能扫描目录",
       "scanPathsEmpty": "该 Agent 暂无专门的扫描目录",
       "expand": "展开扫描目录",
@@ -334,12 +336,12 @@
     },
     "builtWith": "基于",
     "advanced": {
-      "title": "高级模式",
+      "title": "高阶模式",
       "description": "面向进阶用户的操作权限控制",
-      "modeLabel": "高级模式",
+      "modeLabel": "高阶模式",
       "disabledHint": "默认关闭，仅可删除 Skills Manager 根目录下的技能",
       "enabledHint": "已开启，可对所有来源的技能执行删除操作",
-      "warning": "开启高级模式后，详情页面将出现删除按钮，可删除来自 Cursor、Claude 等 Agent 原生目录的技能。请谨慎操作，误删可能导致 Agent 功能异常。"
+      "warning": "开启高阶模式后，详情页面将出现删除按钮，可删除来自 Cursor、Claude 等 Agent 原生目录的技能。"
     }
   },
   "common": {

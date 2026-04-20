@@ -3,13 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { githubApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
 import { isTauri } from '@/lib/tauri-env';
-import { AUTO_SAVE_DELAY, DEFAULT_REPO_CONFIG } from '../constants/config';
+import { DEFAULT_REPO_CONFIG } from '../constants/config';
 
 export interface RepoConfig {
   owner: string;
   repo: string;
   branch: string;
-  path: string;
   token: string;
 }
 
@@ -19,8 +18,6 @@ type MockConfig = {
       owner: string;
       repo: string;
       branch: string;
-      path: string;
-      enabled: boolean;
       last_sync: string;
       token?: string;
     };
@@ -44,8 +41,6 @@ export const useGitHubConfig = () => {
         owner: 'username',
         repo: 'custom-skills',
         branch: 'main',
-        path: 'skills',
-        enabled: true,
         last_sync: '2024-03-29T10:30:00Z'
       }
     }
@@ -66,7 +61,6 @@ export const useGitHubConfig = () => {
             owner: firstRepo.owner,
             repo: firstRepo.repo,
             branch: firstRepo.branch,
-            path: firstRepo.path.startsWith('/') ? firstRepo.path : `/${firstRepo.path}`,
             token: '',
           });
         }
@@ -86,13 +80,11 @@ export const useGitHubConfig = () => {
           owner: firstRepo.owner,
           repo: firstRepo.repo,
           branch: firstRepo.branch,
-          path: firstRepo.path.startsWith('/') ? firstRepo.path : `/${firstRepo.path}`,
           token: firstRepo.token || '',
         });
-        // Has config with token, mark as connected
-        if (firstRepo.token) {
-          setConnected(true);
-        }
+        // 连接状态不跨会话持久化：磁盘上有配置只代表用户曾填过，
+        // 不代表当前 token/仓库/分支依然有效。用户必须重新点"测试连接"
+        // 才能解锁同步/恢复按钮，避免凭失效凭据触发误操作。
       }
     } catch (error) {
       console.error('Failed to load GitHub config:', error);
@@ -120,8 +112,6 @@ export const useGitHubConfig = () => {
             owner: newConfig.owner,
             repo: newConfig.repo,
             branch: newConfig.branch,
-            path: newConfig.path.startsWith('/') ? newConfig.path.slice(1) : newConfig.path,
-            enabled: true,
             token: newConfig.token || undefined,
           }
         }
@@ -134,10 +124,8 @@ export const useGitHubConfig = () => {
       owner: newConfig.owner,
       repo: newConfig.repo,
       branch: newConfig.branch,
-      path: newConfig.path.startsWith('/') ? newConfig.path.slice(1) : newConfig.path,
       token: newConfig.token || undefined,
     });
-    // Update local config state after successful save
     setConfig((prev: { repositories: Record<string, unknown> }) => ({
       ...prev,
       repositories: {
@@ -146,8 +134,6 @@ export const useGitHubConfig = () => {
           owner: newConfig.owner,
           repo: newConfig.repo,
           branch: newConfig.branch,
-          path: newConfig.path.startsWith('/') ? newConfig.path.slice(1) : newConfig.path,
-          enabled: true,
           token: newConfig.token || undefined,
         }
       }
@@ -155,24 +141,15 @@ export const useGitHubConfig = () => {
     setSaving(false);
   }, [useMock]);
 
-  // Debounced auto-save
-  let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
-
   const updateField = useCallback((field: keyof RepoConfig, value: string) => {
+    // 只更新内存中的表单状态，不自动写盘。
+    // 写盘仅发生在"测试连接"成功之后（见 useGitHubActions.handleTestConnection），
+    // 这样可以保证磁盘上的配置 === 最近一次验证通过的配置，
+    // 避免用户填错信息后关闭应用，再打开时凭残留配置触发同步/恢复。
     const newConfig = { ...repoConfig, [field]: value };
     setRepoConfig(newConfig);
     if (connected) setConnected(false);
-
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-    }
-
-    if (!newConfig.owner || !newConfig.repo || !newConfig.token) return;
-
-    autoSaveTimer = setTimeout(async () => {
-      await triggerAutoSave(newConfig);
-    }, AUTO_SAVE_DELAY);
-  }, [repoConfig, connected, triggerAutoSave]);
+  }, [repoConfig, connected]);
 
   return {
     config,

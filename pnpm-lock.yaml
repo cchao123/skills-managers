@@ -11,6 +11,12 @@ importers:
       '@aptabase/web':
         specifier: ^0.5.0
         version: 0.5.0
+      '@fontsource-variable/inter':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/manrope':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@sentry/react':
         specifier: latest
         version: 10.49.0(react@18.3.1)
@@ -29,6 +35,9 @@ importers:
       i18next-browser-languagedetector:
         specifier: ^8.2.1
         version: 8.2.1
+      material-symbols:
+        specifier: ^0.44.2
+        version: 0.44.2
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -336,6 +345,12 @@ packages:
     engines: {node: '>=12'}
     cpu: [x64]
     os: [win32]
+
+  '@fontsource-variable/inter@5.2.8':
+    resolution: {integrity: sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==}
+
+  '@fontsource/manrope@5.2.8':
+    resolution: {integrity: sha512-gJHJmcuUk7qWcNCfcAri/DJQtXtBYqi9yKratr4jXhSo0I3xUtNNKI+igQIcw5c+m95g0vounk8ZnX/kb8o0TA==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1004,6 +1019,9 @@ packages:
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
+
+  material-symbols@0.44.2:
+    resolution: {integrity: sha512-FAOO8/VB+zMUA84jDJnRc/BPNLr3PPaZAXUUnsd/zkBcPZQyyMl8ECb68xWiYSn7w9OZbhUmyEwLIcfNgkakAg==}
 
   mdast-util-find-and-replace@3.0.2:
     resolution: {integrity: sha512-Tmd1Vg/m3Xz43afeNxDIhWRtFZgM2VLyaf4vSTYwudTyeuTneoL3qtWMA5jeLyz/O1vDJmmV4QuScFCA2tBPwg==}
@@ -1719,6 +1737,10 @@ snapshots:
   '@esbuild/win32-x64@0.21.5':
     optional: true
 
+  '@fontsource-variable/inter@5.2.8': {}
+
+  '@fontsource/manrope@5.2.8': {}
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -2311,6 +2333,8 @@ snapshots:
       yallist: 3.1.1
 
   markdown-table@3.0.4: {}
+
+  material-symbols@0.44.2: {}
 
   mdast-util-find-and-replace@3.0.2:
     dependencies:

@@ -29,6 +29,7 @@ export const THEME_OPTIONS = [
 // Settings 页签
 export const TAB_TYPE = {
   General: 'general',
+  Advanced: 'advanced',
   Agents: 'agents',
   About: 'about',
   Changelog: 'changelog',

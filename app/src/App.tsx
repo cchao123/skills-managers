@@ -8,7 +8,7 @@ import { ToastProvider } from './components/Toast';
 import { invoke } from '@tauri-apps/api/core';
 import i18n from './i18n/config';
 import { isTauri } from '@/lib/tauri-env';
-import { PAGE, type Page } from '@/constants';
+import { PAGE, THEME, type Page } from '@/constants';
 import { TelemetryEvent } from '@/constants/events';
 import { trackEvent } from '@/lib/telemetry';
 
@@ -32,7 +32,7 @@ function App() {
   }, [currentPage]);
 
   return (
-    <ThemeProvider>
+    <ThemeProvider defaultTheme={THEME.Light}>
       <ToastProvider>
       <div className="h-screen bg-[#f8f9fa] dark:bg-dark-bg-secondary">
         <SideNavBar

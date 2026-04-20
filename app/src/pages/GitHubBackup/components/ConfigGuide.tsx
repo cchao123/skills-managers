@@ -20,8 +20,8 @@ export const ConfigGuide: React.FC = () => {
         </div>
       }
     >
-      <div className="flex gap-4 py-4">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-sm">1</div>
+      <div className="flex gap-3 py-4">
+        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">1</div>
         <div className="flex-1">
           <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step1.title')}</h3>
           <p className="text-sm text-slate-600 dark:text-gray-300">
@@ -33,8 +33,8 @@ export const ConfigGuide: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-sm">2</div>
+      <div className="flex gap-3">
+        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">2</div>
         <div className="flex-1">
           <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step2.title')}</h3>
           <p className="text-sm text-slate-600 dark:text-gray-300">
@@ -70,16 +70,16 @@ export const ConfigGuide: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-sm">3</div>
+      <div className="flex gap-3">
+        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">3</div>
         <div className="flex-1">
           <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step3.title')}</h3>
           <p className="text-sm text-slate-600 dark:text-gray-300">{t('githubBackup.guide.step3.description')}</p>
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-sm">4</div>
+      <div className="flex gap-3">
+        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">4</div>
         <div className="flex-1">
           <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step4.title')}</h3>
           <p className="text-sm text-slate-600 dark:text-gray-300">{t('githubBackup.guide.step4.description')}</p>

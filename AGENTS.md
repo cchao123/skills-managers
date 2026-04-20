@@ -106,7 +106,7 @@ No external state management library. React's `useState` manages:
 | Codex settings | `~/.Codex/settings.json` |
 | Plugin cache | `~/.Codex/plugins/cache/[marketplace]/[plugin]/[version]/` |
 | GitHub skills | `~/.Codex/skills-manager/[repo-name]/skills/` |
-| App config | `~/.Codex/plugins/data/skills-manager/github-config.json` |
+| App config | `~/.skills-manager/config.json`, `~/.skills-manager/github-config.json` |
 | Tauri config | `src-tauri/tauri.conf.json` |
 | Rust entry | `src-tauri/src/main.rs` |
 | Frontend entry | `app/src/main.tsx` |

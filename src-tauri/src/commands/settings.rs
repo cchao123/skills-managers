@@ -2,7 +2,7 @@ use crate::models::{AgentConfig, AppConfig, LinkStrategy};
 use crate::settings::AppSettingsManager;
 use tauri::State;
 
-use crate::commands::skills::AppState;
+use crate::state::AppState;
 
 /// 获取所有 Agent 配置
 #[tauri::command]

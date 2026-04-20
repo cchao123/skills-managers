@@ -61,7 +61,7 @@ GitHubBackup/
 
 **GitHubForm**
 - Complete configuration form
-- Owner, repo, branch, path, and token fields
+- Owner, repo, branch, and token fields
 - Password visibility toggle
 - Disabled when connected
 - Helper text and validation

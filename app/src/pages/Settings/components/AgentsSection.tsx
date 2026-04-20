@@ -16,7 +16,7 @@ export const AgentsSection: React.FC<AgentsSectionProps> = ({ agents }) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const handleOpenPath = (path: string) => {
-    agentsApi.openFolderPath(path).catch(() => {});
+    agentsApi.openFolderPath(path).catch(() => { });
   };
 
   const toggleExpand = (name: string) => {
@@ -30,6 +30,35 @@ export const AgentsSection: React.FC<AgentsSectionProps> = ({ agents }) => {
 
   return (
     <div className="space-y-6">
+      {/* Skills Manager card */}
+      <button
+        type="button"
+        onClick={() => agentsApi.openFolder().catch(() => { })}
+        className="w-full bg-white dark:bg-dark-bg-card rounded-2xl border border-[#e1e3e4] dark:border-dark-border px-6 py-2.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-dark-bg-tertiary transition-colors text-left"
+      >
+        <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-dark-bg-tertiary flex items-center justify-center shrink-0 overflow-hidden">
+          <img
+            src="/octopus-logo.png"
+            alt="Skills Manager"
+            className="w-5 h-5 object-contain"
+          />
+        </div>
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span className="text-sm font-bold text-slate-900 dark:text-white shrink-0">
+            {t('settings.agents.skillsManager')}
+          </span>
+          <p className="text-xs text-slate-400 dark:text-gray-500 font-mono truncate">
+            ~/.skills-manager
+          </p>
+          <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold rounded-full shrink-0">
+            {t('settings.agents.appRoot')}
+          </span>
+        </div>
+        <span className="material-symbols-outlined text-lg text-slate-300 dark:text-gray-600 shrink-0">
+          open_in_new
+        </span>
+      </button>
+
       {/* Agents card */}
       <div className="bg-white dark:bg-dark-bg-card rounded-2xl border border-[#e1e3e4] dark:border-dark-border overflow-hidden">
         <div className="px-6 py-4 border-b border-[#e1e3e4] dark:border-dark-border">
@@ -154,34 +183,6 @@ export const AgentsSection: React.FC<AgentsSectionProps> = ({ agents }) => {
           })}
         </div>
       </div>
-
-      {/* Skills Manager card */}
-      <button
-        type="button"
-        onClick={() => agentsApi.openFolder().catch(() => {})}
-        className="w-full bg-white dark:bg-dark-bg-card rounded-2xl border border-[#e1e3e4] dark:border-dark-border px-6 py-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-dark-bg-tertiary transition-colors text-left"
-      >
-        <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-dark-bg-tertiary flex items-center justify-center shrink-0 overflow-hidden">
-          <img
-            src="/octopus-logo.png"
-            alt="Skills Manager"
-            className="w-6 h-6 object-contain"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-slate-900 dark:text-white">
-              {t('settings.agents.skillsManager')}
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5 font-mono truncate">
-            ~/.skills-manager
-          </p>
-        </div>
-        <span className="material-symbols-outlined text-lg text-slate-300 dark:text-gray-600 shrink-0">
-          open_in_new
-        </span>
-      </button>
     </div>
   );
 };

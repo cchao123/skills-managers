@@ -148,7 +148,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
                       <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
                       {isNativeAgent && (
                         <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
-                          <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>terminal</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>home</span>
                           {t('dashboard.nativeSource')}
                         </span>
                       )}

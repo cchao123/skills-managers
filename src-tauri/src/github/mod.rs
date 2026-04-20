@@ -1,7 +1,12 @@
+mod git_remote;
+mod marketplace;
+
 use crate::models::GitHubRepoConfig;
 use crate::settings::AppSettingsManager;
 use anyhow::{anyhow, Context, Result};
 use git2::{Repository, Signature};
+use git_remote::{build_auth_url, checkout_branch, push_to_origin};
+use marketplace::{generate_marketplace_json, generate_readme};
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
@@ -19,23 +24,65 @@ impl GitHubIntegrator {
 
     /// 测试 GitHub 连接：验证仓库和 Token 是否有效
     pub fn test_connection(owner: &str, repo: &str, branch: &str, token: &str) -> Result<bool> {
-        // 1. 验证仓库是否可访问
-        let url = format!("https://api.github.com/repos/{}/{}", owner, repo);
-        match ureq::get(&url)
+        // 分层诊断：GitHub API 在 token 无效时会**先**返回 401，无论资源是否存在。
+        // 因此如果直接打 /repos/:owner/:repo，当 token 和 owner/repo 同时填错时，
+        // 401 会掩盖掉 owner/repo 的错误。这里先用 /user 单独验证 token，再查仓库，
+        // 这样每个失败分支的错误文案才能精准对应出错的字段。
+
+        // 1. 单独验证 Token 本身是否有效
+        match ureq::get("https://api.github.com/user")
             .set("User-Agent", "skills-manager")
             .set("Authorization", &format!("token {}", token))
             .call()
         {
             Ok(resp) if resp.status() == 200 => {}
-            Ok(resp) => anyhow::bail!("GitHub API 返回状态码 {}", resp.status()),
+            Ok(resp) => anyhow::bail!("验证 Token 时 GitHub 返回状态码 {}", resp.status()),
             Err(ureq::Error::Status(401, _)) => {
-                anyhow::bail!("Token 无效或已过期，请检查 Personal Access Token 是否正确");
+                anyhow::bail!(
+                    "Token 无效或已过期（GitHub 返回 401）。由于 Token 本身不通过，仓库所有者 / 仓库名 / 分支还无法验证，请先到 https://github.com/settings/personal-access-tokens 生成或修正 Personal Access Token，再确认其他字段"
+                );
             }
             Err(ureq::Error::Status(403, _)) => {
-                anyhow::bail!("权限不足，请确保 Token 具有 repo 权限");
+                anyhow::bail!(
+                    "Token 被 GitHub 限制使用（403），可能是触发了 SSO 限制或速率限制，请稍后再试或检查 Token 设置"
+                );
+            }
+            Err(ureq::Error::Status(code, _)) => {
+                anyhow::bail!("验证 Token 时 GitHub 返回错误 (HTTP {})", code);
+            }
+            Err(ureq::Error::Transport(e)) => {
+                anyhow::bail!("网络连接失败: {}，请检查网络设置", e);
+            }
+        }
+
+        // 2. 验证仓库是否可访问，并解析 `permissions` 字段判断是否具备写入权限。
+        //    注意：`GET /repos/:owner/:repo` 只要 token 能读就返回 200，这里**必须**继续
+        //    检查 `permissions.push`，否则只读 token 也能通过测试，push 时才暴露错误。
+        let url = format!("https://api.github.com/repos/{}/{}", owner, repo);
+        let resp = match ureq::get(&url)
+            .set("User-Agent", "skills-manager")
+            .set("Authorization", &format!("token {}", token))
+            .call()
+        {
+            Ok(resp) if resp.status() == 200 => resp,
+            Ok(resp) => anyhow::bail!("GitHub API 返回状态码 {}", resp.status()),
+            Err(ureq::Error::Status(401, _)) => {
+                // Token 刚在 /user 通过，这里再 401 基本是竞态或 GitHub 异常
+                anyhow::bail!(
+                    "访问仓库时 Token 被拒绝（401），请稍后重试；若持续出现请重新生成 Token"
+                );
+            }
+            Err(ureq::Error::Status(403, _)) => {
+                anyhow::bail!(
+                    "当前 Token 无权访问仓库 '{}/{}'（403），Fine-grained Token 请确认已勾选该仓库的 Contents 读取权限",
+                    owner, repo
+                );
             }
             Err(ureq::Error::Status(404, _)) => {
-                anyhow::bail!("仓库 '{}/{}' 不存在，请检查仓库所有者和仓库名是否正确", owner, repo);
+                anyhow::bail!(
+                    "仓库 '{}/{}' 不存在或 Token 未授权该仓库。请检查所有者/仓库名是否拼写正确；Fine-grained Token 还需勾选对应仓库",
+                    owner, repo
+                );
             }
             Err(ureq::Error::Status(code, _)) => {
                 anyhow::bail!("GitHub API 返回错误 (HTTP {})", code);
@@ -43,9 +90,27 @@ impl GitHubIntegrator {
             Err(ureq::Error::Transport(e)) => {
                 anyhow::bail!("网络连接失败: {}，请检查网络设置", e);
             }
+        };
+
+        // 解析 `permissions.push`，提前拦截"只读 Token"
+        let body_str = resp
+            .into_string()
+            .with_context(|| "读取 GitHub API 响应失败")?;
+        let body: serde_json::Value = serde_json::from_str(&body_str)
+            .with_context(|| "解析 GitHub API 响应 JSON 失败")?;
+        let can_push = body
+            .get("permissions")
+            .and_then(|p| p.get("push"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        if !can_push {
+            anyhow::bail!(
+                "Token 缺少对仓库 '{}/{}' 的写入权限（测试发现 permissions.push=false）。请到 https://github.com/settings/personal-access-tokens 修改 Token：Fine-grained 需勾选该仓库的 Contents: Read and write；Classic 需勾选 repo 权限范围。",
+                owner, repo
+            );
         }
 
-        // 2. 检查分支是否存在
+        // 3. 检查分支是否存在
         let branch_url = format!(
             "https://api.github.com/repos/{}/{}/branches/{}",
             owner, repo, branch
@@ -91,8 +156,13 @@ impl GitHubIntegrator {
             self.open_for_soft_backup(config)?
         };
 
-        // 0. 自动生成 README.md
-        generate_readme(&self.skills_dir);
+        // 0. 自动生成 README.md 和 .claude-plugin/marketplace.json
+        generate_readme(&self.skills_dir, config);
+        generate_marketplace_json(&self.skills_dir, config);
+
+        // 0.5 无论用户/仓库有没有 .gitignore 规则命中 `.claude-plugin/`，
+        // Skills Manager 托管的这两个文件都必须进索引，否则 marketplace 永远同步不到远端。
+        self.force_add_managed_files(&repo)?;
 
         // 1. 暂存变更
         if overwrite_remote {
@@ -138,8 +208,19 @@ impl GitHubIntegrator {
         eprintln!("[sync] 检测到 {} 个变更", delta_count);
 
         if delta_count == 0 && !overwrite_remote {
-            eprintln!("[sync] 没有需要同步的变更");
-            return Ok(());
+            // 工作区相对 HEAD 没有新变更，不代表"同步完成"——
+            // 还必须确认本地 HEAD 没有领先于 origin/<branch>，否则此前未推送成功
+            // 的本地 commit（例如上次 push 401 失败留下的）仍需要继续 push，
+            // 而不能静默返回 Ok 让 UI 误报"同步成功"。
+            let ahead = self.local_ahead_of_remote(&repo, &config.branch)?;
+            if ahead == 0 {
+                eprintln!("[sync] 没有需要同步的变更");
+                return Ok(());
+            }
+            eprintln!(
+                "[sync] 工作区无新变更，但本地领先远端 {} 个未推送的 commit，继续 push",
+                ahead
+            );
         }
 
         // 3. 有变更则提交；镜像模式且无变更时仍可能需 force push（丢弃远端多出的提交）
@@ -403,6 +484,70 @@ impl GitHubIntegrator {
         Ok(())
     }
 
+    /// 强制把 Skills Manager 自动生成的托管文件加入索引，**绕过 .gitignore**。
+    ///
+    /// 背景：软备份的 `soft_add_workdir` 出于"只暂存工作区真实改动"的考量，
+    /// 使用 `include_ignored(false)` 枚举 status。若用户的全局 gitignore 或
+    /// 备份仓库本身的 `.gitignore` 恰好命中 `.claude-plugin/` / `.claude*`，
+    /// 这些生成文件会被静默跳过，导致 marketplace.json 永远同步不到远端。
+    ///
+    /// 这里使用 `IndexAddOption::FORCE` 显式 add，语义等同于 `git add -f`。
+    fn force_add_managed_files(&self, repo: &Repository) -> Result<()> {
+        const MANAGED_PATHS: &[&str] = &["README.md", ".claude-plugin/marketplace.json"];
+
+        let workdir = repo
+            .workdir()
+            .ok_or_else(|| anyhow!("仓库没有工作目录"))?
+            .to_path_buf();
+
+        let existing: Vec<&str> = MANAGED_PATHS
+            .iter()
+            .copied()
+            .filter(|p| workdir.join(p).is_file())
+            .collect();
+
+        if existing.is_empty() {
+            return Ok(());
+        }
+
+        let mut index = repo.index()?;
+        index.add_all(
+            existing.iter(),
+            git2::IndexAddOption::DEFAULT | git2::IndexAddOption::FORCE,
+            None,
+        )?;
+        index.write()?;
+        eprintln!(
+            "[sync] 强制暂存托管文件 (绕过 .gitignore): {:?}",
+            existing
+        );
+        Ok(())
+    }
+
+    /// 计算本地 HEAD 相对 `origin/<branch>` 领先的 commit 数。
+    ///
+    /// 返回 0 表示本地和远端一致或落后；>0 表示本地还有这么多 commit 没推上去。
+    /// 远端分支不存在时（首次推送场景）视作领先 1（>0），触发 push 以创建远端分支。
+    /// 本地 HEAD 不存在（空仓库）时返回 0。
+    ///
+    /// 注意：调用方需保证在此之前已 fetch 过远端，否则 `origin/<branch>` 可能陈旧。
+    fn local_ahead_of_remote(&self, repo: &Repository, branch: &str) -> Result<usize> {
+        let local_oid = match repo.head().ok().and_then(|h| h.target()) {
+            Some(oid) => oid,
+            None => return Ok(0),
+        };
+
+        let remote_ref = format!("origin/{}", branch);
+        let remote_oid = match repo.revparse_single(&remote_ref) {
+            Ok(obj) => obj.id(),
+            // 远端分支不存在 → 当成"本地领先"，需要 push 来创建
+            Err(_) => return Ok(1),
+        };
+
+        let (ahead, _behind) = repo.graph_ahead_behind(local_oid, remote_oid)?;
+        Ok(ahead)
+    }
+
     /// 软备份的 add：只把工作区**真实存在**的新增/修改文件写入索引。
     /// 不处理 `WT_DELETED`（本地删除的 tracked 文件），使远端保留旧版本。
     /// 默认尊重 `.gitignore`（不包含 ignored 文件）。
@@ -454,30 +599,6 @@ impl GitHubIntegrator {
         index.write()?;
         eprintln!("[sync] 软备份已暂存 {} 个文件（不含本地删除）", added);
         Ok(())
-    }
-
-    pub fn add_repository(&self, config: &GitHubRepoConfig, _repo_name: &str) -> Result<()> {
-        // 直接在 skills 目录操作，等价于 restore
-        self.open_or_init_repo(config)?;
-        Ok(())
-    }
-
-    pub fn remove_repository(&self, _repo_name: &str) -> Result<()> {
-        // 删除 .git 目录以解除 GitHub 关联，保留 skills 文件
-        let git_dir = self.skills_dir.join(".git");
-        if git_dir.exists() {
-            fs::remove_dir_all(&git_dir)
-                .with_context(|| "删除 .git 目录失败")?;
-        }
-        Ok(())
-    }
-
-    pub fn list_repositories(&self) -> Result<Vec<String>> {
-        if self.skills_dir.join(".git").exists() {
-            Ok(vec!["default".to_string()])
-        } else {
-            Ok(vec![])
-        }
     }
 
     /// 等价于 `git clean -fdx`：删除工作区内所有 untracked 和 ignored 的文件/目录。
@@ -592,142 +713,4 @@ impl Default for GitHubIntegrator {
     fn default() -> Self {
         Self::new().expect("Failed to create GitHubIntegrator")
     }
-}
-
-// === 辅助函数 ===
-
-/// 构建带认证的 Git URL
-fn build_auth_url(owner: &str, repo: &str, token: Option<&str>) -> String {
-    match token {
-        Some(t) => format!("https://x-access-token:{}@github.com/{}/{}.git", t, owner, repo),
-        None => format!("https://github.com/{}/{}.git", owner, repo),
-    }
-}
-
-/// Checkout 到指定分支（创建或更新本地分支以跟踪远端）
-fn checkout_branch(repo: &Repository, branch: &str) -> Result<()> {
-    let branch_ref = format!("origin/{}", branch);
-    let obj = repo.revparse_single(&branch_ref)
-        .map_err(|e| anyhow!("分支 '{}' 不存在: {}", branch, e))?;
-    let commit = obj.peel_to_commit()?;
-
-    // 创建或更新本地分支指向远端最新提交
-    repo.reference(&format!("refs/heads/{}", branch), commit.id(), true, "sync update")?;
-    repo.set_head(&format!("refs/heads/{}", branch))?;
-    repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
-
-    Ok(())
-}
-
-/// 推送到远程仓库（`force` 时使用 `+refs/heads/branch` 强制远端与本地一致）
-fn push_to_origin(repo: &Repository, branch: &str, token: Option<&str>, force: bool) -> Result<()> {
-    let mut remote = repo.find_remote("origin")?;
-    let refspec = if force {
-        format!("+refs/heads/{}:refs/heads/{}", branch, branch)
-    } else {
-        format!("refs/heads/{}:refs/heads/{}", branch, branch)
-    };
-
-    let token_owned = token.map(String::from);
-    let mut callbacks = git2::RemoteCallbacks::new();
-    callbacks.credentials(move |_, _, _| {
-        if let Some(ref t) = token_owned {
-            git2::Cred::userpass_plaintext("x-access-token", t)
-        } else {
-            git2::Cred::default()
-        }
-    });
-
-    let mut opts = git2::PushOptions::new();
-    opts.remote_callbacks(callbacks);
-    remote.push(&[&refspec], Some(&mut opts)).map_err(|e| {
-        let msg = e.message().to_string();
-        eprintln!("[sync] push error: {}", msg);
-        if msg.contains("403") || msg.contains("denied") {
-            anyhow!("推送失败: 权限不足。请检查 Token 是否有仓库写入权限（需要勾选 repo 权限范围）。前往设置: https://github.com/settings/personal-access-tokens")
-        } else if msg.contains("non-fast-forward") || msg.contains("fast-forward") {
-            anyhow!("推送失败: 远端有新变更，请重试同步；若希望以本地为准，可在同步按钮旁勾选「 以本地版本覆盖远程」后重试")
-        } else if force && (msg.contains("protected") || msg.contains("protected branch")) {
-            anyhow!("强制推送被拒绝: GitHub 上该分支可能开启了保护，请暂时允许 force push 或改用未保护分支")
-        } else {
-            anyhow!("推送失败: {}", msg)
-        }
-    })?;
-
-    Ok(())
-}
-
-/// 扫描 skills 目录，自动生成 README.md
-fn generate_readme(skills_dir: &std::path::Path) {
-    let mut skills = Vec::new();
-
-    if let Ok(entries) = fs::read_dir(skills_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if !path.is_dir() {
-                continue;
-            }
-            let skill_md = path.join("SKILL.md");
-            if !skill_md.exists() {
-                continue;
-            }
-
-            let id = path.file_name().unwrap().to_string_lossy().to_string();
-            let (name, desc) = parse_skill_meta(&skill_md);
-            skills.push((id, name, desc));
-        }
-    }
-
-    skills.sort_by(|a, b| a.0.cmp(&b.0));
-
-    let mut content = String::from(
-        "# Skills Backup\n\n\
-         > Synced by [Skills Manager](https://github.com/cchao123/skills-managers) — \
-         a desktop app for managing AI coding agent skills.\n\n",
-    );
-
-    if skills.is_empty() {
-        content.push_str("*No skills yet.*\n");
-    } else {
-        content.push_str(&format!("## Skills ({})\n\n", skills.len()));
-        content.push_str("| # | Skill | Description |\n");
-        content.push_str("|---|-------|-------------|\n");
-        for (i, (_id, name, desc)) in skills.iter().enumerate() {
-            let desc = desc.replace('|', "\\|").replace('\n', " ");
-            content.push_str(&format!("| {} | **{}** | {} |\n", i + 1, name, desc));
-        }
-        content.push('\n');
-    }
-
-    let readme_path = skills_dir.join("README.md");
-    let _ = fs::write(&readme_path, content);
-    eprintln!("[sync] README.md generated with {} skills", skills.len());
-}
-
-/// 从 SKILL.md 提取 name 和 description
-fn parse_skill_meta(path: &std::path::Path) -> (String, String) {
-    let content = match fs::read_to_string(path) {
-        Ok(c) => c,
-        Err(_) => return ("".to_string(), "".to_string()),
-    };
-    let re = regex::Regex::new(r"(?s)^---[\r\n]+(.*?)[\r\n]+---").unwrap();
-    let yaml = match re.captures(&content).and_then(|c| c.get(1)) {
-        Some(m) => m.as_str().to_string(),
-        None => return ("".to_string(), "".to_string()),
-    };
-    let yaml_val: serde_yaml::Value = match serde_yaml::from_str(&yaml) {
-        Ok(v) => v,
-        Err(_) => return ("".to_string(), "".to_string()),
-    };
-    let name = yaml_val
-        .get("name")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    let desc = yaml_val
-        .get("description")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    (name, desc)
 }

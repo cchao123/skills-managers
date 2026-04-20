@@ -7,21 +7,6 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize)]
-pub struct AddRepoRequest {
-    pub name: String,
-    pub owner: String,
-    pub repo: String,
-    pub branch: String,
-    pub token: Option<String>,
-    pub path: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct RemoveRepoRequest {
-    pub name: String,
-}
-
-#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncRepoRequest {
     pub name: String,
@@ -41,7 +26,7 @@ impl GitHubConfigManager {
     pub fn new() -> anyhow::Result<Self> {
         let home = dirs::home_dir()
             .context("Failed to get home directory")?;
-        let config_dir = home.join(".claude").join("plugins").join("data").join("skills-manager");
+        let config_dir = home.join(".skills-manager");
         fs::create_dir_all(&config_dir)?;
 
         let config_path = config_dir.join("github-config.json");
@@ -73,12 +58,6 @@ impl GitHubConfigManager {
         Ok(())
     }
 
-    pub fn remove_repo(&self, name: &str) -> anyhow::Result<()> {
-        let mut github_config = self.load_config()?;
-        github_config.repositories.remove(name);
-        self.save_config(&github_config)?;
-        Ok(())
-    }
 }
 
 /// 测试 GitHub 连接
@@ -103,7 +82,6 @@ pub async fn save_github_config(
     owner: String,
     repo: String,
     branch: String,
-    path: String,
     token: Option<String>,
 ) -> Result<(), String> {
     let config_manager = GitHubConfigManager::new()
@@ -114,8 +92,6 @@ pub async fn save_github_config(
         repo,
         branch,
         token,
-        path,
-        enabled: true,
         last_sync: None,
     };
 
@@ -132,85 +108,6 @@ pub async fn get_github_config() -> Result<GitHubConfig, String> {
         .map_err(|e| e.to_string())?;
     config_manager.load_config()
         .map_err(|e| e.to_string())
-}
-
-/// 添加 GitHub 仓库
-#[tauri::command]
-pub async fn add_github_repo(
-    request: AddRepoRequest,
-) -> Result<(), String> {
-    let integrator = GitHubIntegrator::new()
-        .map_err(|e| e.to_string())?;
-
-    let repo_config = GitHubRepoConfig {
-        owner: request.owner.clone(),
-        repo: request.repo.clone(),
-        branch: request.branch.clone(),
-        token: request.token.clone(),
-        path: request.path.clone(),
-        enabled: true,
-        last_sync: None,
-    };
-
-    let repo_name = request.name.clone();
-    let config_for_save = repo_config.clone();
-
-    // Clone repo in blocking thread
-    tokio::task::spawn_blocking(move || {
-        integrator.add_repository(&repo_config, &repo_name)
-            .map_err(|e| e.to_string())
-    })
-    .await
-    .map_err(|e| format!("任务执行失败: {}", e))??;
-
-    // Save config
-    let mut updated_config = config_for_save;
-    updated_config.last_sync = Some(chrono::Utc::now().to_rfc3339());
-
-    let config_manager = GitHubConfigManager::new()
-        .map_err(|e| e.to_string())?;
-    config_manager.add_repo(request.name, updated_config)
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
-/// 删除 GitHub 仓库
-#[tauri::command]
-pub async fn remove_github_repo(
-    request: RemoveRepoRequest,
-) -> Result<(), String> {
-    let integrator = GitHubIntegrator::new()
-        .map_err(|e| e.to_string())?;
-
-    let repo_name = request.name.clone();
-    tokio::task::spawn_blocking(move || {
-        integrator.remove_repository(&repo_name)
-            .map_err(|e| e.to_string())
-    })
-    .await
-    .map_err(|e| format!("任务执行失败: {}", e))??;
-
-    let config_manager = GitHubConfigManager::new()
-        .map_err(|e| e.to_string())?;
-    config_manager.remove_repo(&request.name)
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
-/// 列出 GitHub 仓库
-#[tauri::command]
-pub async fn list_github_repos() -> Result<Vec<String>, String> {
-    let integrator = GitHubIntegrator::new()
-        .map_err(|e| e.to_string())?;
-
-    tokio::task::spawn_blocking(move || {
-        integrator.list_repositories()
-            .map_err(|e| e.to_string())
-    })
-    .await
-    .map_err(|e| format!("任务执行失败: {}", e))?
 }
 
 /// 给 GitHub 仓库加星标

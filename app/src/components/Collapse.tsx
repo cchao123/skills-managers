@@ -26,7 +26,7 @@ export const Collapse: React.FC<CollapseProps> = ({
           }
           setOpen(!open);
         }}
-        className="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary"
+        className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary"
       >
         {title}
         <span className={`material-symbols-outlined text-slate-400 dark:text-gray-500 text-2xl transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
@@ -38,7 +38,7 @@ export const Collapse: React.FC<CollapseProps> = ({
         className="overflow-hidden transition-all duration-300 ease-in-out"
         style={{ maxHeight: open ? maxHeight : '0px', opacity: open ? 1 : 0 }}
       >
-        <div className="px-6 pb-6 space-y-4">
+        <div className="px-5 pb-5 space-y-4">
           {children}
         </div>
       </div>

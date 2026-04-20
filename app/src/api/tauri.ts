@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { SkillMetadata, GitHubConfig, AgentConfig, AppConfig, SkillFileEntry, GitHubSkill, LinkType } from '@/types';
+import type { SkillMetadata, GitHubConfig, AgentConfig, AppConfig, SkillFileEntry, LinkType } from '@/types';
 import { adaptSkillMetadataList, BackendSkillMetadata } from '@/adapters/skillAdapter';
 
 export const skillsApi = {
@@ -111,25 +111,6 @@ export const agentsApi = {
 };
 
 export const githubApi = {
-  addRepo: async (params: {
-    name: string;
-    owner: string;
-    repo: string;
-    branch: string;
-    token?: string;
-    path: string;
-  }): Promise<void> => {
-    await invoke('add_github_repo', { name: params.name, owner: params.owner, repo: params.repo, branch: params.branch, token: params.token, path: params.path });
-  },
-
-  removeRepo: async (name: string): Promise<void> => {
-    await invoke('remove_github_repo', { name });
-  },
-
-  listRepos: async (): Promise<string[]> => {
-    return await invoke('list_github_repos');
-  },
-
   syncRepo: async (
     name: string,
     _branch: string,
@@ -164,10 +145,9 @@ export const githubApi = {
     owner: string;
     repo: string;
     branch: string;
-    path: string;
     token?: string;
   }): Promise<void> => {
-    await invoke('save_github_config', { owner: config.owner, repo: config.repo, branch: config.branch, path: config.path, token: config.token });
+    await invoke('save_github_config', { owner: config.owner, repo: config.repo, branch: config.branch, token: config.token });
   },
 
   openSkillsManagerFolder: async (): Promise<void> => {
@@ -180,26 +160,5 @@ export const githubApi = {
 
   checkStar: async (owner: string, repo: string, token: string): Promise<boolean> => {
     return await invoke<boolean>('check_github_star', { owner, repo, token });
-  },
-
-  /**
-   * 扫描 GitHub 仓库列表
-   */
-  scanRepos: async (repos: string[], token?: string): Promise<GitHubSkill[]> => {
-    return await invoke<GitHubSkill[]>('scan_github_repos', { repos, token });
-  },
-
-  /**
-   * 从 GitHub 安装技能
-   */
-  install: async (repoUrl: string, agents: string[]): Promise<void> => {
-    await invoke('install_from_github', { repoUrl, agents });
-  },
-
-  /**
-   * 获取默认仓库列表
-   */
-  getDefaultRepos: async (): Promise<string[]> => {
-    return await invoke<string[]>('get_default_repos');
   },
 };

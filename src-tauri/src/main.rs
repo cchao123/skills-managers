@@ -2,24 +2,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod github;
+mod linker;
 mod models;
 mod scanner;
-mod linker;
 mod settings;
-mod error;
-mod github_scanner;
-mod installer;
-mod github;
+mod state;
+mod tray;
 
-use commands::skills::AppState;
-use models::SkillMetadata;
 use settings::AppSettingsManager;
+use state::AppState;
 use std::sync::Mutex;
-use tauri::{
-    menu::{MenuBuilder, MenuItem, SubmenuBuilder},
-    tray::TrayIconBuilder,
-    Manager, Runtime,
-};
+use tauri::{tray::TrayIconBuilder, Manager};
 
 fn load_env_for_runtime() {
     // Load common .env files for local development. CI env vars still take precedence.
@@ -57,143 +51,6 @@ fn init_sentry() -> Option<sentry::ClientInitGuard> {
     Some(guard)
 }
 
-// 托盘多语言支持
-struct TrayTexts {
-    show: &'static str,
-    quit: &'static str,
-    no_skills: &'static str,
-}
-
-fn get_tray_texts(lang: &str) -> TrayTexts {
-    match lang {
-        "zh" | "zh-CN" | "zh-TW" => TrayTexts {
-            show: "显示主窗口",
-            quit: "退出",
-            no_skills: "暂无技能",
-        },
-        _ => TrayTexts {
-            show: "Show Window",
-            quit: "Quit",
-            no_skills: "No Skills",
-        },
-    }
-}
-
-fn rebuild_tray_menu<R: Runtime, M: Manager<R>>(manager: &M, lang: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let app = manager.app_handle();
-    let texts = get_tray_texts(lang);
-
-    // 获取技能和配置
-    let state = app.state::<AppState>();
-    let config = state.settings_manager.lock().unwrap().get_config().clone();
-    let skill_states = config.skill_states.clone();
-    let agents = config.agents.clone();
-    let all_skills = scanner::scan_all_skill_sources(&skill_states, &agents).unwrap_or_default();
-
-    // 与前端 matchesAnyPrefix 一致：大小写不敏感的 id 前缀匹配
-    let hide_prefixes: Vec<String> = config
-        .skill_hide_prefixes
-        .iter()
-        .map(|p| p.trim().to_lowercase())
-        .filter(|p| !p.is_empty())
-        .collect();
-    let filtered: Vec<_> = if hide_prefixes.is_empty() {
-        all_skills
-    } else {
-        all_skills
-            .into_iter()
-            .filter(|s| {
-                let lower = s.id.to_lowercase();
-                !hide_prefixes.iter().any(|p| lower.starts_with(p))
-            })
-            .collect()
-    };
-
-    // 跨 source 按 id 合并（与 Dashboard 合并视图语义一致）：
-    // agent_enabled 做 OR，保留首次出现的元数据作为展示基底，避免同名技能在托盘里重复。
-    let skills: Vec<SkillMetadata> = {
-        let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-        let mut merged: Vec<SkillMetadata> = Vec::with_capacity(filtered.len());
-        for skill in filtered {
-            match seen.get(&skill.id).copied() {
-                Some(idx) => {
-                    for (agent_name, enabled) in &skill.agent_enabled {
-                        if *enabled {
-                            merged[idx].agent_enabled.insert(agent_name.clone(), true);
-                        }
-                    }
-                }
-                None => {
-                    seen.insert(skill.id.clone(), merged.len());
-                    merged.push(skill);
-                }
-            }
-        }
-        merged
-    };
-
-    let mut menu_builder = MenuBuilder::new(app);
-
-    for agent in &config.agents {
-        if !agent.detected { continue; }
-        let enabled_count = skills.iter()
-            .filter(|s| s.agent_enabled.get(&agent.name) == Some(&true))
-            .count();
-
-        let submenu = SubmenuBuilder::new(app, &format!("{} ({}/{})", agent.display_name, enabled_count, skills.len()));
-        let submenu = if enabled_count == 0 {
-            submenu.text("empty", texts.no_skills)
-        } else {
-            let mut sb = submenu;
-            for skill in &skills {
-                if skill.agent_enabled.get(&agent.name) != Some(&true) { continue; }
-                sb = sb.text(format!("skill-{}-{}", agent.name, skill.id), &skill.name);
-            }
-            sb
-        };
-        menu_builder = menu_builder.item(&submenu.build()?);
-    }
-
-    let show_item = MenuItem::with_id(app, "show", texts.show, true, None::<&str>)?;
-    let quit_item = MenuItem::with_id(app, "quit", texts.quit, true, None::<&str>)?;
-    menu_builder = menu_builder.separator().item(&show_item).item(&quit_item);
-
-    let menu = menu_builder.build()?;
-    if let Some(tray) = app.tray_by_id("main-tray") {
-        tray.set_menu(Some(menu))?;
-    }
-    Ok(())
-}
-
-// 前端调用：更新托盘语言并持久化
-#[tauri::command]
-fn update_tray_language(app: tauri::AppHandle, lang: String) -> Result<(), String> {
-    rebuild_tray_menu(&app, &lang).map_err(|e| e.to_string())?;
-    // 持久化语言到配置
-    let state = app.state::<AppState>();
-    if let Ok(mut mgr) = state.settings_manager.lock() {
-        let _ = mgr.update_language(&lang);
-    }
-    Ok(())
-}
-
-/// 前端调用：更新 skill 隐藏前缀并重建托盘菜单
-#[tauri::command]
-fn set_skill_hide_prefixes(app: tauri::AppHandle, prefixes: Vec<String>) -> Result<(), String> {
-    let state = app.state::<AppState>();
-    let lang = {
-        let mut mgr = state
-            .settings_manager
-            .lock()
-            .map_err(|e| format!("Failed to acquire lock: {}", e))?;
-        mgr.set_skill_hide_prefixes(prefixes)
-            .map_err(|e| format!("Failed to save skill hide prefixes: {}", e))?;
-        mgr.get_config().language.clone()
-    };
-    rebuild_tray_menu(&app, &lang).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -219,11 +76,10 @@ pub fn run() {
             let skill_states = config.skill_states.clone();
             let agents = config.agents.clone();
 
-            // 扫描技能
+            // 预热一次扫描，捕获潜在 IO 异常。
             let _skills = scanner::scan_all_skill_sources(&skill_states, &agents)
                 .unwrap_or_default();
 
-            // 设置应用状态
             app.manage(AppState {
                 settings_manager: Mutex::new(settings_manager),
             });
@@ -273,7 +129,7 @@ pub fn run() {
 
             // 构建并设置托盘菜单（使用用户保存的语言偏好）
             let lang = config.language.clone();
-            rebuild_tray_menu(app, &lang)?;
+            tray::rebuild_tray_menu(app, &lang)?;
 
             Ok(())
         })
@@ -282,7 +138,9 @@ pub fn run() {
                 api.prevent_close();
                 let _ = window.hide();
                 #[cfg(target_os = "macos")]
-                let _ = window.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+                let _ = window
+                    .app_handle()
+                    .set_activation_policy(tauri::ActivationPolicy::Accessory);
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -305,17 +163,10 @@ pub fn run() {
             commands::settings::open_skills_manager_folder,
             commands::settings::detect_agents,
             commands::settings::open_folder,
-            // Marketplace commands
-            commands::marketplace::scan_github_repos,
-            commands::marketplace::install_from_github,
-            commands::marketplace::get_default_repos,
             // GitHub backup commands
             commands::github::test_github_connection,
             commands::github::save_github_config,
             commands::github::get_github_config,
-            commands::github::add_github_repo,
-            commands::github::remove_github_repo,
-            commands::github::list_github_repos,
             commands::github::sync_github_repo,
             commands::github::restore_from_github,
             commands::github::star_github_repo,
@@ -323,8 +174,8 @@ pub fn run() {
             // Theme commands
             commands::theme::set_window_theme,
             // Tray commands
-            update_tray_language,
-            set_skill_hide_prefixes,
+            tray::update_tray_language,
+            tray::set_skill_hide_prefixes,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
@@ -336,7 +187,6 @@ pub fn run() {
 
 #[cfg(not(mobile))]
 fn main() {
-    // 初始化日志
     env_logger::init();
     load_env_for_runtime();
 
@@ -347,10 +197,4 @@ fn main() {
 }
 
 #[cfg(test)]
-mod models_test;
-#[cfg(test)]
-mod scanner_test;
-#[cfg(test)]
-mod linker_test;
-#[cfg(test)]
-mod settings_test;
+mod tests;

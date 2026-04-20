@@ -111,7 +111,7 @@
     "noSkillsHint": "Try adjusting your search or filter",
     "retry": "Retry",
     "errorMessage": "Make sure the app is running in Tauri environment, not in a browser.",
-    "localAgentDirectory": "View Agent Root Directories",
+    "localAgentDirectory": "Local Agent Details",
     "viewFlat": "Flat View",
     "viewBySource": "By Source",
     "openAgentSettings": "Open Agents in Settings",
@@ -277,6 +277,7 @@
   "settings": {
     "title": "Settings",
     "tabGeneral": "General",
+    "tabAdvanced": "Advanced",
     "tabAgents": "Agents",
     "tabAbout": "About",
     "tabChangelog": "Changelog",
@@ -287,6 +288,7 @@
       "installed": "Installed",
       "notInstalled": "Not Installed",
       "skillsManager": "Skills Manager",
+      "appRoot": "App Root",
       "scanPaths": "Skill Scan Paths",
       "scanPathsEmpty": "No dedicated scan paths for this agent",
       "expand": "Expand scan paths",
@@ -339,7 +341,7 @@
       "modeLabel": "Advanced Mode",
       "disabledHint": "Off by default. Only skills in the Skills Manager root directory can be deleted.",
       "enabledHint": "Enabled. You can delete skills from any source.",
-      "warning": "With Advanced Mode on, a delete button will appear on detail pages for all skills, including those from Cursor, Claude, and other agents' native directories. Use with caution — accidental deletion may affect agent functionality."
+      "warning": "With Advanced Mode on, a delete button will appear on detail pages for all skills, including those from Cursor, Claude, and other agents' native directories."
     }
   },
   "common": {

@@ -2,11 +2,11 @@ use crate::linker::LinkManager;
 use crate::models::{SkillMetadata, SkillSource, SkillFileEntry, skill_state_key};
 use crate::scanner;
 use crate::settings::AppSettingsManager;
+use crate::state::AppState;
 use log::{info, error, warn};
 use regex::Regex;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
 use tauri::State;
 
 /// 从 SKILL.md 内容中提取 name 字段
@@ -18,11 +18,6 @@ fn extract_skill_name_from_md(content: &str) -> Option<String> {
     yaml.get("name")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
-}
-
-/// 应用状态
-pub struct AppState {
-    pub settings_manager: Mutex<AppSettingsManager>,
 }
 
 /// 根据技能来源获取基础路径

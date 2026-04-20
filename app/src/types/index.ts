@@ -64,33 +64,12 @@ export interface GitHubRepoConfig {
   repo: string;
   branch: string;
   token?: string;
-  path: string;
-  enabled: boolean;
   last_sync?: string;
 }
 
 export interface GitHubConfig {
   repositories: Record<string, GitHubRepoConfig>;
 }
-
-// GitHub 技能信息（用于 Marketplace）
-export interface GitHubSkill {
-  id: string;                    // "owner/repo"
-  name: string;                  // 技能名称
-  description: string;           // 描述
-  category: string;              // 分类
-  author: string;                // 作者
-  version?: string;              // 版本
-  stars: number;                 // Stars 数量
-  repository: string;            // 仓库 URL
-  default_branch: string;        // 默认分支
-  updated_at: string;            // 更新时间
-  install_status: 'installed' | 'downloaded' | 'available';
-  enabled_agents: string[];      // 已启用的 Agent
-}
-
-// 安装状态
-export type InstallStatus = 'installed' | 'downloaded' | 'available';
 
 // 合并后的多来源 Skill 信息（平铺视图使用）
 export interface SourcePathInfo {

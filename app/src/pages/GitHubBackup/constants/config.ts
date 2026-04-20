@@ -7,7 +7,6 @@ export const DEFAULT_REPO_CONFIG = {
   owner: '',
   repo: '',
   branch: 'main',
-  path: '/',
   token: '',
 } as const;
 
@@ -15,6 +14,3 @@ export const DEFAULT_REPO_CONFIG = {
 export const STAR_REPO_OWNER = 'cchao123';
 export const STAR_REPO_NAME = 'skills-managers';
 export const STAR_REPO_URL = `https://github.com/${STAR_REPO_OWNER}/${STAR_REPO_NAME}`;
-
-// Auto-save delay in milliseconds
-export const AUTO_SAVE_DELAY = 1000;
