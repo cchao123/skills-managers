@@ -35,7 +35,7 @@ export const LanguageSection: React.FC<LanguageSectionProps> = ({
                 : 'border-[#e1e3e4] dark:border-dark-border hover:border-[#b71422]/30 bg-white dark:bg-dark-bg-card'
             }`}
           >
-            <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black ${
+            <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium ${
               currentLanguage === lang.code
                 ? 'bg-[#b71422] text-white'
                 : 'bg-slate-100 dark:bg-dark-bg-tertiary text-slate-600 dark:text-gray-300'

@@ -82,10 +82,12 @@ export const useGitHubConfig = () => {
           branch: firstRepo.branch,
           token: firstRepo.token || '',
         });
-        // 连接状态不跨会话持久化：磁盘上有配置只代表用户曾填过，
-        // 不代表当前 token/仓库/分支依然有效。用户必须重新点"测试连接"
-        // 才能解锁同步/恢复按钮，避免凭失效凭据触发误操作。
       }
+
+      // 从 localStorage 恢复连接状态
+      const savedConnectionState = localStorage.getItem('github_connected');
+      const wasConnected = savedConnectionState === 'true';
+      setConnected(wasConnected);
     } catch (error) {
       console.error('Failed to load GitHub config:', error);
       showToast('error', t('common.error'));
@@ -148,7 +150,11 @@ export const useGitHubConfig = () => {
     // 避免用户填错信息后关闭应用，再打开时凭残留配置触发同步/恢复。
     const newConfig = { ...repoConfig, [field]: value };
     setRepoConfig(newConfig);
-    if (connected) setConnected(false);
+    // 如果用户修改了任何配置字段，清除连接状态，需要重新测试连接
+    if (connected) {
+      setConnected(false);
+      localStorage.removeItem('github_connected');
+    }
   }, [repoConfig, connected]);
 
   return {

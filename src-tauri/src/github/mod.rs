@@ -22,6 +22,30 @@ impl GitHubIntegrator {
         Ok(Self { skills_dir })
     }
 
+    /// 快速验证 Token 是否有效（仅调用 GitHub API 的 /user 端点）
+    pub fn quick_validate_token(token: &str) -> Result<()> {
+        match ureq::get("https://api.github.com/user")
+            .set("User-Agent", "skills-manager")
+            .set("Authorization", &format!("token {}", token))
+            .call()
+        {
+            Ok(resp) if resp.status() == 200 => Ok(()),
+            Ok(resp) => anyhow::bail!("GitHub API 返回状态码 {}", resp.status()),
+            Err(ureq::Error::Status(401, _)) => {
+                anyhow::bail!("Token 无效或已过期")
+            }
+            Err(ureq::Error::Status(403, _)) => {
+                anyhow::bail!("Token 被 GitHub 限制使用")
+            }
+            Err(ureq::Error::Status(code, _)) => {
+                anyhow::bail!("GitHub API 返回错误 (HTTP {})", code)
+            }
+            Err(ureq::Error::Transport(e)) => {
+                anyhow::bail!("网络连接失败: {}", e)
+            }
+        }
+    }
+
     /// 测试 GitHub 连接：验证仓库和 Token 是否有效
     pub fn test_connection(owner: &str, repo: &str, branch: &str, token: &str) -> Result<bool> {
         // 分层诊断：GitHub API 在 token 无效时会**先**返回 401，无论资源是否存在。

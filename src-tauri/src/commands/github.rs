@@ -183,6 +183,12 @@ pub async fn sync_github_repo(
         .ok_or_else(|| format!("仓库 '{}' 不存在于配置中", request.name))?
         .clone();
 
+    // 在推送前先验证 token 是否仍然有效
+    if let Some(ref token) = repo_config.token {
+        crate::github::GitHubIntegrator::quick_validate_token(token)
+            .map_err(|e| format!("Token 验证失败: {}", e))?;
+    }
+
     let integrator = GitHubIntegrator::new()
         .map_err(|e| e.to_string())?;
 
@@ -218,6 +224,12 @@ pub async fn restore_from_github(
     let repo_config = config.repositories.get(&request.name)
         .ok_or_else(|| format!("仓库 '{}' 不存在于配置中", request.name))?
         .clone();
+
+    // 在恢复前先验证 token 是否仍然有效
+    if let Some(ref token) = repo_config.token {
+        crate::github::GitHubIntegrator::quick_validate_token(token)
+            .map_err(|e| format!("Token 验证失败: {}", e))?;
+    }
 
     let integrator = GitHubIntegrator::new()
         .map_err(|e| e.to_string())?;
