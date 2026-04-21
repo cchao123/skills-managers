@@ -4,7 +4,9 @@
 
 # 技能管理器
 
-基于 **Tauri 2**、**React** 与 **TypeScript** 的桌面应用，用于集中管理 Claude Code、Cursor 等环境下的 **Skills**（技能）：扫描、启用/禁用、市场浏览与 GitHub 备份同步。
+
+**一键共享 + 一键同步。** 在多Agent中更优雅的使用skill，并通过 **Skills Manager** 更优雅的管理并构建你的专属技能仓库。
+
 
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=000)](https://tauri.app/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=000)](https://reactjs.org/)
@@ -34,10 +36,6 @@
 - 按名称、描述等搜索与启用/禁用筛选
 - 查看详情、删除（仅限中央存储中的技能）、支持文件夹拖入导入（需含 `SKILL.md`）
 
-### 技能市场（Marketplace）
-
-- 浏览与搜索社区技能仓库
-- 从 GitHub 安装技能到本地环境
 
 ### GitHub 备份
 
