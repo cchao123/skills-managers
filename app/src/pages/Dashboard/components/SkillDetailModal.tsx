@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SkillMetadata, AgentConfig, SkillFileEntry, MergedSkillInfo } from '@/types';
 import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
@@ -58,6 +59,18 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   const { allSources, nativeAgents, allPaths } = useMergedView(skill, merged);
   const detectedAgents = useDetectedAgents(agents);
 
+  // Esc 关闭弹窗：组件挂载即代表弹窗打开，卸载时自动清理
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   const handleAgentToggle = (agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => {
     if (merged && onToggleAgentMerged) {
       onToggleAgentMerged(merged, agentName);
@@ -67,7 +80,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-dark-bg-card rounded-xl shadow-xl w-[65%] max-w-[1400px] max-h-[85vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-6 pb-3 border-b border-gray-200 dark:border-dark-border">

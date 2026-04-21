@@ -1,4 +1,15 @@
 /**
+ * 前端模块间通信使用的自定义 `window` 事件名。
+ * 统一放这里，避免字符串散落在各组件里打错、难以追踪派发 / 监听方。
+ */
+export const WINDOW_EVENTS = {
+  /** 通知 Settings 页切换 tab；payload 为 `CustomEvent<TabType>` 的 detail 字段。 */
+  settingsSetTab: 'settings:set-tab',
+} as const;
+
+export type WindowEventName = typeof WINDOW_EVENTS[keyof typeof WINDOW_EVENTS];
+
+/**
  * 统一的事件名称定义
  * 用于 Aptabase 事件追踪
  */

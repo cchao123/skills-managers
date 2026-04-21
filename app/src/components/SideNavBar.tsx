@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { PROJECT_NAME, PROJECT_VERSION, PAGE, type Page } from '@/constants';
+import { PROJECT_NAME, PROJECT_VERSION, PAGE, SESSION_STORAGE_KEYS, WINDOW_EVENTS, type Page } from '@/constants';
 
 interface SideNavBarProps {
   currentPage: Page;
@@ -10,6 +10,17 @@ interface SideNavBarProps {
 
 export default function SideNavBar({ currentPage, setCurrentPage, isCollapsed, onToggleCollapse }: SideNavBarProps) {
   const { t } = useTranslation();
+
+  const handleLogoClick = () => {
+    try {
+      sessionStorage.setItem(SESSION_STORAGE_KEYS.settingsInitialTab, 'about');
+    } catch {
+      /* ignore quota / private mode */
+    }
+    // 已经在 Settings 页时，setCurrentPage 不会触发重新挂载，需要一个事件通知已 mount 的 Settings 切 tab
+    window.dispatchEvent(new CustomEvent(WINDOW_EVENTS.settingsSetTab, { detail: 'about' }));
+    setCurrentPage(PAGE.Settings);
+  };
 
   const navItems: Array<{ id: Page; icon: string; label: string }> = [
     { id: PAGE.Dashboard, icon: 'extension', label: t('nav.dashboard') },
@@ -33,7 +44,11 @@ export default function SideNavBar({ currentPage, setCurrentPage, isCollapsed, o
         className="absolute top-0 left-0 right-0 h-14"
         data-tauri-drag-region
       />
-      <AppInfo isCollapsed={isCollapsed} />
+      <AppInfo
+        isCollapsed={isCollapsed}
+        onClick={handleLogoClick}
+        title={t('settings.tabAbout')}
+      />
 
       <nav className="flex-1 space-y-2">
         {navItems.map((item) => (
@@ -92,21 +107,33 @@ export default function SideNavBar({ currentPage, setCurrentPage, isCollapsed, o
 
 interface AppInfoProps {
   isCollapsed: boolean;
+  onClick: () => void;
+  title: string;
 }
 
-function AppInfo({ isCollapsed }: AppInfoProps) {
+function AppInfo({ isCollapsed, onClick, title }: AppInfoProps) {
   if (isCollapsed) {
     return (
       <div className="flex justify-center mb-12">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-white dark:bg-dark-bg-card">
+        <button
+          type="button"
+          onClick={onClick}
+          title={title}
+          className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-white dark:bg-dark-bg-card hover:opacity-80 active:scale-[0.98] transition-all cursor-pointer"
+        >
           <img src="/octopus-logo.png" alt="Octopus Logo" className="w-full h-full object-cover" />
-        </div>
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-3 mb-12 px-2">
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="flex items-center gap-3 mb-12 px-2 text-left hover:opacity-80 active:scale-[0.98] transition-all cursor-pointer"
+    >
       <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm overflow-hidden bg-white dark:bg-dark-tertiary">
         <img src="/octopus-logo.png" alt="Octopus Logo" className="w-full h-full object-cover" />
       </div>
@@ -118,6 +145,6 @@ function AppInfo({ isCollapsed }: AppInfoProps) {
           {PROJECT_VERSION}
         </p>
       </div>
-    </div>
+    </button>
   );
 }

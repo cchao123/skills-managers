@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { SkillMetadata, AgentConfig, MergedSkillInfo } from '@/types';
-import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
+// TODO: 暂时隐藏技能图标，缺少每个技能对应的 icon 映射，恢复时一并启用
+// import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { badgeClass, sourceLabel } from '@/pages/Dashboard/utils/source';
 import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
@@ -59,11 +60,13 @@ export const SkillCard: React.FC<SkillCardProps> = ({
         <div className="flex justify-between items-start gap-3">
           {/* Left: Icon + Name + Source Badges + Description */}
           <div className="flex items-start gap-3 min-w-0 flex-1">
+            {/* 暂时隐藏技能图标：缺少每个技能对应的 icon 映射，先注释避免展示错位/兜底图
             <div className={`w-10 h-10 rounded-lg ${getSkillColor(skill.id)} flex items-center justify-center flex-shrink-0`}>
               <span className="material-symbols-outlined text-xl" data-weight="fill" style={{ fontVariationSettings: "'FILL' 1" }}>
                 {getSkillIcon(skill.id)}
               </span>
             </div>
+            */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h4 className="text-base font-bold truncate text-slate-900 dark:text-white">{skill.name}</h4>
@@ -148,7 +151,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
                       <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
                       {isNativeAgent && (
                         <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
-                          <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>home</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>terminal</span>
                           {t('dashboard.nativeSource')}
                         </span>
                       )}

@@ -408,7 +408,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
               }}
               title={t('dashboard.openAgentSettings')}
             >
-              <span className="material-symbols-outlined text-lg text-slate-500 dark:text-gray-400">folder_open</span>
+              <span className="material-symbols-outlined material-symbols-legacy text-lg text-slate-500 dark:text-gray-400">folder_open</span>
               <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
                 {t('dashboard.localAgentDirectory')}
               </span>

@@ -50,10 +50,17 @@ body {
 }
 
 .material-symbols-outlined {
-  /* 覆盖 material-symbols npm 包默认的 24px，保持跟随父元素字号，
-     与原先依赖 Google Fonts 加载时的行为一致 */
-  font-size: inherit;
+  /* 保留与 Google Fonts CDN 一致的默认行为：
+     - font-size 维持 npm 包默认 24px，允许 Tailwind 的 text-xxx 工具类按需覆盖
+     - 这里不要再设置 font-size，否则会因选择器优先级相同而压过 text-xxx */
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* 旧版（Google Fonts CDN 时期）的图标样式：字号跟随父元素、严格的排版重置。
+   需要"之前那种和文字同字号、贴合行高"的效果时，再叠加这个 class。
+   注意：这里的 font-size: inherit 会压过 Tailwind 的 text-xxx，按需使用。 */
+.material-symbols-legacy {
+  font-size: inherit;
   display: inline-block;
   line-height: 1;
   text-transform: none;

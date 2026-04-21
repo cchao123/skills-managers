@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Collapse } from '@/components/Collapse';
+import { Steps, Step } from '@/components/Steps';
 
 function CopyButton({ text }: { text: string }) {
   const { t } = useTranslation();
@@ -47,29 +48,23 @@ export const Shared: React.FC<{ owner: string; repo: string }> = ({ owner, repo 
         <span className="text-xs font-normal text-slate-400 dark:text-gray-500">{t('githubBackup.shared.viaMarketplace')}</span>
       </h3>
 
-      <div className="flex gap-3 py-4">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">1</div>
-        <div className="flex-1">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.shared.step1Title')}</h3>
+      <Steps>
+        <Step title={t('githubBackup.shared.step1Title')}>
           <p className="text-sm text-slate-600 dark:text-gray-300 mb-2">{t('githubBackup.shared.step1Desc')}</p>
           <div className="relative">
             <code className="block bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2 pr-9 text-sm font-mono text-[#b71422]">/plugin marketplace add {marketplacePath}</code>
             <CopyButton text={`/plugin marketplace add ${marketplacePath}`} />
           </div>
-        </div>
-      </div>
+        </Step>
 
-      <div className="flex gap-3">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">2</div>
-        <div className="flex-1">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.shared.step2Title')}</h3>
+        <Step title={t('githubBackup.shared.step2Title')}>
           <p className="text-sm text-slate-600 dark:text-gray-300 mb-2">{t('githubBackup.shared.step2Desc')}</p>
           <div className="relative">
             <code className="block bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2 pr-9 text-sm font-mono text-[#b71422]">/plugin install {'<skill-name>'}@{marketplacePath}</code>
             <CopyButton text={`/plugin install <skill-name>@${marketplacePath}`} />
           </div>
-        </div>
-      </div>
+        </Step>
+      </Steps>
 
       {/* https://cursor.com/cn/docs/skills#github  转化成点mdc效果不好 */}
       

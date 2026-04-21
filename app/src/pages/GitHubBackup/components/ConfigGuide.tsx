@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Collapse } from '@/components/Collapse';
+import { Steps, Step } from '@/components/Steps';
 import { GITHUB_TOKENS_URL, GITHUB_NEW_REPO_URL } from '../constants/config';
 
 export const ConfigGuide: React.FC = () => {
@@ -20,27 +21,21 @@ export const ConfigGuide: React.FC = () => {
         </div>
       }
     >
-      <div className="flex gap-3 py-4">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">1</div>
-        <div className="flex-1">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step1.title')}</h3>
+      <Steps>
+        <Step title={t('githubBackup.guide.step1.title')}>
           <p className="text-sm text-slate-600 dark:text-gray-300">
             {t('githubBackup.guide.step1.description')}{' '}
             <a href={GITHUB_NEW_REPO_URL} target="_blank" rel="noopener noreferrer" className="text-[#b71422] hover:underline font-medium">
-              {t('githubBackup.guide.step1.link')} →
+              ➜ {t('githubBackup.guide.step1.link')} 
             </a>
           </p>
-        </div>
-      </div>
+        </Step>
 
-      <div className="flex gap-3">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">2</div>
-        <div className="flex-1">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step2.title')}</h3>
+        <Step title={t('githubBackup.guide.step2.title')}>
           <p className="text-sm text-slate-600 dark:text-gray-300">
             {t('githubBackup.guide.step2.description')}{' '}
             <a href={GITHUB_TOKENS_URL} target="_blank" rel="noopener noreferrer" className="text-[#b71422] hover:underline font-medium">
-              {t('githubBackup.guide.step2.link')} →
+              ➜ {t('githubBackup.guide.step2.link')} 
             </a>
           </p>
           <ul className="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-gray-400">
@@ -67,24 +62,16 @@ export const ConfigGuide: React.FC = () => {
               <span>{t('githubBackup.guide.step2.detail3')}</span>
             </li>
           </ul>
-        </div>
-      </div>
+        </Step>
 
-      <div className="flex gap-3">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">3</div>
-        <div className="flex-1">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step3.title')}</h3>
+        <Step title={t('githubBackup.guide.step3.title')}>
           <p className="text-sm text-slate-600 dark:text-gray-300">{t('githubBackup.guide.step3.description')}</p>
-        </div>
-      </div>
+        </Step>
 
-      <div className="flex gap-3">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#b71422] text-white flex items-center justify-center font-bold text-xs">4</div>
-        <div className="flex-1">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-1">{t('githubBackup.guide.step4.title')}</h3>
+        <Step title={t('githubBackup.guide.step4.title')}>
           <p className="text-sm text-slate-600 dark:text-gray-300">{t('githubBackup.guide.step4.description')}</p>
-        </div>
-      </div>
+        </Step>
+      </Steps>
 
       <div className="mt-5 flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
         <span

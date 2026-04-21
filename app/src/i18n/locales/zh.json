@@ -139,7 +139,7 @@
       "repo": "仓库名",
       "repoPlaceholder": "例如: my-skills-repo",
       "repoHelper": "存放技能文件的仓库名称",
-      "createRepoLink": "还没有？去创建 →",
+      "createRepoLink": "还没有？去创建 ➜",
       "branch": "分支",
       "branchPlaceholder": "main",
       "branchHelper": "默认使用 main 或 master",
@@ -148,7 +148,7 @@
       "pathHelper": "仓库中技能定义的根目录",
       "token": "Personal Access Token",
       "tokenPlaceholder": "ghp_xxxxxxxxxxxxxx",
-      "tokenHelperBefore": "在 GitHub → Settings → Developer settings → ",
+      "tokenHelperBefore": "在 GitHub ➜ Settings ➜ Developer settings ➜ ",
       "tokenHelperAfter": " 中生成 (需要 repo 权限)"    },
     "syncMenu": {
       "openTitle": "同步选项",
@@ -194,7 +194,7 @@
       "cursor": "Cursor",
       "viaRemoteRule": "via Remote Rule",
       "cursorStep1Title": "打开设置并添加规则",
-      "cursorStep1Desc": "打开 Cursor Settings → Rules，在 Project Rules 部分点击 Add Rule，选择 Remote Rule (Github)",
+      "cursorStep1Desc": "打开 Cursor Settings ➜ Rules，在 Project Rules 部分点击 Add Rule，选择 Remote Rule (Github)",
       "cursorStep2Title": "输入仓库地址",
       "cursorStep2Desc": "输入以下 GitHub 仓库的 URL"
     },
@@ -219,12 +219,12 @@
       },
       "step2": {
         "title": "生成访问令牌 (PAT)",
-        "description": "访问 GitHub 设置，生成一个经典令牌或细粒度令牌，确保勾选 repo 权限以便应用可以读取和写入内容。",
+        "description": "访问 GitHub 设置，生成一个细粒度令牌，确保勾选 repo 权限以便应用可以读取和写入内容。",
         "link": "生成令牌",
-        "detail1": "Github 头像 → 点击 Settings → 进入 Developer Settings",
+        "detail1": "Github 头像 ➜ 点击 Settings ➜ 进入 Developer Settings",
         "detail2Link": "Personal access tokens",
-        "detail2": "→ 点击 Generate new token",
-        "detail3": "填写基础信息 → Only select repositories 选中准备好的仓库 → Add permissions [Contents]"
+        "detail2": "➜ 点击 Generate new token",
+        "detail3": "填写基础信息 ➜ Only select repositories 选中准备好的仓库 ➜ Add permissions ➜ ☑勾选[Contents] ➜ Access 切换为 Read and write"
       },
       "step3": {
         "title": "填写并保存",

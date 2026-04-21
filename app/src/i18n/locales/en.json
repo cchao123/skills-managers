@@ -139,7 +139,7 @@
       "repo": "Repository Name",
       "repoPlaceholder": "e.g.: my-skills-repo",
       "repoHelper": "Repository name for storing skill files",
-      "createRepoLink": "Don't have one? Create →",
+      "createRepoLink": "Don't have one? Create ➜",
       "branch": "Branch",
       "branchPlaceholder": "main",
       "branchHelper": "Default to main or master",
@@ -148,7 +148,7 @@
       "pathHelper": "Root directory for skill definitions in the repository",
       "token": "Personal Access Token",
       "tokenPlaceholder": "ghp_xxxxxxxxxxxxxx",
-      "tokenHelperBefore": "Generate in GitHub → Settings → Developer settings → ",
+      "tokenHelperBefore": "Generate in GitHub ➜ Settings ➜ Developer settings ➜ ",
       "tokenHelperAfter": " (requires repo permission)"    },
     "syncMenu": {
       "openTitle": "Sync options",
@@ -194,7 +194,7 @@
       "cursor": "Cursor",
       "viaRemoteRule": "via Remote Rule",
       "cursorStep1Title": "Open Settings & Add Rule",
-      "cursorStep1Desc": "Open Cursor Settings → Rules, click Add Rule in Project Rules section, select Remote Rule (Github)",
+      "cursorStep1Desc": "Open Cursor Settings ➜ Rules, click Add Rule in Project Rules section, select Remote Rule (Github)",
       "cursorStep2Title": "Enter Repository URL",
       "cursorStep2Desc": "Enter the GitHub repository URL below"
     },
@@ -219,12 +219,12 @@
       },
       "step2": {
         "title": "Generate Access Token (PAT)",
-        "description": "Go to GitHub Settings and generate a classic token or fine-grained token, make sure to check the repo permission so the app can read and write content.",
+        "description": "Go to GitHub Settings and generate a fine-grained token, make sure to check the repo permission so the app can read and write content.",
         "link": "Generate Token",
-        "detail1": "GitHub avatar → Click Settings → Go to Developer Settings",
+        "detail1": "GitHub avatar ➜ Click Settings ➜ Go to Developer Settings",
         "detail2Link": "Personal access tokens",
-        "detail2": "→ Click Generate new token",
-        "detail3": "Fill in basic info → Only select repositories select the prepared repository → Add permissions [Contents]"
+        "detail2": "➜ Click Generate new token",
+        "detail3": "Fill in basic info ➜ Only select repositories select the prepared repository ➜ Add permissions ➜ ☑Check [Contents] ➜ Switch Access to Read and write"
       },
       "step3": {
         "title": "Fill and Save",

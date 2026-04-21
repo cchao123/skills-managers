@@ -90,7 +90,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         <button
           onClick={onTest}
           disabled={testing}
-          className="px-5 py-2 rounded-xl text-sm font-bold bg-[#adb5bd] hover:bg-[#999] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-5 py-1 rounded-xl text-sm font-medium bg-[#adb5bd] hover:bg-[#999] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-lg">
             {testing ? 'hourglass_top' : 'link'}
@@ -100,7 +100,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       ) : (
         <button
           onClick={onEdit}
-          className="px-5 py-2 rounded-xl text-sm font-bold bg-[#adb5bd] hover:bg-[#999] text-white transition-all flex items-center gap-2"
+          className="px-5 py-1 rounded-xl text-sm font-medium bg-[#adb5bd] hover:bg-[#999] text-white transition-all flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-lg">edit</span>
           {t('githubBackup.buttons.editConfig')}
@@ -120,7 +120,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
               }
             }}
             disabled={restoring || syncing}
-            className="pl-4 pr-3 py-2 text-sm font-bold bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-r border-[#e1e3e4] dark:border-dark-border"
+            className="pl-4 pr-3 py-1 text-sm font-medium bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-r border-[#e1e3e4] dark:border-dark-border"
           >
             <span className={`material-symbols-outlined text-lg ${restoring ? 'animate-spin' : ''}`}>
               cloud_download
@@ -133,7 +133,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             aria-haspopup="menu"
             onClick={() => { setRestoreMenuOpen(o => !o); setSyncMenuOpen(false); }}
             disabled={restoring || syncing}
-            className="w-7 shrink-0 px-0 py-2 text-sm font-bold bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-7 shrink-0 px-0 py-1 text-sm font-medium bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             title={t('githubBackup.buttons.restoreNow')}
           >
             <span
@@ -190,7 +190,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
               }
             }}
             disabled={syncing || restoring}
-            className="pl-4 pr-3 py-2 text-sm font-bold bg-[#b71422] hover:bg-[#a01220] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-r border-white/25"
+            className="pl-4 pr-3 py-1 text-sm font-medium bg-[#b71422] hover:bg-[#a01220] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-r border-white/25"
           >
             <span className={`material-symbols-outlined text-lg ${syncing ? 'animate-spin' : ''}`}>
               cloud_upload
@@ -203,7 +203,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             aria-haspopup="menu"
             onClick={() => { setSyncMenuOpen((o) => !o); setRestoreMenuOpen(false); }}
             disabled={syncing || restoring}
-            className="w-7 shrink-0 px-0 py-2 text-sm font-bold bg-[#b71422] hover:bg-[#a01220] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-7 shrink-0 px-0 py-1 text-sm font-medium bg-[#b71422] hover:bg-[#a01220] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             title={t('githubBackup.syncMenu.openTitle')}
           >
             <span

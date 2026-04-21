@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatsBar } from '@/pages/Dashboard/components/StatsBar';
 import { SourceTabs } from '@/pages/Dashboard/components/SourceTabs';
@@ -33,6 +33,19 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
   const { t } = useTranslation();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const { prefixes, addPrefix, removePrefix } = useSkillHidePrefixes();
+
+  // Esc 关闭弹窗：仅在打开时挂 window 级 keydown 监听，避免常驻全局监听器
+  useEffect(() => {
+    if (!isFilterModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setIsFilterModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isFilterModalOpen]);
 
   return (
     <div className="flex items-center gap-3">
@@ -89,7 +102,7 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
       {/* Filter Modal */}
       {isFilterModalOpen && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
           onClick={() => setIsFilterModalOpen(false)}
         >
           <div

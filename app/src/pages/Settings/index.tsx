@@ -13,7 +13,7 @@ import { AboutSection } from './components/AboutSection';
 import { AdvancedSection } from './components/AdvancedSection';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '@/lib/tauri-env';
-import { SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS } from '@/constants';
+import { SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS, WINDOW_EVENTS } from '@/constants';
 
 function Settings() {
   const { t, i18n } = useTranslation();
@@ -26,6 +26,20 @@ function Settings() {
       sessionStorage.removeItem(SESSION_STORAGE_KEYS.settingsInitialTab);
       setActiveTab(initialTab);
     }
+  }, []);
+
+  // 在 Settings 页时（组件已挂载、不会重新触发上面的初始化 useEffect），
+  // 通过自定义事件支持外部切 tab，例如点击侧边栏 logo 跳到"关于"。
+  useEffect(() => {
+    const validTabs = new Set<string>(Object.values(TAB_TYPE));
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<string | undefined>).detail;
+      if (!detail || !validTabs.has(detail)) return;
+      sessionStorage.removeItem(SESSION_STORAGE_KEYS.settingsInitialTab);
+      setActiveTab(detail as TabType);
+    };
+    window.addEventListener(WINDOW_EVENTS.settingsSetTab, handler as EventListener);
+    return () => window.removeEventListener(WINDOW_EVENTS.settingsSetTab, handler as EventListener);
   }, []);
 
   const { agents } = useSettingsData();
@@ -68,19 +82,23 @@ function Settings() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => open(GITHUB_URLS.RELEASES)}
-              className="hover:bg-[#f8f9fa] dark:hover:bg-dark-bg-tertiary rounded-xl px-3 py-2 text-slate-500 dark:text-gray-300 transition-colors flex items-center gap-1.5 text-sm font-medium cursor-pointer"
+              className="px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5"
               title={t('settings.tabChangelog')}
             >
-              <span className="material-symbols-outlined text-lg">update</span>
-              {t('settings.tabChangelog')}
+              <span className="material-symbols-outlined material-symbols-legacy text-lg text-slate-500 dark:text-gray-400">update</span>
+              <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
+                {t('settings.tabChangelog')}
+              </span>
             </button>
             <button
               onClick={() => open(GITHUB_URLS.ISSUES)}
-              className="hover:bg-[#f8f9fa] dark:hover:bg-dark-bg-tertiary rounded-xl px-3 py-2 text-slate-500 dark:text-gray-300 transition-colors flex items-center gap-1.5 text-sm font-medium cursor-pointer"
+              className="px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5"
               title={t('settings.feedback')}
             >
-              <span className="material-symbols-outlined text-lg">chat</span>
-              {t('settings.feedback')}
+              <span className="material-symbols-outlined material-symbols-legacy text-lg text-slate-500 dark:text-gray-400">chat</span>
+              <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
+                {t('settings.feedback')}
+              </span>
             </button>
             {/* <a
               href={GITHUB_URLS.REPO}

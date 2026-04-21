@@ -3,3 +3,4 @@ export * from './storageKeys';
 export * from './page';
 export * from './theme';
 export * from './agents';
+export * from './events';

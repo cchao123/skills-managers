@@ -20,7 +20,7 @@ export const StarButton = ({
       className="px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
     >
       <span
-        className="material-symbols-outlined text-lg text-yellow-400"
+        className="material-symbols-outlined material-symbols-legacy text-lg text-yellow-400"
         style={{ fontVariationSettings: "'FILL' 1" }}
       >
         {starring ? 'hourglass_top' : 'star'}
