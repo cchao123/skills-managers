@@ -1,14 +1,16 @@
 use crate::linker::is_junction_or_symlink;
-use crate::models::{SkillMetadata, SkillSource, get_skill_state};
+use crate::models::{
+    pick_default_primary, AgentConfig, SkillEntry, SkillMetadata, SOURCE_GLOBAL,
+};
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use thiserror::Error;
 use walkdir::WalkDir;
 
-// ========== Phase 1 新 Scanner 实现 ==========
+// ========== Schema v2 Scanner ==========
 
 #[derive(Debug, Error)]
 pub enum ScannerError {
@@ -34,471 +36,361 @@ fn path_to_display_string(path: &Path) -> String {
     }
 }
 
-/// 解析 SKILL.md 文件的 YAML frontmatter (Phase 1 新版本)
-pub fn parse_skill_md(skill_md_path: &Path, source: SkillSource) -> Result<SkillMetadata, ScannerError> {
+/// 扫描过程中的一条"物理发现"记录：某个 id 在某个 source 处存在一份副本。
+#[derive(Debug, Clone)]
+struct SkillDiscovery {
+    id: String,
+    source: String, // "global" 或 agent name
+    path: String,
+    name: String,
+    description: String,
+    category: String,
+    author: Option<String>,
+    version: Option<String>,
+    last_updated: String,
+}
+
+/// 解析 SKILL.md 的 YAML frontmatter，返回最小必要信息 + 发现条目。
+fn parse_discovery(skill_md_path: &Path, source: &str) -> Result<SkillDiscovery, ScannerError> {
     let content = fs::read_to_string(skill_md_path)?;
 
-    // 提取 YAML frontmatter (--- 包围的部分)
-    // 使用 (?s) 使 . 匹配换行符，使用 [\r\n]? 匹配可选的 CR
     let frontmatter_re = Regex::new(r"(?s)^---[\r\n]+(.*?)[\r\n]+---").unwrap();
-    let captures = frontmatter_re.captures(&content)
+    let captures = frontmatter_re
+        .captures(&content)
         .ok_or_else(|| ScannerError::InvalidFormat("Missing frontmatter".to_string()))?;
 
     let yaml_content = captures.get(1).unwrap().as_str();
-
     let yaml_map: serde_yaml::Value = serde_yaml::from_str(yaml_content)
         .map_err(|e| ScannerError::InvalidFormat(format!("YAML parse error: {}", e)))?;
 
     let get_str = |key: &str| -> Option<String> {
-        yaml_map.get(key).and_then(|v| v.as_str()).map(|s| s.to_string())
+        yaml_map
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
     };
 
-    let name = get_str("name")
-        .ok_or_else(|| ScannerError::MissingField("name".to_string()))?;
+    let name = get_str("name").ok_or_else(|| ScannerError::MissingField("name".to_string()))?;
     let description = get_str("description")
         .ok_or_else(|| ScannerError::MissingField("description".to_string()))?;
     let category = get_str("category").unwrap_or_else(|| "Uncategorized".to_string());
-    let author: Option<String> = get_str("author");
-    let version: Option<String> = get_str("version");
+    let author = get_str("author");
+    let version = get_str("version");
 
-    // 生成唯一 ID
     let skill_dir = skill_md_path.parent().unwrap();
-    let id = skill_dir.file_name()
+    let id = skill_dir
+        .file_name()
         .unwrap()
         .to_string_lossy()
         .to_string();
 
-    // 获取文件修改时间
-    let metadata = fs::metadata(skill_md_path)?;
-    let modified = metadata.modified()?;
+    let meta = fs::metadata(skill_md_path)?;
+    let modified = meta.modified()?;
     let last_updated: String = modified
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
+        .map(|d| d.as_secs())
+        .unwrap_or_default()
         .to_string();
 
-    // 保存技能目录的完整路径
-    let skill_path = path_to_display_string(skill_dir);
+    let path = path_to_display_string(skill_dir);
 
-    Ok(SkillMetadata {
+    Ok(SkillDiscovery {
         id,
+        source: source.to_string(),
+        path,
         name,
         description,
         category,
         author,
         version,
-        repository: None,
-        enabled: false, // 默认未启用，除非 settings.json 中有记录
-        agent_enabled: HashMap::new(), // 将在外部填充
-        agent_enabled_backup: None,
-        installed_at: last_updated.clone(),
         last_updated,
-        source,
-        is_collected: false,
-        path: Some(skill_path),
     })
 }
 
-/// 扫描技能目录，返回所有找到的技能 (Phase 1 新版本)
-pub fn scan_skills_directory(
-    base_path: &Path,
-    skill_states: &std::collections::HashMap<String, std::collections::HashMap<String, bool>>,
-    source: SkillSource,
-) -> Result<Vec<SkillMetadata>, ScannerError> {
-    let mut skills = Vec::new();
-    let mut seen_ids = HashSet::new();
-
+/// 扫描某个目录下所有直接子目录的 SKILL.md（depth=2）。
+fn walk_strict(base_path: &Path, source: &str) -> Vec<SkillDiscovery> {
+    let mut out = Vec::new();
     if !base_path.exists() {
-        return Ok(skills);
+        return out;
     }
 
     for entry in WalkDir::new(base_path)
-        .min_depth(2)  // 至少深度为 2：base_path/skill-name/SKILL.md
-        .max_depth(2)  // 最多深度为 2：只扫描直接子目录
+        .min_depth(2)
+        .max_depth(2)
         .into_iter()
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-
-        // 只处理 SKILL.md 文件
         if path.file_name() != Some(std::ffi::OsStr::new("SKILL.md")) {
             continue;
         }
-
-        match parse_skill_md(path, source.clone()) {
-            Ok(mut skill) => {
-                if let Some(states) = get_skill_state(skill_states, &skill.source, &skill.id) {
-                    skill.agent_enabled = states.clone();
-                    eprintln!("Loaded agent states for skill {}: {:?}", skill.id, skill.agent_enabled);
-                } else {
-                    skill.agent_enabled = get_default_agent_states(&skill.source);
-                    eprintln!("Set default agent states for skill {} (source: {:?}): {:?}", skill.id, skill.source, skill.agent_enabled);
-                }
-                sync_enabled_with_agent_toggles(&mut skill);
-
-                if !seen_ids.contains(&skill.id) {
-                    seen_ids.insert(skill.id.clone());
-                    skills.push(skill);
-                }
-            }
-            Err(e) => {
-                eprintln!("Warning: Failed to parse {:?}: {}", path, e);
-            }
+        match parse_discovery(path, source) {
+            Ok(d) => out.push(d),
+            Err(e) => eprintln!("Warning: Failed to parse {:?}: {}", path, e),
         }
     }
-
-    skills.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(skills)
+    out
 }
 
-/// 总开关与「是否有任一 Agent 子开关为开」一致，避免中央仅落盘未链接却显示总开关已开。
-fn sync_enabled_with_agent_toggles(skill: &mut SkillMetadata) {
-    skill.enabled = skill.agent_enabled.values().any(|&v| v);
-}
-
-/// 根据技能来源获取默认的agent启用状态
-fn get_default_agent_states(source: &SkillSource) -> HashMap<String, bool> {
-    let mut states = HashMap::new();
-
-    // 所有 agent 的默认 key；native source 会把自己的那个设为 true
-    let all_agents = ["claude", "cursor", "openclaw", "codex"];
-    for name in all_agents {
-        states.insert(name.to_string(), false);
-    }
-
-    match source {
-        SkillSource::Global => {
-            // 仅在中央目录：尚未链接/复制到各 Agent 前默认全部为关
-        }
-        SkillSource::Cursor => {
-            states.insert("cursor".to_string(), true);
-        }
-        SkillSource::Claude => {
-            states.insert("claude".to_string(), true);
-        }
-        SkillSource::OpenClaw => {
-            states.insert("openclaw".to_string(), true);
-        }
-        SkillSource::Codex => {
-            states.insert("codex".to_string(), true);
-        }
-    }
-
-    states
-}
-
-/// 扫描用户自定义技能目录（排除子目录）
-/// 用于扫描 ~/.claude/skills/ 和 ~/.cursor/skills/ 下的用户自定义技能
-/// 但排除 plugins/ 等符号链接目录
-pub fn scan_user_custom_skills(
-    base_path: &Path,
-    skill_states: &std::collections::HashMap<String, std::collections::HashMap<String, bool>>,
-    source: SkillSource,
-) -> Result<Vec<SkillMetadata>, ScannerError> {
-    let mut skills = Vec::new();
-    let mut seen_ids = HashSet::new();
-
+/// 扫描"用户自定义"目录（base_path 的直接子目录），排除 plugins 与 symlink。
+fn walk_user_custom(base_path: &Path, source: &str) -> Vec<SkillDiscovery> {
+    let mut out = Vec::new();
     if !base_path.exists() {
-        return Ok(skills);
+        return out;
     }
 
-    eprintln!("=== Scanning user custom skills from: {:?} ===", base_path);
+    let Ok(entries) = fs::read_dir(base_path) else {
+        return out;
+    };
 
-    // 直接扫描 base_path 下的直接子目录
-    if let Ok(entries) = std::fs::read_dir(base_path) {
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if dir_name == "plugins" {
+            continue;
+        }
+        if is_junction_or_symlink(&path) {
+            continue;
+        }
+        let skill_md = path.join("SKILL.md");
+        if !skill_md.exists() {
+            continue;
+        }
+        match parse_discovery(&skill_md, source) {
+            Ok(d) => out.push(d),
+            Err(e) => eprintln!("Warning: Failed to parse {:?}: {}", skill_md, e),
+        }
+    }
+
+    out
+}
+
+fn expand_tilde(path: &Path) -> Option<PathBuf> {
+    let path_str = path.to_str()?;
+    if let Some(rest) = path_str.strip_prefix("~/") {
+        dirs::home_dir().map(|h| h.join(rest))
+    } else {
+        Some(path.to_path_buf())
+    }
+}
+
+fn find_all_skills_dirs(base_path: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if !base_path.exists() {
+        return out;
+    }
+    if let Ok(entries) = fs::read_dir(base_path) {
         for entry in entries.flatten() {
             let path = entry.path();
-
-            // 只处理目录
             if !path.is_dir() {
                 continue;
             }
-
-            // 排除特定目录（符号链接目录）
-            let dir_name = path.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
-
-            // 排除 plugins 目录（这是我们管理的符号链接目录）
-            if dir_name == "plugins" {
-                eprintln!("Skipping plugins directory: {:?}", path);
-                continue;
-            }
-
-            // 跳过 symlink / junction 目录：这些是从根目录链接过来的，已作为 Global 来源扫描
-            if is_junction_or_symlink(&path) {
-                eprintln!("Skipping symlink/junction directory: {:?}", path);
-                continue;
-            }
-
-            // 检查是否有 SKILL.md
-            let skill_md = path.join("SKILL.md");
-            if !skill_md.exists() {
-                continue;
-            }
-
-            // 解析技能
-            match parse_skill_md(&skill_md, source.clone()) {
-                Ok(mut skill) => {
-                    if let Some(states) = get_skill_state(skill_states, &skill.source, &skill.id) {
-                        skill.agent_enabled = states.clone();
-                        eprintln!("Loaded agent states for skill {}: {:?}", skill.id, skill.agent_enabled);
-                    } else {
-                        skill.agent_enabled = get_default_agent_states(&skill.source);
-                        eprintln!("Set default agent states for skill {} (source: {:?}): {:?}",
-                            skill.id, skill.source, skill.agent_enabled);
-                    }
-                    sync_enabled_with_agent_toggles(&mut skill);
-
-                    if !seen_ids.contains(&skill.id) {
-                        let skill_id = skill.id.clone();
-                        seen_ids.insert(skill_id.clone());
-                        skills.push(skill);
-                        eprintln!("✅ Found user custom skill: {}", skill_id);
-                    }
-                }
-                Err(e) => {
-                    eprintln!("Warning: Failed to parse {:?}: {}", path, e);
-                }
+            if path.file_name() == Some(std::ffi::OsStr::new("skills")) {
+                out.push(path);
+            } else {
+                out.extend(find_all_skills_dirs(&path));
             }
         }
     }
-
-    eprintln!("Found {} user custom skills", skills.len());
-    Ok(skills)
+    out
 }
 
-/// 扫描多个源的技能目录，返回所有找到的技能
-pub fn scan_all_skill_sources(
-    skill_states: &std::collections::HashMap<String, std::collections::HashMap<String, bool>>,
-    agents: &[crate::models::AgentConfig],
-) -> Result<Vec<SkillMetadata>, ScannerError> {
-    let mut all_skills = Vec::new();
-    let mut seen_ids: HashSet<(String, SkillSource)> = HashSet::new();
+/// 收集所有物理副本（按 id 分组，未合并）。
+fn collect_discoveries() -> Vec<SkillDiscovery> {
+    let mut all = Vec::new();
 
-    // 1. 扫描中央存储（优先级最高）
-    let central_path = std::path::PathBuf::from("~/.skills-manager/skills");
-    if let Ok(expanded) = expand_tilde(&central_path) {
-        eprintln!("=== Scanning central storage: {:?} ===", expanded);
-        if let Ok(skills) = scan_skills_directory(&expanded, skill_states, SkillSource::Global) {
-            for skill in skills {
-                let key = (skill.id.clone(), SkillSource::Global);
-                if !seen_ids.contains(&key) {
-                    seen_ids.insert(key.clone());
-                    all_skills.push(skill);
-                    eprintln!("✅ Added central storage skill: {}", key.0);
-                }
-            }
+    // 1. 中央仓库
+    if let Some(p) = expand_tilde(Path::new("~/.skills-manager/skills")) {
+        all.extend(walk_strict(&p, SOURCE_GLOBAL));
+    }
+
+    // 2. 各 Agent 的用户自定义 skills 目录
+    for (path_str, src) in &[
+        ("~/.claude/skills", "claude"),
+        ("~/.cursor/skills", "cursor"),
+        ("~/.openclaw/skills", "openclaw"),
+        ("~/.codex/skills", "codex"),
+    ] {
+        if let Some(p) = expand_tilde(Path::new(path_str)) {
+            all.extend(walk_user_custom(&p, src));
         }
     }
 
-    // 2. 扫描 Claude 用户自定义技能目录
-    let claude_custom_path = std::path::PathBuf::from("~/.claude/skills");
-    if let Ok(expanded) = expand_tilde(&claude_custom_path) {
-        if let Ok(skills) = scan_user_custom_skills(&expanded, skill_states, SkillSource::Claude) {
-            for skill in skills {
-                let key = (skill.id.clone(), SkillSource::Claude);
-                if !seen_ids.contains(&key) {
-                    seen_ids.insert(key.clone());
-                    all_skills.push(skill);
-                    eprintln!("✅ Added Claude custom skill: {}", key.0);
-                }
-            }
+    // 3. Cursor 内置 skills-cursor
+    if let Some(p) = expand_tilde(Path::new("~/.cursor/skills-cursor")) {
+        all.extend(walk_user_custom(&p, "cursor"));
+    }
+
+    // 4. Cursor 社区插件缓存
+    if let Some(p) = expand_tilde(Path::new("~/.cursor/plugins/cache/cursor-public")) {
+        for skills_path in find_all_skills_dirs(&p) {
+            all.extend(walk_strict(&skills_path, "cursor"));
         }
     }
 
-    // 3. 扫描 Cursor 用户自定义技能目录
-    let cursor_custom_path = std::path::PathBuf::from("~/.cursor/skills");
-    if let Ok(expanded) = expand_tilde(&cursor_custom_path) {
-        if let Ok(skills) = scan_user_custom_skills(&expanded, skill_states, SkillSource::Cursor) {
-            for skill in skills {
-                let key = (skill.id.clone(), SkillSource::Cursor);
-                if !seen_ids.contains(&key) {
-                    seen_ids.insert(key.clone());
-                    all_skills.push(skill);
-                    eprintln!("✅ Added Cursor custom skill: {}", key.0);
-                }
-            }
+    // 5. Claude 插件缓存
+    if let Some(p) = expand_tilde(Path::new("~/.claude/plugins/cache")) {
+        for skills_path in find_all_skills_dirs(&p) {
+            all.extend(walk_strict(&skills_path, "claude"));
         }
     }
 
-    // 3.5 扫描 OpenClaw 用户自定义技能目录
-    let openclaw_custom_path = std::path::PathBuf::from("~/.openclaw/skills");
-    if let Ok(expanded) = expand_tilde(&openclaw_custom_path) {
-        if let Ok(skills) = scan_user_custom_skills(&expanded, skill_states, SkillSource::OpenClaw) {
-            for skill in skills {
-                let key = (skill.id.clone(), SkillSource::OpenClaw);
-                if !seen_ids.contains(&key) {
-                    seen_ids.insert(key.clone());
-                    all_skills.push(skill);
-                    eprintln!("✅ Added OpenClaw custom skill: {}", key.0);
-                }
-            }
-        }
-    }
-
-    // 3.6 扫描 Codex 用户自定义技能目录
-    let codex_custom_path = std::path::PathBuf::from("~/.codex/skills");
-    if let Ok(expanded) = expand_tilde(&codex_custom_path) {
-        if let Ok(skills) = scan_user_custom_skills(&expanded, skill_states, SkillSource::Codex) {
-            for skill in skills {
-                let key = (skill.id.clone(), SkillSource::Codex);
-                if !seen_ids.contains(&key) {
-                    seen_ids.insert(key.clone());
-                    all_skills.push(skill);
-                    eprintln!("✅ Added Codex custom skill: {}", key.0);
-                }
-            }
-        }
-    }
-
-    // 4. 扫描 Cursor 内置技能目录 (~/.cursor/skills-cursor/)
-    let cursor_builtin_path = std::path::PathBuf::from("~/.cursor/skills-cursor");
-    if let Ok(expanded) = expand_tilde(&cursor_builtin_path) {
-        eprintln!("=== Scanning Cursor built-in skills from: {:?} ===", expanded);
-        if let Ok(skills) = scan_user_custom_skills(&expanded, skill_states, SkillSource::Cursor) {
-            for skill in skills {
-                let key = (skill.id.clone(), SkillSource::Cursor);
-                if !seen_ids.contains(&key) {
-                    seen_ids.insert(key.clone());
-                    all_skills.push(skill);
-                    eprintln!("✅ Added Cursor built-in skill: {}", key.0);
-                }
-            }
-        }
-    }
-
-    // 5. 扫描 Cursor 社区/商店插件缓存 (~/.cursor/plugins/cache/cursor-public/)
-    let cursor_plugins_path = std::path::PathBuf::from("~/.cursor/plugins/cache/cursor-public");
-    if let Ok(expanded) = expand_tilde(&cursor_plugins_path) {
-        eprintln!("=== Scanning Cursor community plugins from: {:?} ===", expanded);
-        let skills_dirs = find_all_skills_dirs(&expanded);
-        eprintln!("Found {} skills directories in Cursor plugins", skills_dirs.len());
-
-        for skills_path in skills_dirs {
-            eprintln!("Scanning: {:?}", skills_path);
-            if let Ok(skills) = scan_skills_directory(&skills_path, skill_states, SkillSource::Cursor) {
-                eprintln!("Found {} skills from Cursor plugin", skills.len());
-                for skill in skills {
-                    eprintln!("  - Skill: {} (source: Cursor)", skill.name);
-                    let key = (skill.id.clone(), SkillSource::Cursor);
-                    if !seen_ids.contains(&key) {
-                        seen_ids.insert(key);
-                        all_skills.push(skill);
-                    }
-                }
-            }
-        }
-    }
-    eprintln!("=== Cursor plugin scan complete, total skills so far: {} ===", all_skills.len());
-
-    // 扫描Claude插件缓存
-    let claude_plugins_path = std::path::PathBuf::from("~/.claude/plugins/cache");
-    eprintln!("=== Scanning Claude plugins from: {:?} ===", claude_plugins_path);
-    if let Ok(expanded) = expand_tilde(&claude_plugins_path) {
-        eprintln!("Expanded path: {:?}", expanded);
-        eprintln!("Path exists: {}", expanded.exists());
-
-        // 直接递归查找所有skills目录
-        let skills_dirs = find_all_skills_dirs(&expanded);
-        eprintln!("Found {} skills directories in Claude plugins", skills_dirs.len());
-
-        for skills_path in skills_dirs {
-            eprintln!("Scanning: {:?}", skills_path);
-            if let Ok(skills) = scan_skills_directory(&skills_path, skill_states, SkillSource::Claude) {
-                eprintln!("Found {} skills from Claude plugin", skills.len());
-                for skill in skills {
-                    eprintln!("  - Skill: {} (source: Claude)", skill.name);
-                    let key = (skill.id.clone(), SkillSource::Claude);
-                    if !seen_ids.contains(&key) {
-                        seen_ids.insert(key);
-                        all_skills.push(skill);
-                    }
-                }
-            }
-        }
-    } else {
-        eprintln!("Failed to expand Claude plugins path");
-    }
-    eprintln!("=== Claude plugin scan complete, total skills so far: {} ===", all_skills.len());
-
-    // 计算 is_collected 状态（仅对 Central 来源有意义）
-    for skill in &mut all_skills {
-        if skill.source == SkillSource::Global {
-            skill.is_collected = check_skill_collected(&skill.id, agents);
-        }
-    }
-
-    all_skills.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(all_skills)
-}
-
-/// 检查路径是否为物理目录（非符号链接）
-fn is_physical_dir(path: &std::path::Path) -> bool {
-    path.is_dir() && !path.is_symlink()
+    all
 }
 
 /// 检查 skill 是否被物理收录到任一 agent 目录中
-fn check_skill_collected(skill_id: &str, agents: &[crate::models::AgentConfig]) -> bool {
-    let home_dir = match dirs::home_dir() {
-        Some(h) => h,
-        None => return false,
+fn check_skill_collected(skill_id: &str, agents: &[AgentConfig]) -> bool {
+    let Some(home_dir) = dirs::home_dir() else {
+        return false;
     };
 
     for agent in agents {
-        let agent_path = if agent.path.starts_with("~/") {
-            home_dir.join(&agent.path[2..])
-        } else if agent.path.starts_with("~") {
-            home_dir.join(&agent.path[1..])
+        let agent_path = if let Some(rest) = agent.path.strip_prefix("~/") {
+            home_dir.join(rest)
+        } else if let Some(rest) = agent.path.strip_prefix('~') {
+            home_dir.join(rest)
         } else {
             home_dir.join(&agent.path)
         };
-
         let skill_in_agent = agent_path.join(&agent.skills_path).join(skill_id);
-        if is_physical_dir(&skill_in_agent) {
+        if skill_in_agent.is_dir() && !skill_in_agent.is_symlink() {
             return true;
         }
     }
     false
 }
 
-/// 展开~前缀为home目录
-fn expand_tilde(path: &Path) -> Result<PathBuf, ScannerError> {
-    let path_str = path.to_str().unwrap_or("");
-    if path_str.starts_with("~/") {
-        if let Some(home) = dirs::home_dir() {
-            let rest = &path_str[2..];
-            return Ok(home.join(rest));
-        }
+/// 扫描所有源并合并：每个 skill_id 返回一条 `SkillMetadata`。
+///
+/// 副作用：会把"物理扫到但 skill_states 里没记录"的 source 补进 `SkillEntry.sources`（自愈）；
+/// 同样会把"skill_states 里有但物理已消失"的 source 从条目中清理掉，并删除孤儿记录。
+pub fn scan_and_merge(
+    skill_states: &mut HashMap<String, SkillEntry>,
+    agents: &[AgentConfig],
+) -> Result<Vec<SkillMetadata>, ScannerError> {
+    let discoveries = collect_discoveries();
+
+    // 按 id 分组
+    let mut by_id: HashMap<String, Vec<SkillDiscovery>> = HashMap::new();
+    for d in discoveries {
+        by_id.entry(d.id.clone()).or_default().push(d);
     }
-    Ok(path.to_path_buf())
-}
 
-/// 递归查找所有skills目录
-fn find_all_skills_dirs(base_path: &Path) -> Vec<PathBuf> {
-    let mut skills_dirs = Vec::new();
+    // 所有已知 Agent 名（用于派生 agent_enabled）
+    let agent_names: Vec<String> = agents.iter().map(|a| a.name.clone()).collect();
 
-    // 递归遍历目录
-    if let Ok(entries) = std::fs::read_dir(base_path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                // 如果是skills目录，拷贝到结果
-                if path.file_name() == Some(std::ffi::OsStr::new("skills")) {
-                    eprintln!("Found skills directory: {:?}", path);
-                    skills_dirs.push(path);
-                } else {
-                    // 否则递归查找
-                    let sub_dirs = find_all_skills_dirs(&path);
-                    skills_dirs.extend(sub_dirs);
+    // 1) 自愈：把物理副本位置同步进 skill_states
+    for (id, group) in &by_id {
+        let entry = skill_states.entry(id.clone()).or_default();
+        for d in group {
+            entry.insert_source(&d.source);
+        }
+        // 移除 sources 里已不存在物理副本的项
+        let existing: std::collections::HashSet<&str> =
+            group.iter().map(|d| d.source.as_str()).collect();
+        entry.sources.retain(|s| existing.contains(s.as_str()));
+        entry.ensure_valid_primary();
+    }
+
+    // 2) 删除孤儿：skill_states 里但本次扫描完全没发现物理副本的 id
+    skill_states.retain(|id, entry| {
+        if by_id.contains_key(id) {
+            true
+        } else {
+            entry.sources.clear();
+            false
+        }
+    });
+
+    // 3) 构造返回的 SkillMetadata（每个 id 一条，用 primary 的元数据做展示基）
+    let mut result = Vec::with_capacity(by_id.len());
+    for (id, group) in by_id {
+        let entry = skill_states
+            .get(&id)
+            .cloned()
+            .unwrap_or_else(|| SkillEntry {
+                sources: group.iter().map(|d| d.source.clone()).collect(),
+                primary: pick_default_primary(
+                    &group.iter().map(|d| d.source.clone()).collect::<Vec<_>>(),
+                )
+                .unwrap_or_default(),
+                open: Vec::new(),
+            });
+
+        let primary_discovery = group
+            .iter()
+            .find(|d| d.source == entry.primary)
+            .or_else(|| group.first())
+            .unwrap();
+
+        let source_paths: HashMap<String, String> = group
+            .iter()
+            .map(|d| (d.source.clone(), d.path.clone()))
+            .collect();
+
+        let agent_enabled = entry.derive_agent_enabled(&agent_names);
+        let enabled = agent_enabled.values().any(|v| *v);
+        let is_collected =
+            entry.sources.iter().any(|s| s == SOURCE_GLOBAL) && check_skill_collected(&id, agents);
+
+        // primary 上缺失的字段从其他源 fallback（例如 primary 的 description 为空）
+        let pick_str = |f: &dyn Fn(&SkillDiscovery) -> &str| -> String {
+            let p = f(primary_discovery);
+            if !p.is_empty() {
+                return p.to_string();
+            }
+            group
+                .iter()
+                .find(|d| !f(d).is_empty())
+                .map(|d| f(d).to_string())
+                .unwrap_or_default()
+        };
+        let pick_opt = |f: &dyn Fn(&SkillDiscovery) -> Option<&str>| -> Option<String> {
+            if let Some(s) = f(primary_discovery) {
+                if !s.is_empty() {
+                    return Some(s.to_string());
                 }
             }
-        }
+            group
+                .iter()
+                .find_map(|d| f(d).filter(|s| !s.is_empty()).map(|s| s.to_string()))
+        };
+
+        result.push(SkillMetadata {
+            id: id.clone(),
+            name: pick_str(&|d| d.name.as_str()),
+            description: pick_str(&|d| d.description.as_str()),
+            category: pick_str(&|d| d.category.as_str()),
+            author: pick_opt(&|d| d.author.as_deref()),
+            version: pick_opt(&|d| d.version.as_deref()),
+            enabled,
+            agent_enabled,
+            installed_at: primary_discovery.last_updated.clone(),
+            last_updated: primary_discovery.last_updated.clone(),
+            is_collected,
+            sources: entry.sources.clone(),
+            primary: entry.primary.clone(),
+            open: entry.open.clone(),
+            source_paths,
+        });
     }
 
-    skills_dirs
+    result.sort_by(|a, b| a.id.cmp(&b.id));
+    Ok(result)
+}
+
+/// 向后兼容的只读入口：对外保持原签名，但内部复用 `scan_and_merge`。
+/// 由于 `scan_and_merge` 会修改 `skill_states`，这里在只读场景下对其做 clone。
+pub fn scan_all_skill_sources(
+    skill_states: &HashMap<String, SkillEntry>,
+    agents: &[AgentConfig],
+) -> Result<Vec<SkillMetadata>, ScannerError> {
+    let mut cloned = skill_states.clone();
+    scan_and_merge(&mut cloned, agents)
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}

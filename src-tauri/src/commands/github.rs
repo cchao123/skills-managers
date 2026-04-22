@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use tauri::Manager;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -215,6 +216,7 @@ pub async fn sync_github_repo(
 #[tauri::command]
 pub async fn restore_from_github(
     request: SyncRepoRequest,
+    app: tauri::AppHandle,
 ) -> Result<u32, String> {
     let config_manager = GitHubConfigManager::new()
         .map_err(|e| e.to_string())?;
@@ -246,6 +248,28 @@ pub async fn restore_from_github(
     if let Some(rc) = config.repositories.get_mut(&request.name) {
         rc.last_sync = Some(chrono::Utc::now().to_rfc3339());
         config_manager.save_config(&config).map_err(|e| e.to_string())?;
+    }
+
+    // 拉取成功后：触发一次全盘扫描 + 自愈 + 保存，并重建托盘菜单，
+    // 让新技能立即出现在 skill_states 和系统托盘。
+    {
+        let state = app.state::<crate::state::AppState>();
+        let lang = if let Ok(mut mgr) = state.settings_manager.lock() {
+            let agents = mgr.get_config().agents.clone();
+            let skill_states = &mut mgr.get_config_mut().skill_states;
+            if let Err(e) = crate::scanner::scan_and_merge(skill_states, &agents) {
+                log::warn!("restore_from_github: scan_and_merge failed: {}", e);
+            }
+            if let Err(e) = mgr.save() {
+                log::warn!("restore_from_github: save config failed: {}", e);
+            }
+            mgr.get_config().language.clone()
+        } else {
+            "en".to_string()
+        };
+        if let Err(e) = crate::tray::rebuild_tray_menu(&app, &lang) {
+            log::warn!("restore_from_github: rebuild_tray_menu failed: {}", e);
+        }
     }
 
     Ok(count)

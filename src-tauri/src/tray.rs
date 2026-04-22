@@ -1,6 +1,5 @@
 //! 系统托盘菜单：语言文案、菜单构建、前端调用的托盘命令。
 
-use crate::models::SkillMetadata;
 use crate::scanner;
 use crate::state::AppState;
 use tauri::{
@@ -50,7 +49,8 @@ pub fn rebuild_tray_menu<R: Runtime, M: Manager<R>>(
         .map(|p| p.trim().to_lowercase())
         .filter(|p| !p.is_empty())
         .collect();
-    let filtered: Vec<_> = if hide_prefixes.is_empty() {
+    // Schema v2: scanner 已经按 id 合并，这里只做前缀过滤即可
+    let skills: Vec<_> = if hide_prefixes.is_empty() {
         all_skills
     } else {
         all_skills
@@ -60,29 +60,6 @@ pub fn rebuild_tray_menu<R: Runtime, M: Manager<R>>(
                 !hide_prefixes.iter().any(|p| lower.starts_with(p))
             })
             .collect()
-    };
-
-    // 跨 source 按 id 合并（与 Dashboard 合并视图语义一致）：
-    // agent_enabled 做 OR，保留首次出现的元数据作为展示基底，避免同名技能在托盘里重复。
-    let skills: Vec<SkillMetadata> = {
-        let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-        let mut merged: Vec<SkillMetadata> = Vec::with_capacity(filtered.len());
-        for skill in filtered {
-            match seen.get(&skill.id).copied() {
-                Some(idx) => {
-                    for (agent_name, enabled) in &skill.agent_enabled {
-                        if *enabled {
-                            merged[idx].agent_enabled.insert(agent_name.clone(), true);
-                        }
-                    }
-                }
-                None => {
-                    seen.insert(skill.id.clone(), merged.len());
-                    merged.push(skill);
-                }
-            }
-        }
-        merged
     };
 
     let mut menu_builder = MenuBuilder::new(app);

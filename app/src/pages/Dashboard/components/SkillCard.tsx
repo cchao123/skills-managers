@@ -1,57 +1,60 @@
 import { useTranslation } from 'react-i18next';
-import type { SkillMetadata, AgentConfig, MergedSkillInfo } from '@/types';
+import type { SkillMetadata, AgentConfig } from '@/types';
 // TODO: 暂时隐藏技能图标，缺少每个技能对应的 icon 映射，恢复时一并启用
 // import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { badgeClass, sourceLabel } from '@/pages/Dashboard/utils/source';
 import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
 import { useMergedView } from '@/pages/Dashboard/hooks/useMergedView';
+import { MainToggleIndicator, type MainToggleState } from '@/pages/Dashboard/components/MainToggleIndicator';
 
 interface SkillCardProps {
   skill: SkillMetadata;
   agents: AgentConfig[];
   expanded: boolean;
-  merged?: MergedSkillInfo;
   onToggleExpand: () => void;
   onToggleSkill: (skill: SkillMetadata) => void;
   onToggleAgent: (skill: SkillMetadata, agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onShowDetail: (skill: SkillMetadata) => void;
-  onToggleSkillMerged?: (merged: MergedSkillInfo) => void;
-  onToggleAgentMerged?: (merged: MergedSkillInfo, agentName: string) => void;
 }
 
 export const SkillCard: React.FC<SkillCardProps> = ({
   skill,
   agents,
   expanded,
-  merged,
   onToggleExpand,
   onToggleSkill,
   onToggleAgent,
   onShowDetail,
-  onToggleSkillMerged,
-  onToggleAgentMerged,
 }) => {
   const { t } = useTranslation();
-  const { allSources, nativeAgents } = useMergedView(skill, merged);
+  const { allSources, nativeAgents } = useMergedView(skill);
   const detectedAgents = useDetectedAgents(agents);
   const enabledCount = detectedAgents.filter(a => skill.agent_enabled[a.name]).length;
+  const detectedNativeAgents = detectedAgents
+    .map(a => a.name)
+    .filter(name => nativeAgents.has(name));
+  const togglableAgents = detectedAgents.filter(a => !nativeAgents.has(a.name));
+  const togglableEnabledCount = togglableAgents.filter(a => skill.agent_enabled[a.name]).length;
 
-  const handleMainToggle = () => {
-    if (merged && onToggleSkillMerged) {
-      onToggleSkillMerged(merged);
-    } else {
-      onToggleSkill(skill);
-    }
-  };
+  // 样式映射与图例共享在 MainToggleIndicator 内，这里只负责状态推导
+  const mainToggleState: MainToggleState =
+    togglableEnabledCount > 0
+      ? 'on'
+      : enabledCount > 0
+        ? 'nativeOnly'
+        : 'off';
 
-  const handleAgentToggle = (agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => {
-    if (merged && onToggleAgentMerged) {
-      onToggleAgentMerged(merged, agentName);
-    } else {
-      onToggleAgent(skill, agentName, e);
-    }
-  };
+  const mainToggleTitle =
+    mainToggleState === 'off'
+      ? t('dashboard.mainToggle.allOff')
+      : mainToggleState === 'nativeOnly'
+        ? t('dashboard.mainToggle.nativeOnly', { agents: detectedNativeAgents.join('、') })
+        : t('dashboard.mainToggle.allOn');
+
+  const handleMainToggle = () => onToggleSkill(skill);
+  const handleAgentToggle = (agentName: string, e?: React.MouseEvent<HTMLButtonElement>) =>
+    onToggleAgent(skill, agentName, e);
 
   return (
     <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 overflow-hidden flex flex-col">
@@ -83,12 +86,11 @@ export const SkillCard: React.FC<SkillCardProps> = ({
           {/* Right: STATUS + Toggle + Expand */}
           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
             <div className="flex items-center gap-1.5">
-              <button
+              <MainToggleIndicator
+                state={mainToggleState}
                 onClick={handleMainToggle}
-                className={`relative w-9 h-5 rounded-full transition-all flex-shrink-0 ${skill.enabled ? 'bg-[#b71422]' : 'bg-[#CBD5E0] dark:bg-gray-600'}`}
-              >
-                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${skill.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
-              </button>
+                title={mainToggleTitle}
+              />
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => onShowDetail(skill)} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded transition-colors">

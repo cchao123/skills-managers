@@ -42,7 +42,7 @@ const StepIndex: React.FC<StepIndexProps> = ({ num, isLast }) => (
   </div>
 );
 
-export interface StepProps {
+interface StepProps {
   /** 步骤标题，会渲染为加粗标题行 */
   title: React.ReactNode;
   /** 步骤正文，任意 JSX */
@@ -74,7 +74,7 @@ export const Step: React.FC<StepProps> = ({
   );
 };
 
-export interface StepsProps {
+interface StepsProps {
   children: React.ReactNode;
   className?: string;
 }

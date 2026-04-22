@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AgentConfig } from '@/types';
 import { getAgentIcon } from '@/pages/Dashboard/utils/agentHelpers';
-import { SOURCE_GLOBAL } from '@/pages/Dashboard/utils/source';
+import { SOURCE } from '@/pages/Dashboard/utils/source';
 import { SOURCE_TAB_ICON_ONLY_THRESHOLD } from '@/pages/Dashboard/constants/panel';
 import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
 
@@ -23,7 +23,7 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({ agents, selectedSource, 
   const detectedAgents = useDetectedAgents(agents);
 
   const tabs = useMemo<TabItem[]>(() => [
-    { id: SOURCE_GLOBAL, label: t('dashboard.source.global'), icon: '/octopus-logo.png' },
+    { id: SOURCE.Global, label: t('dashboard.source.global'), icon: '/octopus-logo.png' },
     ...detectedAgents.map(a => ({
       id: a.name,
       label: a.display_name,

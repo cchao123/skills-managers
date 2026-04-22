@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SkillMetadata, AgentConfig, SkillFileEntry, MergedSkillInfo } from '@/types';
+import type { SkillMetadata, AgentConfig, SkillFileEntry } from '@/types';
 import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { badgeClass, sourceLabel, SOURCE } from '@/pages/Dashboard/utils/source';
@@ -21,12 +21,10 @@ interface SkillDetailModalProps {
   loadingFile: boolean;
   leftPanelWidth: number;
   isResizing: boolean;
-  merged?: MergedSkillInfo;
   onClose: () => void;
   onToggleFolder: (path: string) => void;
   onReadFile: (path: string) => void;
   onToggleAgent: (skill: SkillMetadata, agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
-  onToggleAgentMerged?: (merged: MergedSkillInfo, agentName: string) => void;
   onDelete?: () => void;
   onResizeStart: (e: React.MouseEvent) => void;
 }
@@ -45,18 +43,16 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   loadingFile,
   leftPanelWidth,
   isResizing,
-  merged,
   onClose,
   onToggleFolder,
   onReadFile,
   onToggleAgent,
-  onToggleAgentMerged,
   onDelete,
   onResizeStart,
 }) => {
   const { t } = useTranslation();
   const isWindows = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
-  const { allSources, nativeAgents, allPaths } = useMergedView(skill, merged);
+  const { allSources, nativeAgents, allPaths } = useMergedView(skill);
   const detectedAgents = useDetectedAgents(agents);
 
   // Esc 关闭弹窗：组件挂载即代表弹窗打开，卸载时自动清理
@@ -71,13 +67,8 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  const handleAgentToggle = (agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => {
-    if (merged && onToggleAgentMerged) {
-      onToggleAgentMerged(merged, agentName);
-    } else {
-      onToggleAgent(skill, agentName, e);
-    }
-  };
+  const handleAgentToggle = (agentName: string, e?: React.MouseEvent<HTMLButtonElement>) =>
+    onToggleAgent(skill, agentName, e);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
@@ -107,21 +98,22 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                         ? t('dashboard.source.global')
                         : getAgentDisplayName(s);
                     const isSingle = allSources.length === 1;
-                    const showAgentIcon = isSingle && skill.source && skill.source !== SOURCE.Global && getAgentIcon(skill.source);
+                    const onlySource = allSources[0];
+                    const showAgentIcon = isSingle && onlySource && onlySource !== SOURCE.Global && getAgentIcon(onlySource);
                     return (
                       <>
                         {showAgentIcon ? (
                           <img
-                            src={getAgentIcon(skill.source!)}
-                            alt={skill.source}
-                            className={`w-3.5 h-3.5 object-contain ${needsInvertInDark(skill.source!) ? 'dark:invert' : ''}`}
+                            src={getAgentIcon(onlySource)}
+                            alt={onlySource}
+                            className={`w-3.5 h-3.5 object-contain ${needsInvertInDark(onlySource) ? 'dark:invert' : ''}`}
                           />
                         ) : (
                           <img src="/octopus-logo.png" alt="Skills Manager" className="w-3.5 h-3.5" />
                         )}
                         <span className="text-sm text-gray-500 dark:text-gray-400">
                           {isSingle
-                            ? `From ${sourceToFullName(skill.source ?? SOURCE.Global)}`
+                            ? `From ${sourceToFullName(onlySource ?? SOURCE.Global)}`
                             : `From ${allSources.map(sourceToFullName).join(' + ')}`}
                         </span>
                       </>

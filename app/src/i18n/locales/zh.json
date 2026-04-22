@@ -46,9 +46,13 @@
     "total": "技能总数",
     "enabled": "部分启用",
     "disabled": "未启用",
+    "mainToggle": {
+      "allOn": "全部启用",
+      "allOff": "全部关闭",
+      "nativeOnly": "仅原生目录启用：{{agents}}，点此可开启其他 Agent"
+    },
     "toast": {
       "nativeAgentWarning": "属于 {{agent}} 原生目录，无法一键关闭",
-      "nativeAgentsWarning": "属于 {{agents}} 原生目录，无法一键关闭",
       "skillDeleted": "技能「{{name}}」已删除",
       "skillDeleteFailed": "删除技能失败",
       "skillDeletedFrom": "技能「{{name}}」已从 {{sources}} 删除",
@@ -111,13 +115,28 @@
     "noSkillsHint": "尝试调整搜索或筛选条件",
     "retry": "重试",
     "errorMessage": "请确保应用在 Tauri 环境中运行，而不是在浏览器中。",
-    "localAgentDirectory": "本地Agent详情",
+    "localAgentDirectory": "目录详情",
+    "operationLog": {
+      "title": "操作日志",
+      "panelTitle": "触发\"复制到根目录\"的操作",
+      "empty": "暂无拷贝/导入/启用记录",
+      "clear": "清空",
+      "copyFromSource": "从 {{source}} 拷贝「{{skill}}」到根目录",
+      "dragImport": "拖拽导入「{{skill}}」到根目录",
+      "enableAgent": "为 {{target}} 启用「{{skill}}」（来源：{{source}}）"
+    },
     "viewFlat": "平铺展示",
     "viewBySource": "按来源展示",
     "openAgentSettings": "打开设置中的 Agents",
     "viewHelp": "视图说明",
     "viewHelpFlat": "扫描本地所有 Agent，显示所有可用的 Skills（不区分 Agent 来源）",
     "viewHelpBySource": "按照不同的 Agent 对 Skills 进行分类展示，可以清晰地看到每个 Agent 下有哪些 Skills",
+    "mainToggleHelp": {
+      "title": "主开关状态",
+      "off": "未启用",
+      "nativeOnly": "仅原生目录启用",
+      "on": "部分或全部启用"
+    },
     "rootPathLabel": "根目录：",
     "githubTipMid": " 该路径下的技能可通过",
     "githubTipLink": " GitHub 备份",

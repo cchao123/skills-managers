@@ -14,5 +14,30 @@ export const PAGE = {
 
 export type Page = typeof PAGE[keyof typeof PAGE];
 
-export const isPage = (v: unknown): v is Page =>
-  v === PAGE.Dashboard || v === PAGE.GitHubBackup || v === PAGE.Settings;
+/**
+ * 路由路径常量。Dashboard 走 index 路由 `/`，保持 URL 简短。
+ * 与 Page 之间用 `pageToPath` / `pathToPage` 相互转换。
+ */
+export const ROUTE_PATH = {
+  Dashboard: '/',
+  GitHubBackup: '/github',
+  Settings: '/settings',
+} as const;
+
+export const pageToPath = (page: Page): string => {
+  switch (page) {
+    case PAGE.GitHubBackup:
+      return ROUTE_PATH.GitHubBackup;
+    case PAGE.Settings:
+      return ROUTE_PATH.Settings;
+    case PAGE.Dashboard:
+    default:
+      return ROUTE_PATH.Dashboard;
+  }
+};
+
+export const pathToPage = (pathname: string): Page => {
+  if (pathname.startsWith(ROUTE_PATH.GitHubBackup)) return PAGE.GitHubBackup;
+  if (pathname.startsWith(ROUTE_PATH.Settings)) return PAGE.Settings;
+  return PAGE.Dashboard;
+};

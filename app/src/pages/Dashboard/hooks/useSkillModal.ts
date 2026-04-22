@@ -67,7 +67,7 @@ export const useSkillModal = () => {
       setDetailSkill(skill);
       setShowDetailModal(true);
       setCurrentFile(null);
-      loadSkillFiles(skill.id, skill.source);
+      loadSkillFiles(skill.id, skill.primary);
     } catch (error) {
       console.error('Failed to load skill detail:', error);
       showToast('error', t('dashboard.toast.loadDetailFailed'));
@@ -101,7 +101,7 @@ export const useSkillModal = () => {
       if (showLoading) {
         setLoadingFile(true);
       }
-      const content = await skillsApi.readFile(detailSkill.id, filePath, detailSkill.source);
+      const content = await skillsApi.readFile(detailSkill.id, filePath, detailSkill.primary);
       setCurrentFile({ path: filePath, content });
       if (showLoading) {
         setLoadingFile(false);

@@ -18,7 +18,7 @@ import opencodeIcon from '@/assets/agents/opencode.svg';
  * - `icon`         : agent 图标资源（svg import 后的 URL）。
  * - `invertInDark` : 深色模式下是否需要反色（白图反成黑图）。
  */
-export interface AgentMeta {
+interface AgentMeta {
   name: string;
   shortName: string;
   displayName: string;
@@ -27,7 +27,7 @@ export interface AgentMeta {
   invertInDark?: boolean;
 }
 
-export const AGENT_META = {
+const AGENT_META = {
   claude: {
     name: 'claude',
     shortName: 'Claude',
@@ -66,18 +66,14 @@ export const AGENT_META = {
   },
 } as const satisfies Record<string, AgentMeta>;
 
-export type AgentName = keyof typeof AGENT_META;
-
 /** 按声明顺序列出的 agent 列表，可用于渲染 Settings/Dashboard 列表 */
 export const KNOWN_AGENTS: readonly AgentMeta[] = Object.values(AGENT_META);
 
 /** 未知 agent 图标的兜底资源 */
-export const DEFAULT_AGENT_ICON = openclawIcon;
+const DEFAULT_AGENT_ICON = openclawIcon;
 
 const getMeta = (name: string): AgentMeta | undefined =>
   (AGENT_META as Record<string, AgentMeta>)[name];
-
-export const getAgentMeta = getMeta;
 
 export const getAgentRootPath = (name: string): string =>
   getMeta(name)?.rootPath ?? '';

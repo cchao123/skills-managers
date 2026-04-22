@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import PageHeader from '@/components/PageHeader';
 import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
 import { useToast } from '@/components/Toast';
-import type { SkillMetadata, Skill, MergedSkillInfo } from '@/types';
+import type { SkillMetadata, Skill, SkillDeletionRow } from '@/types';
 import { SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS, PAGE, type Page, getAgentRootPath } from '@/constants';
 import { TabSwitcher } from '@/components/TabSwitcher';
 
@@ -19,6 +19,9 @@ import { usePanelResize } from '@/pages/Dashboard/hooks/usePanelResize';
 
 // Components
 import { SkillCard } from '@/pages/Dashboard/components/SkillCard';
+import { MainToggleIndicator, MAIN_TOGGLE_STATES } from '@/pages/Dashboard/components/MainToggleIndicator';
+import { OperationLogPopover } from '@/pages/Dashboard/components/OperationLogPopover';
+import { appendOperationLog } from '@/pages/Dashboard/hooks/useOperationLog';
 import { SearchAndFilterBar } from '@/pages/Dashboard/components/SearchAndFilterBar';
 import { DragDropOverlay } from '@/pages/Dashboard/components/DragDropOverlay';
 import { ImportingOverlay } from '@/pages/Dashboard/components/ImportingOverlay';
@@ -46,62 +49,35 @@ function readPersistedDashboardNav(): { viewMode: ViewMode; selectedSource: stri
   }
 }
 
-/** 平铺视图：同 id 多来源合并为一张卡片 */
-function mergeSkillsById(skills: SkillMetadata[]): MergedSkillInfo[] {
-  const byId = new Map<string, SkillMetadata[]>();
-  for (const skill of skills) {
-    const group = byId.get(skill.id) || [];
-    group.push(skill);
-    byId.set(skill.id, group);
-  }
-
-  const sourcePriority = (s: string) => (s === SOURCE.Global ? 0 : s === SOURCE.Claude ? 1 : 2);
-
-  const result: MergedSkillInfo[] = [];
-  for (const [, group] of byId) {
-    const sorted = [...group].sort((a, b) =>
-      sourcePriority(a.source ?? SOURCE.Global) - sourcePriority(b.source ?? SOURCE.Global)
-    );
-    const primary = sorted[0];
-
-    const allSources = sorted.map(s => s.source ?? SOURCE.Global);
-    const nativeAgents = new Set(allSources.filter(src => src !== SOURCE.Global));
-    const allPaths = sorted
-      .filter(s => s.path)
-      .map(s => ({ source: s.source ?? SOURCE.Global, path: s.path! }));
-
-    const mergedAgentEnabled: Record<string, boolean> = {};
-    for (const skill of sorted) {
-      for (const [agent, enabled] of Object.entries(skill.agent_enabled || {})) {
-        mergedAgentEnabled[agent] = mergedAgentEnabled[agent] || enabled;
-      }
-    }
-    for (const agent of nativeAgents) {
-      mergedAgentEnabled[agent] = true;
-    }
-
-    result.push({
-      primary: {
-        ...primary,
-        agent_enabled: mergedAgentEnabled,
-        enabled: Object.values(mergedAgentEnabled).some(v => v),
-      },
-      sourceSkills: sorted,
-      allSources,
-      nativeAgents,
-      allPaths,
-    });
-  }
-
-  return result.sort((a, b) => a.primary.id.localeCompare(b.primary.id));
+/**
+ * Schema v2：把后端已合并的单条 skill 按 sources/source_paths 展开成多行，
+ * 供"从详情删除多源技能"场景下的 DeleteConfirmModal 多选展示与逐源删除。
+ */
+function expandToSourceRows(skill: SkillMetadata | null): SkillDeletionRow[] {
+  if (!skill) return [];
+  const sources = skill.sources?.length ? skill.sources : [SOURCE.Global];
+  return sources.map(src => ({
+    skill,
+    source: src,
+    path: skill.source_paths?.[src],
+  }));
 }
 
-function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
+function Dashboard({
+  onNavigate,
+  isActive = true,
+}: {
+  onNavigate: (page: Page) => void;
+  /** 由 App 传入：当前是否在展示本页。false 时页面被 display:none 隐藏，
+   *  切回（false→true）时做一次静默刷新，避免用户盯着过期数据。 */
+  isActive?: boolean;
+}) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<SkillMetadata | null>(null);
-  // deleteMultiSource removed: always show all source paths in delete modal
+  /** 删除是否来自"根目录 tab 的卡片"：true = 仅单行删除中央存储副本；false = 多源展开 */
+  const [deleteTargetFromRoot, setDeleteTargetFromRoot] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(() => readPersistedDashboardNav().viewMode);
   const [selectedSource, setSelectedSource] = useState<string>(() => readPersistedDashboardNav().selectedSource);
   const [githubTipDismissed, setGithubTipDismissed] = useState(
@@ -127,6 +103,18 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
   const helpButtonRef = useRef<HTMLButtonElement>(null);
   const helpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 操作日志 popover（点击开 / Esc 或外部点击关）
+  const [logPopoverAnchor, setLogPopoverAnchor] = useState<DOMRect | null>(null);
+  const logButtonRef = useRef<HTMLButtonElement>(null);
+  const toggleLogPopover = () => {
+    if (logPopoverAnchor) {
+      setLogPopoverAnchor(null);
+      return;
+    }
+    const rect = logButtonRef.current?.getBoundingClientRect();
+    if (rect) setLogPopoverAnchor(rect);
+  };
+
   const viewTabs = [
     { id: VIEW_MODE.Flat, label: t('dashboard.viewFlat'), icon: 'grid_view' },
     { id: VIEW_MODE.Agent, label: t('dashboard.viewBySource'), icon: 'smart_toy' },
@@ -147,7 +135,19 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
   };
 
   // Custom hooks
-  const { skills, setSkills, agents, loading, error, loadSkills, refreshSkills } = useSkillData();
+  const { skills, setSkills, agents, loading, error, loadSkills, refreshSkills, loadAgents } = useSkillData();
+
+  // 从隐藏切回到激活状态时做一次静默刷新（不触发 loading spinner）。
+  // 这样用户先看到之前的数据，后台扫描完再平滑更新。
+  const prevIsActiveRef = useRef(isActive);
+  useEffect(() => {
+    const wasActive = prevIsActiveRef.current;
+    prevIsActiveRef.current = isActive;
+    if (!wasActive && isActive) {
+      void refreshSkills();
+      void loadAgents();
+    }
+  }, [isActive, refreshSkills, loadAgents]);
 
   // 延迟显示/隐藏帮助，配合hover效果
   const handleHelpMouseEnter = () => {
@@ -193,24 +193,27 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
   }, []);
   const { searchTerm, setSearchTerm, filterType, setFilterType, filteredSkills } = useSkillFilters(skills);
   const prefixFilteredSkills = usePrefixFilteredSkills(skills);
-  const { handleToggleSkill, handleToggleAgent, handleToggleSkillMerged, handleToggleAgentMerged, handleDeleteSkill, handleAddToRoot } = useSkillActions(skills, setSkills, agents);
+  const { handleToggleSkillMerged, handleToggleAgentMerged, handleDeleteSkill, handleAddToRoot } = useSkillActions(skills, setSkills, agents);
   const detectedAgents = useDetectedAgents(agents);
 
-  /** 平铺视图：同 id 多来源合并为一张卡片 */
-  const mergedSkillsForFlat = useMemo(() => mergeSkillsById(filteredSkills), [filteredSkills]);
+  /** 平铺视图：后端已按 id 合并，这里只需按 id 稳定排序 */
+  const flatSkills = useMemo(
+    () => [...filteredSkills].sort((a, b) => a.id.localeCompare(b.id)),
+    [filteredSkills],
+  );
 
   /**
-   * 手动瀑布流分列：按响应式断点把合并后的列表按 round-robin 拆成 N 列，
+   * 手动瀑布流分列：按响应式断点把列表按 round-robin 拆成 N 列，
    * 每列成为独立 DOM，展开/折叠某张卡片只影响本列高度，不会把后续卡片挤到相邻列。
    */
   const columnCount = useColumnCount();
-  const flatColumns = useMemo<MergedSkillInfo[][]>(() => {
-    const cols: MergedSkillInfo[][] = Array.from({ length: columnCount }, () => []);
-    mergedSkillsForFlat.forEach((m, i) => {
-      cols[i % columnCount].push(m);
+  const flatColumns = useMemo<SkillMetadata[][]>(() => {
+    const cols: SkillMetadata[][] = Array.from({ length: columnCount }, () => []);
+    flatSkills.forEach((s, i) => {
+      cols[i % columnCount].push(s);
     });
     return cols;
-  }, [mergedSkillsForFlat, columnCount]);
+  }, [flatSkills, columnCount]);
 
   // 将SkillMetadata转换为Marketplace的Skill格式
   const convertToMarketplaceSkill = (skill: SkillMetadata): Skill => {
@@ -231,8 +234,11 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
     };
   };
 
-  // 按来源过滤：`selectedSource` 直接等于 skill.source 即可（'global' | 'cursor' | 'claude' | ...）
-  const filteredBySource = filteredSkills.filter(skill => skill.source === selectedSource);
+  // 按来源过滤：Schema v2 中一条 skill 可能分布在多个源里，
+  // 只要 `sources` 包含当前选中源就展示。下游组件按 `selectedSource` 定位当前 tab。
+  const filteredBySource = useMemo(() => {
+    return filteredSkills.filter(skill => (skill.sources ?? []).includes(selectedSource));
+  }, [filteredSkills, selectedSource]);
 
   const marketplaceSkills = filteredBySource.map(convertToMarketplaceSkill);
   const {
@@ -252,21 +258,9 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
   /** 弹窗内技能数据需与 skills 同步 */
   const detailSkillLive = useMemo((): SkillMetadata | null => {
     if (!detailSkill) return null;
-    return (
-      skills.find((s) => s.id === detailSkill.id && s.source === detailSkill.source) ??
-      skills.find((s) => s.id === detailSkill.id) ??
-      detailSkill
-    );
+    return skills.find((s) => s.id === detailSkill.id) ?? detailSkill;
   }, [skills, detailSkill]);
 
-  /** 弹窗中的合并来源信息（与 skills 状态同步重算） */
-  const detailMergedLive = useMemo((): MergedSkillInfo | undefined => {
-    if (!detailSkill) return undefined;
-    const group = skills.filter(s => s.id === detailSkill.id);
-    if (group.length <= 1) return undefined;
-    const merged = mergeSkillsById(group);
-    return merged[0];
-  }, [skills, detailSkill]);
 
   // Esc：删除确认优先于技能详情关闭
   useEffect(() => {
@@ -276,6 +270,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
       if (deleteTarget) {
         e.preventDefault();
         setDeleteTarget(null);
+        setDeleteTargetFromRoot(false);
         return;
       }
       if (showDetailModal) {
@@ -288,11 +283,12 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
   }, [showDetailModal, deleteTarget, handleCloseDetailModal]);
 
   const { isDragOver, importing } = useDragDrop(useCallback((importedNames: string[]) => {
-    loadSkills();
+    // 拖拽导入通常几十毫秒就能完成，用静默刷新避免 loading spinner 闪一下
+    void refreshSkills();
     if (importedNames.length === 1) {
       setSearchTerm(importedNames[0]);
     }
-  }, [loadSkills, setSearchTerm]));
+  }, [refreshSkills, setSearchTerm]));
   const { leftPanelWidth, isResizing, handleMouseDown } = usePanelResize();
 
   // Handlers
@@ -308,28 +304,33 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
     });
   };
 
-  const handleDeleteConfirm = async (selected: SkillMetadata[]) => {
+  const handleDeleteConfirm = async (selected: SkillDeletionRow[]) => {
     setDeleteTarget(null);
+    setDeleteTargetFromRoot(false);
     handleCloseDetailModal();
 
     const succeeded: string[] = [];
     const failed: string[] = [];
-    for (const s of selected) {
+    for (const row of selected) {
       try {
-        await handleDeleteSkill(s, true);
-        succeeded.push(sourceDisplayName(s.source));
+        await handleDeleteSkill(row.skill, row.source, true);
+        succeeded.push(sourceDisplayName(row.source));
       } catch {
-        failed.push(sourceDisplayName(s.source));
+        failed.push(sourceDisplayName(row.source));
       }
     }
 
-    const name = selected[0]?.name ?? '';
+    const name = selected[0]?.skill.name ?? '';
     if (succeeded.length > 0) {
       showToast('success', t('dashboard.toast.skillDeletedFrom', { name, sources: succeeded.join('、') }));
     }
     if (failed.length > 0) {
       showToast('error', t('dashboard.toast.skillDeleteFromFailed', { name, sources: failed.join('、') }));
     }
+
+    // 多源删除场景下，单次删除后合并记录可能仍然存在（还剩其它源），
+    // 所以 handleDeleteSkill 已不再做乐观移除 —— 这里统一拉一次后端真实状态。
+    await refreshSkills();
   };
 
   // Loading state
@@ -413,6 +414,17 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
                 {t('dashboard.localAgentDirectory')}
               </span>
             </button>
+            <button
+              ref={logButtonRef}
+              className="px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5"
+              onClick={toggleLogPopover}
+              title={t('dashboard.operationLog.title')}
+            >
+              <span className="material-symbols-outlined material-symbols-legacy text-lg text-slate-500 dark:text-gray-400">history</span>
+              <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
+                {t('dashboard.operationLog.title')}
+              </span>
+            </button>
           </div>
         }
       />
@@ -439,30 +451,24 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
         <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl mx-auto">
           {viewMode === VIEW_MODE.Flat && (
             <>
-              {mergedSkillsForFlat.length === 0 ? (
+              {flatSkills.length === 0 ? (
                 <EmptyView message={searchTerm ? t('dashboard.search.noResults') : t('dashboard.filter.noResults')} />
               ) : (
                 <div className="flex gap-4 items-start">
                   {flatColumns.map((col, colIdx) => (
                     <div key={colIdx} className="flex-1 min-w-0 space-y-4">
-                      {col.map((m) => {
-                        const cardKey = m.primary.id;
-                        return (
-                          <SkillCard
-                            key={cardKey}
-                            skill={m.primary}
-                            agents={agents}
-                            expanded={expandedCards.has(cardKey)}
-                            merged={m}
-                            onToggleExpand={() => toggleExpand(cardKey)}
-                            onToggleSkill={handleToggleSkill}
-                            onToggleAgent={handleToggleAgent}
-                            onToggleSkillMerged={handleToggleSkillMerged}
-                            onToggleAgentMerged={handleToggleAgentMerged}
-                            onShowDetail={handleShowSkillDetail}
-                          />
-                        );
-                      })}
+                      {col.map((s) => (
+                        <SkillCard
+                          key={s.id}
+                          skill={s}
+                          agents={agents}
+                          expanded={expandedCards.has(s.id)}
+                          onToggleExpand={() => toggleExpand(s.id)}
+                          onToggleSkill={handleToggleSkillMerged}
+                          onToggleAgent={handleToggleAgentMerged}
+                          onShowDetail={handleShowSkillDetail}
+                        />
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -534,7 +540,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
 
                     // 基础props：始终存在
                     const baseProps = {
-                      key: `${skill.id}:${originalSkill?.source ?? ''}`,
+                      key: `${skill.id}:${selectedSource}`,
                       skill,
                       onInfo: () => {
                         if (originalSkill) handleShowSkillDetail(originalSkill);
@@ -542,36 +548,48 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
                     };
 
                     // 根据不同情况添加按钮props
-                    if (originalSkill?.source === SOURCE.Global) {
+                    if (selectedSource === SOURCE.Global) {
                       // 情况1：根目录tab → 只提供删除功能
                       return (
                         <MarketplaceSkillCard
                           {...baseProps}
-                          onDelete={() => setDeleteTarget(originalSkill)}
+                          onDelete={() => {
+                            setDeleteTargetFromRoot(true);
+                            setDeleteTarget(originalSkill);
+                          }}
                         />
                       );
                     }
 
                     // 情况2：其他tab (Cursor/agent) → 提供添加功能
-                    // 检查技能是否已存在于根目录
-                    const existsInRoot = skills.some(s => s.id === skill.id && s.source === SOURCE.Global);
+                    // 是否已存在于根目录：看合并记录里的 `sources` 是否包含 Global
+                    const existsInRoot = skills.some(
+                      s => s.id === skill.id && (s.sources ?? []).includes(SOURCE.Global)
+                    );
 
                     return (
                       <MarketplaceSkillCard
                         {...baseProps}
                         onAddToRoot={(skillId) => {
                           console.log(`[DEBUG] 点击拷贝到根目录: ${skill.name} (ID: ${skillId})`);
-                          const targetSkill = skills.find(s => s.id === skillId && s.source === selectedSource);
-                          if (targetSkill) {
-                            console.log(`[DEBUG] 找到技能:`, targetSkill);
-                            handleAddToRoot(targetSkill).then(() => {
+                          // Schema v2：按 id 查合并后的单条记录，再从 source_paths 取当前 tab 对应的路径
+                          const targetSkill = skills.find(s => s.id === skillId);
+                          const sourcePath = targetSkill?.source_paths?.[selectedSource];
+                          if (targetSkill && sourcePath) {
+                            console.log(`[DEBUG] 找到技能:`, targetSkill, 'path:', sourcePath);
+                            handleAddToRoot(targetSkill, sourcePath).then(() => {
+                              appendOperationLog({
+                                type: 'copyFromSource',
+                                skillName: targetSkill.name,
+                                source: selectedSource,
+                              });
                               console.log(`[DEBUG] 拷贝完成，刷新中...`);
                               refreshSkills().then(() => {
                                 console.log(`[DEBUG] 刷新完成`);
                               });
                             });
                           } else {
-                            console.error(`[DEBUG] 未找到技能: ${skillId}`);
+                            console.error(`[DEBUG] 未找到技能或源路径: id=${skillId}, source=${selectedSource}`);
                           }
                         }}
                         isInRoot={existsInRoot}
@@ -598,7 +616,7 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
       {/* Skill Detail Modal */}
       {showDetailModal && detailSkillLive && (
         <SkillDetailModal
-          skill={detailMergedLive?.primary ?? detailSkillLive}
+          skill={detailSkillLive}
           agents={agents}
           skillFiles={skillFiles}
           loadingFiles={loadingFiles}
@@ -607,13 +625,12 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
           loadingFile={loadingFile}
           leftPanelWidth={leftPanelWidth}
           isResizing={isResizing}
-          merged={detailMergedLive}
           onClose={handleCloseDetailModal}
           onToggleFolder={toggleFolder}
           onReadFile={handleReadFile}
-          onToggleAgent={handleToggleAgent}
-          onToggleAgentMerged={handleToggleAgentMerged}
-          onDelete={(detailSkillLive.source === SOURCE.Global || advancedMode) ? () => {
+          onToggleAgent={handleToggleAgentMerged}
+          onDelete={((detailSkillLive.sources ?? []).includes(SOURCE.Global) || advancedMode) ? () => {
+            setDeleteTargetFromRoot(false);
             setDeleteTarget(detailSkillLive);
           } : undefined}
           onResizeStart={handleMouseDown}
@@ -624,17 +641,18 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
       {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         target={deleteTarget}
-        allSourceSkills={
-          deleteTarget && deleteTarget.source === SOURCE.Global
-            ? [deleteTarget]  // 根目录tab中只删除根目录技能，不显示多选框
-            : deleteTarget
-              ? skills.filter(s => s.id === deleteTarget.id)
-              : undefined
+        rows={
+          deleteTarget && !deleteTargetFromRoot
+            ? expandToSourceRows(deleteTarget)  // 详情触发：按 sources 展开多选
+            : undefined  // 根目录 tab 卡片触发：Modal 内部兜底成单条 global 行
         }
-        purpose={deleteTarget?.source === SOURCE.Global ? 'root-only' : 'multi-source'}
+        purpose={deleteTargetFromRoot ? 'root-only' : 'multi-source'}
         advancedMode={advancedMode}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setDeleteTargetFromRoot(false);
+        }}
       />
 
       {helpPopover.open &&
@@ -682,6 +700,17 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
                       <p className="mb-1 font-bold text-slate-800 dark:text-gray-200">{t('dashboard.viewBySource')}</p>
                       <p>{t('dashboard.viewHelpBySource')}</p>
                     </div>
+                    <div className="border-t border-slate-200/70 dark:border-dark-border/60 pt-2">
+                      <p className="mb-1.5 font-bold text-slate-800 dark:text-gray-200">{t('dashboard.mainToggleHelp.title')}</p>
+                      <div className="space-y-1.5">
+                        {MAIN_TOGGLE_STATES.map(state => (
+                          <div key={state} className="flex items-center gap-2.5">
+                            <MainToggleIndicator state={state} />
+                            <span className="flex-1 truncate">{t(`dashboard.mainToggleHelp.${state}`)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -689,6 +718,10 @@ function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
             document.body
           );
         })()}
+
+      {logPopoverAnchor && (
+        <OperationLogPopover anchorRect={logPopoverAnchor} onClose={() => setLogPopoverAnchor(null)} />
+      )}
     </div>
   );
 }

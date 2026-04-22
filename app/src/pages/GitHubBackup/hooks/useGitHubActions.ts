@@ -3,9 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { open } from '@tauri-apps/plugin-shell';
 import { githubApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
-import { TelemetryEvent } from '@/constants/events';
+import { TelemetryEvent, WINDOW_EVENTS } from '@/constants/events';
 import { trackEvent } from '@/lib/telemetry';
 import { STAR_REPO_OWNER, STAR_REPO_NAME, STAR_REPO_URL } from '../constants/config';
+
+/** 通知 Dashboard 静默刷新 skills 列表（sync/restore 成功后）。 */
+const emitSkillsRefresh = () => {
+  window.dispatchEvent(new CustomEvent(WINDOW_EVENTS.skillsRefresh));
+};
 
 // 辅助函数：检测是否是认证错误
 const isAuthError = (errorMsg: string): boolean => {
@@ -95,6 +100,7 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
       });
 
       showToast('success', `${t('githubBackup.messages.syncSuccess')}\nhttps://github.com/${repoConfig.owner}/${repoConfig.repo}`);
+      emitSkillsRefresh();
     } catch (error: any) {
       console.error('Sync failed:', error);
       const errMsg = error?.message || error;
@@ -134,6 +140,7 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
       } else {
         showToast('warning', t('githubBackup.messages.restoreEmpty'));
       }
+      if (count > 0) emitSkillsRefresh();
     } catch (error: any) {
       console.error('Restore failed:', error);
       const errMsg = error?.message || error;

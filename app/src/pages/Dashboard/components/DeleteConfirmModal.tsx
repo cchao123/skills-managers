@@ -1,22 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SkillMetadata } from '@/types';
+import type { SkillMetadata, SkillDeletionRow } from '@/types';
 import { badgeClass, sourceLabel, SOURCE } from '@/pages/Dashboard/utils/source';
 
 type DeletePurpose = 'root-only' | 'multi-source';
 
 interface DeleteConfirmModalProps {
   target: SkillMetadata | null;
-  allSourceSkills?: SkillMetadata[];
+  /** 多源删除：每行一个 source；root-only 场景传空或单元素。 */
+  rows?: SkillDeletionRow[];
   advancedMode?: boolean;
   purpose?: DeletePurpose;
-  onConfirm: (selected: SkillMetadata[]) => void;
+  onConfirm: (selected: SkillDeletionRow[]) => void;
   onCancel: () => void;
 }
 
 export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   target,
-  allSourceSkills,
+  rows,
   advancedMode = false,
   purpose = 'multi-source',
   onConfirm,
@@ -26,7 +27,12 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   const isWindows = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
   const norm = (p: string) => (isWindows ? p.replace(/\//g, '\\') : p);
 
-  const items = allSourceSkills && allSourceSkills.length > 0 ? allSourceSkills : target ? [target] : [];
+  // root-only 场景下 rows 为空 → 用 target 兜底成单条 global 行
+  const items: SkillDeletionRow[] = rows && rows.length > 0
+    ? rows
+    : target
+      ? [{ skill: target, source: SOURCE.Global, path: target.source_paths?.[SOURCE.Global] }]
+      : [];
   const isMulti = items.length > 1;
   const isRootOnly = purpose === 'root-only';
 
@@ -34,11 +40,11 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
   useEffect(() => {
     const initial = items
-      .filter(s => s.source === SOURCE.Global || advancedMode)
-      .map(s => `${s.source}:${s.id}`);
+      .filter(r => r.source === SOURCE.Global || advancedMode)
+      .map(r => `${r.source}:${r.skill.id}`);
     setChecked(new Set(initial));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, allSourceSkills, advancedMode]);
+  }, [target, rows, advancedMode]);
 
   if (!target) return null;
 
@@ -52,7 +58,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   };
 
   const handleConfirm = () => {
-    const selected = items.filter(s => checked.has(`${s.source}:${s.id}`));
+    const selected = items.filter(r => checked.has(`${r.source}:${r.skill.id}`));
     if (selected.length > 0) onConfirm(selected);
   };
 
@@ -82,11 +88,11 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           {isMulti && !isRootOnly && (
             <p className="text-xs text-slate-500 dark:text-gray-400 mb-1 px-1">{t('dashboard.delete.selectSources')}</p>
           )}
-          {items.map(s => {
-            const key = `${s.source}:${s.id}`;
+          {items.map(row => {
+            const key = `${row.source}:${row.skill.id}`;
             const isChecked = checked.has(key);
-            const isLocked = s.source !== SOURCE.Global && !advancedMode;
-            const isClickDisabled = isLocked || isRootOnly; // 单选模式下禁止点击
+            const isLocked = row.source !== SOURCE.Global && !advancedMode;
+            const isClickDisabled = isLocked || isRootOnly;
             return (
               <div key={key} className="relative group/del">
                 <label
@@ -106,12 +112,12 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                     className={`w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500 focus:ring-red-500/30 focus:ring-offset-0 accent-red-600 flex-shrink-0 disabled:opacity-40 ${isRootOnly ? 'hidden' : ''}`}
                   />
                   {isMulti && !isRootOnly && (
-                    <span className={`text-[10px] font-bold py-0.5 px-1.5 rounded flex-shrink-0 ${badgeClass(s.source)}`}>
-                      {sourceLabel(s.source ?? SOURCE.Global)}
+                    <span className={`text-[10px] font-bold py-0.5 px-1.5 rounded flex-shrink-0 ${badgeClass(row.source)}`}>
+                      {sourceLabel(row.source)}
                     </span>
                   )}
                   <span className={`text-xs font-mono truncate min-w-0 flex-1 ${isLocked ? 'text-slate-400 dark:text-gray-500' : 'text-red-500 dark:text-red-400'}`}>
-                    {s.path ? norm(s.path) : s.id}
+                    {row.path ? norm(row.path) : row.skill.id}
                   </span>
                 </label>
                 {isLocked && (

@@ -1,15 +1,15 @@
 import { useTranslation } from 'react-i18next';
-import { PROJECT_NAME, PROJECT_VERSION, PAGE, SESSION_STORAGE_KEYS, WINDOW_EVENTS, type Page } from '@/constants';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { PROJECT_NAME, PROJECT_VERSION, PAGE, SESSION_STORAGE_KEYS, WINDOW_EVENTS, pageToPath, type Page } from '@/constants';
 
 interface SideNavBarProps {
-  currentPage: Page;
-  setCurrentPage: (page: Page) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
 
-export default function SideNavBar({ currentPage, setCurrentPage, isCollapsed, onToggleCollapse }: SideNavBarProps) {
+export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBarProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const handleLogoClick = () => {
     try {
@@ -17,10 +17,19 @@ export default function SideNavBar({ currentPage, setCurrentPage, isCollapsed, o
     } catch {
       /* ignore quota / private mode */
     }
-    // 已经在 Settings 页时，setCurrentPage 不会触发重新挂载，需要一个事件通知已 mount 的 Settings 切 tab
+    // 已经在 Settings 页时，navigate 不会触发重新挂载，需要一个事件通知已 mount 的 Settings 切 tab
     window.dispatchEvent(new CustomEvent(WINDOW_EVENTS.settingsSetTab, { detail: 'about' }));
-    setCurrentPage(PAGE.Settings);
+    navigate(pageToPath(PAGE.Settings));
   };
+
+  const navButtonClass = (active: boolean, collapsed: boolean) =>
+    `flex items-center gap-3 py-3 rounded-lg font-bold transition-all active:scale-95 w-full ${
+      collapsed ? 'justify-center px-0' : 'px-4'
+    } ${
+      active
+        ? 'text-[#b71422] bg-white dark:bg-dark-bg-card shadow-sm dark:shadow-none'
+        : 'text-slate-600 dark:text-gray-300 hover:text-[#b71422] hover:bg-white/50 dark:hover:bg-dark-bg-tertiary'
+    }`;
 
   const navItems: Array<{ id: Page; icon: string; label: string }> = [
     { id: PAGE.Dashboard, icon: 'extension', label: t('nav.dashboard') },
@@ -52,39 +61,28 @@ export default function SideNavBar({ currentPage, setCurrentPage, isCollapsed, o
 
       <nav className="flex-1 space-y-2">
         {navItems.map((item) => (
-          <button
+          <NavLink
             key={item.id}
-            onClick={() => setCurrentPage(item.id)}
-            className={`flex items-center gap-3 py-3 rounded-lg font-bold transition-all active:scale-95 w-full ${
-              isCollapsed ? 'justify-center px-0' : 'px-4'
-            } ${
-              currentPage === item.id
-                ? 'text-[#b71422] bg-white dark:bg-dark-bg-card shadow-sm dark:shadow-none'
-                : 'text-slate-600 dark:text-gray-300 hover:text-[#b71422] hover:bg-white/50 dark:hover:bg-dark-bg-tertiary'
-            }`}
+            to={pageToPath(item.id)}
+            end={item.id === PAGE.Dashboard}
+            className={({ isActive }) => navButtonClass(isActive, isCollapsed)}
             title={isCollapsed ? item.label : ''}
           >
             <span className="material-symbols-outlined" data-icon={item.icon}>{item.icon}</span>
             {!isCollapsed && <span className="font-['Manrope'] dark:text-gray-300">{item.label}</span>}
-          </button>
+          </NavLink>
         ))}
       </nav>
 
       {/* Settings at the bottom */}
-      <button
-        onClick={() => setCurrentPage(settingsItem.id)}
-        className={`flex items-center gap-3 py-3 rounded-lg font-bold transition-all active:scale-95 w-full ${
-          isCollapsed ? 'justify-center px-0' : 'px-4'
-        } ${
-          currentPage === settingsItem.id
-            ? 'text-[#b71422] bg-white dark:bg-dark-bg-card shadow-sm dark:shadow-none'
-            : 'text-slate-600 dark:text-gray-300 hover:text-[#b71422] hover:bg-white/50 dark:hover:bg-dark-bg-tertiary'
-        }`}
+      <NavLink
+        to={pageToPath(settingsItem.id)}
+        className={({ isActive }) => navButtonClass(isActive, isCollapsed)}
         title={isCollapsed ? settingsItem.label : ''}
       >
         <span className="material-symbols-outlined" data-icon={settingsItem.icon}>{settingsItem.icon}</span>
         {!isCollapsed && <span className="font-['Manrope'] dark:text-gray-300">{settingsItem.label}</span>}
-      </button>
+      </NavLink>
 
       {/* Collapse Toggle Button - Fixed on the right edge */}
       <button

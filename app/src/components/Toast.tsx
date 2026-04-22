@@ -1,14 +1,14 @@
 import { useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
 import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
 
-export const TOAST_TYPE = {
+const TOAST_TYPE = {
   Info: 'info',
   Warning: 'warning',
   Error: 'error',
   Success: 'success',
 } as const;
 
-export type ToastType = typeof TOAST_TYPE[keyof typeof TOAST_TYPE];
+type ToastType = typeof TOAST_TYPE[keyof typeof TOAST_TYPE];
 
 interface ToastItem {
   id: number;

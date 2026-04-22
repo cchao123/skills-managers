@@ -1,21 +1,7 @@
-// File entry types
-export interface FileEntry {
-  name: string;
-  is_dir: boolean;
-  size?: number;
-  children?: FileEntry[];
-}
-
-export interface SkillFileEntry {
-  path: string;
-  name: string;
-  is_dir: boolean;
-  size?: number;
-  children?: SkillFileEntry[];
-}
+import type { SkillFileEntry } from '@/types';
 
 interface CardFileTreeProps {
-  files: FileEntry[] | SkillFileEntry[];
+  files: SkillFileEntry[];
   expandedFolders: Set<string>;
   onToggleFolder: (path: string) => void;
   onReadFile?: (path: string) => void;
@@ -55,15 +41,10 @@ export default function CardFileTree({
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
   };
 
-  // Handle both FileEntry and SkillFileEntry
-  const getPath = (file: FileEntry | SkillFileEntry): string => {
-    return 'path' in file ? file.path : file.name;
-  };
-
   return (
     <div className="space-y-0.5">
       {files.map((file) => {
-        const path = getPath(file);
+        const path = file.path;
         const isDir = file.is_dir;
         const isExpanded = expandedFolders.has(path);
         const hasReadFile = onReadFile && !isDir;

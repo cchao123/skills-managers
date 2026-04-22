@@ -4,7 +4,7 @@ import { SKILL_ICON_POOL, SKILL_COLOR_POOL } from '@/pages/Dashboard/constants/s
  * Deterministic hash from string to index
  * Same skill always gets same icon/color
  */
-export const hashIndex = (str: string, poolSize: number): number => {
+const hashIndex = (str: string, poolSize: number): number => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);

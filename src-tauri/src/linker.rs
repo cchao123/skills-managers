@@ -487,11 +487,12 @@ impl LinkManager {
         eprintln!("=== LINK_SKILL_TO_AGENT START ===");
         eprintln!("Skill ID: {}", skill.id);
         eprintln!("Agent name: {}", agent.name);
-        eprintln!("Skill source: {:?}", skill.source);
+        eprintln!("Skill primary: {}", skill.primary);
 
-        // 获取技能的完整路径
-        let skill_path = skill.path.as_ref()
-            .ok_or_else(|| LinkerError::LinkFailed(format!("Skill {} has no path", skill.id)))?;
+        let skill_path = skill
+            .source_paths
+            .get(&skill.primary)
+            .ok_or_else(|| LinkerError::LinkFailed(format!("Skill {} has no primary path", skill.id)))?;
         let skill_source = Path::new(skill_path);
 
         eprintln!("Skill source path: {:?}", skill_source);

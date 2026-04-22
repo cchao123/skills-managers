@@ -1,26 +1,26 @@
 import { useMemo } from 'react';
-import type { SkillMetadata, MergedSkillInfo, SourcePathInfo } from '@/types';
-import { SOURCE_GLOBAL } from '@/pages/Dashboard/utils/source';
+import type { SkillMetadata, SourcePathInfo } from '@/types';
+import { SOURCE } from '@/pages/Dashboard/utils/source';
 
-export interface MergedView {
+interface MergedView {
   allSources: string[];
   nativeAgents: Set<string>;
   allPaths: SourcePathInfo[];
 }
 
 /**
- * 统一计算"合并卡片视图"所需的派生值。
- * 当 `merged` 存在时直接使用合并后的结果；否则根据单个 skill 回退构造。
+ * 从单条 `SkillMetadata` 派生多源视图：
+ * - `allSources`：所有物理副本所在位置。
+ * - `nativeAgents`：非 global 的副本对应的 Agent 集合（用于阻止关闭开关）。
+ * - `allPaths`：每个 source 对应的物理路径列表，供 UI 展示/跳转。
  */
-export function useMergedView(skill: SkillMetadata, merged?: MergedSkillInfo): MergedView {
+export function useMergedView(skill: SkillMetadata): MergedView {
   return useMemo(() => {
-    const source = skill.source ?? SOURCE_GLOBAL;
-    const isNative = skill.source && skill.source !== SOURCE_GLOBAL;
-
-    return {
-      allSources: merged?.allSources ?? [source],
-      nativeAgents: merged?.nativeAgents ?? new Set<string>(isNative ? [skill.source as string] : []),
-      allPaths: merged?.allPaths ?? (skill.path ? [{ source, path: skill.path }] : []),
-    };
-  }, [skill, merged]);
+    const sources = skill.sources ?? [];
+    const nativeAgents = new Set(sources.filter(s => s !== SOURCE.Global));
+    const allPaths: SourcePathInfo[] = Object.entries(skill.source_paths ?? {}).map(
+      ([source, path]) => ({ source, path }),
+    );
+    return { allSources: sources, nativeAgents, allPaths };
+  }, [skill]);
 }

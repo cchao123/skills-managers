@@ -1,27 +1,45 @@
-export type { Skill, SkillCategory } from './skills';
+export type { Skill } from './skills';
 
-// Skill source type
-export type SkillSource = 'global' | 'cursor' | 'claude' | 'openclaw' | 'codex';
-
-// Skill Metadata (matches backend Phase 1)
+// Skill Metadata (matches backend Schema v2)
+//
+// 后端按 id 合并物理副本：同一个 skill 只会返回一条记录。
+// - `agent_enabled` 由 `sources`（原生自动开启）+ `open`（主动链接）派生
+// - `sources` / `primary` / `open` / `source_paths` 描述多源布局
 export interface SkillMetadata {
-  id: string;                    // Unique identifier (e.g., "superpowers:subagent-driven-development")
-  name: string;                  // Skill name
-  description: string;           // Skill description
-  category: string;              // Skill category
-  enabled: boolean;              // Globally enabled flag
-  agent_enabled: Record<string, boolean>;  // Per-agent enablement (changed from agent_disabled)
-  agent_enabled_backup?: Record<string, boolean>;  // Backup of agent states before main toggle
-  source?: SkillSource;          // Where the skill comes from
-  is_collected?: boolean;         // Whether skill is physically copied to any agent's skills dir
-  author?: string;               // Author (optional)
-  version?: string;              // Version (optional)
-  repository?: string;           // Repository URL (optional)
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  enabled: boolean;
+  agent_enabled: Record<string, boolean>;
+  is_collected?: boolean;
+  author?: string;
+  version?: string;
   /** 技能目录体积（字节），后端可选返回 */
   size?: number;
-  installed_at: string;          // Installation timestamp
-  last_updated: string;          // Last update timestamp
-  path?: string;                 // Full file system path (optional, used for creating symlinks)
+  installed_at: string;
+  last_updated: string;
+
+  /** 物理副本所在位置（'global' 或 agent 名） */
+  sources: string[];
+  /** 链接到非原生 Agent 时默认用哪份副本为源 */
+  primary: string;
+  /** 用户主动启用的非原生 Agent */
+  open: string[];
+  /** 每个 source 对应的物理路径 */
+  source_paths: Record<string, string>;
+}
+
+/**
+ * 多源删除场景用的行数据：一条 skill 在某个具体源下的视图。
+ * DeleteConfirmModal 以此为单位展示/勾选/删除。
+ */
+export interface SkillDeletionRow {
+  skill: SkillMetadata;
+  /** 本行针对的具体 source（'global' 或 agent 名） */
+  source: string;
+  /** 本源对应的物理路径（从 `skill.source_paths` 取得，可能缺失） */
+  path?: string;
 }
 
 // Skill file entry for directory tree
@@ -71,16 +89,8 @@ export interface GitHubConfig {
   repositories: Record<string, GitHubRepoConfig>;
 }
 
-// 合并后的多来源 Skill 信息（平铺视图使用）
+// 某个 source 及其物理路径；useMergedView 从 SkillMetadata.source_paths 派生。
 export interface SourcePathInfo {
   source: string;
   path: string;
-}
-
-export interface MergedSkillInfo {
-  primary: SkillMetadata;
-  sourceSkills: SkillMetadata[];
-  allSources: string[];
-  nativeAgents: Set<string>;
-  allPaths: SourcePathInfo[];
 }

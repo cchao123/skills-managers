@@ -10,9 +10,3 @@ export const getAgentIcon = (name: string): string => getAgentIconUrl(name);
  */
 export const needsInvertInDark = (agentName: string): boolean =>
   agentNeedsInvertInDark(agentName);
-
-/**
- * Get CSS classes for agent icon
- */
-export const getAgentIconClasses = (agentName: string): string =>
-  needsInvertInDark(agentName) ? 'dark:invert' : '';

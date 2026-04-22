@@ -87,6 +87,59 @@ mod tests {
     }
 
     #[test]
+    fn test_schema_version_mismatch_resets_skill_states() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.json");
+
+        // 先手写一份"老版本"配置文件：schema_version 不匹配，skill_states 里带一条脏数据
+        let legacy = serde_json::json!({
+            "schema_version": "v0-legacy",
+            "linking_strategy": "symlink",
+            "agents": [],
+            "skill_states": {
+                "stale-skill": { "sources": ["global"], "primary": "global", "open": ["claude"] }
+            },
+            "language": "zh",
+            "skill_hide_prefixes": []
+        });
+        std::fs::write(&config_path, serde_json::to_string_pretty(&legacy).unwrap()).unwrap();
+
+        let manager = crate::settings::AppSettingsManager::load_or_create(&config_path).unwrap();
+        let config = manager.get_config();
+
+        assert_eq!(config.schema_version, crate::models::CURRENT_SCHEMA_VERSION);
+        assert!(config.skill_states.is_empty(), "skill_states should be cleared on mismatch");
+
+        // 文件也应已被写回为新 schema_version
+        let on_disk: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&config_path).unwrap()).unwrap();
+        assert_eq!(on_disk["schema_version"].as_str(), Some(crate::models::CURRENT_SCHEMA_VERSION));
+    }
+
+    #[test]
+    fn test_schema_version_match_preserves_skill_states() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.json");
+
+        let good = serde_json::json!({
+            "schema_version": crate::models::CURRENT_SCHEMA_VERSION,
+            "linking_strategy": "symlink",
+            "agents": [],
+            "skill_states": {
+                "keep-me": { "sources": ["global"], "primary": "global", "open": ["claude"] }
+            },
+            "language": "zh",
+            "skill_hide_prefixes": []
+        });
+        std::fs::write(&config_path, serde_json::to_string_pretty(&good).unwrap()).unwrap();
+
+        let manager = crate::settings::AppSettingsManager::load_or_create(&config_path).unwrap();
+        let config = manager.get_config();
+
+        assert!(config.skill_states.contains_key("keep-me"));
+    }
+
+    #[test]
     fn test_update_linking_strategy() {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.json");

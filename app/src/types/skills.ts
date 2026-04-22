@@ -12,8 +12,3 @@ export interface Skill {
   author: string;
   installed?: boolean;
 }
-
-export interface SkillCategory {
-  name: string;
-  count: number;
-}

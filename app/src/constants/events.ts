@@ -5,9 +5,9 @@
 export const WINDOW_EVENTS = {
   /** 通知 Settings 页切换 tab；payload 为 `CustomEvent<TabType>` 的 detail 字段。 */
   settingsSetTab: 'settings:set-tab',
+  /** 通知 Dashboard 重新静默拉取 skills 列表（如 GitHub 同步/恢复完成后）。 */
+  skillsRefresh: 'skills:refresh',
 } as const;
-
-export type WindowEventName = typeof WINDOW_EVENTS[keyof typeof WINDOW_EVENTS];
 
 /**
  * 统一的事件名称定义

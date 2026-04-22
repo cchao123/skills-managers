@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { skillsApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
+import { appendOperationLog } from '@/pages/Dashboard/hooks/useOperationLog';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
 export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void) => {
@@ -23,6 +24,7 @@ export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void
       try {
         const name = await skillsApi.importFolder(folder);
         importedNames.push(name);
+        appendOperationLog({ type: 'dragImport', skillName: name, folderPath: folder });
       } catch (error) {
         const msg = typeof error === 'string' ? error : (error as Error)?.message || '导入失败';
         errorMsg = msg;

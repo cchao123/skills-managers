@@ -148,6 +148,7 @@ pub fn run() {
             commands::skills::list_skills,
             commands::skills::enable_skill,
             commands::skills::disable_skill,
+            commands::skills::set_skill_primary,
             commands::skills::get_skill_content,
             commands::skills::get_skill_files,
             commands::skills::read_skill_file,

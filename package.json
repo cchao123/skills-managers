@@ -27,9 +27,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^17.0.1",
-    "react-markdown": "^10.1.0",
-    "react-material-symbols": "^4.4.0",
-    "remark-gfm": "^4.0.1"
+    "react-router-dom": "^7.14.2"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

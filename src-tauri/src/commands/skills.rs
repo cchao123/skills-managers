@@ -1,11 +1,10 @@
 use crate::linker::LinkManager;
-use crate::models::{SkillMetadata, SkillSource, SkillFileEntry, skill_state_key};
+use crate::models::{AgentConfig, SkillEntry, SkillFileEntry, SkillMetadata, SOURCE_GLOBAL};
 use crate::scanner;
 use crate::settings::AppSettingsManager;
 use crate::state::AppState;
-use log::{info, error, warn};
+use log::{info, warn};
 use regex::Regex;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::State;
 
@@ -20,51 +19,65 @@ fn extract_skill_name_from_md(content: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-/// 根据技能来源获取基础路径
-fn get_skill_base_path(source: &SkillSource) -> PathBuf {
-    match source {
-        SkillSource::Global => {
-            PathBuf::from("~/.skills-manager/skills")
-        }
-        SkillSource::Cursor => {
-            PathBuf::from("~/.cursor/skills")
-        }
-        SkillSource::Claude => {
-            PathBuf::from("~/.claude/plugins/cache")
-        }
-        SkillSource::OpenClaw => {
-            PathBuf::from("~/.openclaw/skills")
-        }
-        SkillSource::Codex => {
-            PathBuf::from("~/.codex/skills")
+/// 扫描并把结果同步回 skill_states（自愈），**不落盘**。
+/// 用于需要后续再改 skill_states 的场景（enable/disable/delete/set_primary），
+/// 由调用方在末尾统一 save 一次，避免两次 IO。
+fn scan_only(
+    settings: &mut crate::settings::AppSettingsManager,
+) -> Result<Vec<SkillMetadata>, String> {
+    let agents = settings.get_config().agents.clone();
+    let skill_states = &mut settings.get_config_mut().skill_states;
+    scanner::scan_and_merge(skill_states, &agents)
+        .map_err(|e| format!("Failed to scan skills: {}", e))
+}
+
+/// 扫描 + 立刻落盘。用于单纯读取场景（list_skills / rescan_skills）。
+fn scan_and_persist(
+    settings: &mut crate::settings::AppSettingsManager,
+) -> Result<Vec<SkillMetadata>, String> {
+    let skills = scan_only(settings)?;
+    settings
+        .save()
+        .map_err(|e| format!("Failed to save config: {}", e))?;
+    Ok(skills)
+}
+
+/// 清空中央存储中指定 skill 的副本。在以下场景调用：
+/// - 删除任一源：central 的快照可能来自被删的源，需要重置以便下次重新拷贝
+/// - 切换 primary：central 里是旧 primary 的快照，切换后应重新从新 primary 同步
+fn clear_central_storage(skill_id: &str) {
+    let central = AppSettingsManager::get_skills_dir().join(skill_id);
+    if central.exists() {
+        if let Err(e) = std::fs::remove_dir_all(&central) {
+            warn!("Failed to clear central storage for {}: {}", skill_id, e);
         }
     }
 }
 
-/// 列出所有已安装的技能
+/// 列出所有已安装的技能（会触发自愈 + 持久化）
 #[tauri::command]
-pub async fn list_skills(
-    state: State<'_, AppState>,
-) -> Result<Vec<SkillMetadata>, String> {
+pub async fn list_skills(state: State<'_, AppState>) -> Result<Vec<SkillMetadata>, String> {
     info!("Listing skills from all sources...");
 
-    let settings = state.settings_manager.lock()
-        .map_err(|e| {
-            error!("Failed to acquire settings lock: {}", e);
-            format!("Failed to acquire lock: {}", e)
-        })?;
+    let mut settings = state
+        .settings_manager
+        .lock()
+        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
 
-    let config = settings.get_config();
-    info!("Scanning skills from central, cursor, and claude sources...");
-
-    let skills = scanner::scan_all_skill_sources(&config.skill_states, &config.agents)
-        .map_err(|e| {
-            error!("Failed to scan skills: {}", e);
-            format!("Failed to scan skills: {}", e)
-        })?;
-
+    let skills = scan_and_persist(&mut settings)?;
     info!("Found {} skills", skills.len());
     Ok(skills)
+}
+
+/// 解析 `skill.path` 对应的"源仓库根目录"，作为 linker 的 `_skills_base`。
+/// 新版本里 linker 其实不用这个参数，随便给一个占位即可。
+fn dummy_skills_base() -> PathBuf {
+    PathBuf::from("~/.skills-manager/skills")
+}
+
+/// 查找某个 agent 是否是该 skill 的"原生" agent（物理副本就在它自己目录里）。
+fn is_native(entry: &SkillEntry, agent: &str) -> bool {
+    entry.sources.iter().any(|s| s == agent)
 }
 
 /// 启用技能（全局或特定 Agent）
@@ -72,91 +85,74 @@ pub async fn list_skills(
 pub async fn enable_skill(
     skill_id: String,
     agent: Option<String>,
-    source: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    info!("Enabling skill '{}' (source: {:?}) for agent: {:?}", skill_id, source, agent);
-    let source_filter = source.and_then(|s| SkillSource::from_str_opt(&s));
+    info!("Enabling skill '{}' for agent: {:?}", skill_id, agent);
 
-    let mut settings = state.settings_manager.lock()
-        .map_err(|e| {
-            error!("Failed to acquire settings lock: {}", e);
-            format!("Failed to acquire lock: {}", e)
-        })?;
+    let mut settings = state
+        .settings_manager
+        .lock()
+        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
 
-    let skills = scanner::scan_all_skill_sources(&settings.get_config().skill_states, &settings.get_config().agents)
-        .map_err(|e| {
-            error!("Failed to scan skills: {}", e);
-            format!("Failed to scan skills: {}", e)
-        })?;
+    let skills = scan_only(&mut settings)?;
+    let skill = skills
+        .into_iter()
+        .find(|s| s.id == skill_id)
+        .ok_or_else(|| format!("Skill '{}' not found", skill_id))?;
 
-    let skill = skills.into_iter()
-        .find(|s| s.id == skill_id && source_filter.map_or(true, |sf| s.source == sf))
-        .ok_or_else(|| {
-            error!("Skill '{}' not found", skill_id);
-            format!("Skill '{}' not found", skill_id)
-        })?;
-
-    let state_key = skill_state_key(&skill.source, &skill.id);
     let config = settings.get_config().clone();
-    let linker = LinkManager::new(config.linking_strategy);
-    let skill_base = get_skill_base_path(&skill.source);
+    let linker = LinkManager::new(config.linking_strategy.clone());
+    let skills_base = dummy_skills_base();
 
-    if let Some(agent_name) = agent {
-        info!("Enabling skill for specific agent: {}", agent_name);
-        let agent_config = config.agents.iter()
-            .find(|a| a.name == agent_name)
-            .ok_or_else(|| {
-                error!("Agent '{}' not found", agent_name);
-                format!("Agent '{}' not found", agent_name)
-            })?;
+    // scan_only 已经保证 skill_states 里有这条记录
+    let entry = settings
+        .get_config_mut()
+        .skill_states
+        .get_mut(&skill_id)
+        .ok_or_else(|| format!("Skill '{}' missing in skill_states after scan", skill_id))?;
 
-        settings.get_config_mut()
-            .skill_states
-            .entry(state_key)
-            .or_insert_with(HashMap::new)
-            .insert(agent_name.clone(), true);
-
-        settings.save()
-            .map_err(|e| {
-                error!("Failed to save config: {}", e);
-                format!("Failed to save config: {}", e)
-            })?;
-
-        linker.link_skill_to_agent(&skill, agent_config, &skill_base)
-            .map_err(|e| {
-                error!("Failed to link skill: {}", e);
-                format!("Failed to link skill: {}", e)
-            })?;
+    let target_agents: Vec<AgentConfig> = if let Some(ref a) = agent {
+        config
+            .agents
+            .iter()
+            .filter(|ac| &ac.name == a)
+            .cloned()
+            .collect()
     } else {
-        info!("Enabling skill globally for all agents");
-        let mut enabled_count = 0;
-        let config = settings.get_config().clone();
+        config
+            .agents
+            .iter()
+            .filter(|ac| ac.enabled && ac.detected)
+            .cloned()
+            .collect()
+    };
 
-        for agent_config in &config.agents {
-            if agent_config.enabled {
-                settings.get_config_mut()
-                    .skill_states
-                    .entry(state_key.clone())
-                    .or_insert_with(HashMap::new)
-                    .insert(agent_config.name.clone(), true);
-
-                match linker.link_skill_to_agent(&skill, agent_config, &skill_base) {
-                    Ok(_) => enabled_count += 1,
-                    Err(e) => warn!("Failed to link to agent {}: {}", agent_config.name, e),
-                }
-            }
+    if target_agents.is_empty() {
+        if let Some(ref a) = agent {
+            return Err(format!("Agent '{}' not found", a));
         }
-
-        settings.save()
-            .map_err(|e| {
-                error!("Failed to save config: {}", e);
-                format!("Failed to save config: {}", e)
-            })?;
-
-        info!("Successfully enabled skill for {} agents", enabled_count);
+        return Ok(());
     }
 
+    let mut linked = 0usize;
+    for agent_config in &target_agents {
+        // 原生 Agent：不碰 open，不重复 link
+        if is_native(entry, &agent_config.name) {
+            continue;
+        }
+        if !entry.open.iter().any(|n| n == &agent_config.name) {
+            entry.open.push(agent_config.name.clone());
+        }
+        match linker.link_skill_to_agent(&skill, agent_config, &skills_base) {
+            Ok(_) => linked += 1,
+            Err(e) => warn!("Failed to link to agent {}: {}", agent_config.name, e),
+        }
+    }
+
+    settings
+        .save()
+        .map_err(|e| format!("Failed to save config: {}", e))?;
+    info!("Successfully enabled skill for {} agents", linked);
     Ok(())
 }
 
@@ -165,113 +161,179 @@ pub async fn enable_skill(
 pub async fn disable_skill(
     skill_id: String,
     agent: Option<String>,
-    source: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    info!("Disabling skill '{}' (source: {:?}) for agent: {:?}", skill_id, source, agent);
-    let source_filter = source.and_then(|s| SkillSource::from_str_opt(&s));
+    info!("Disabling skill '{}' for agent: {:?}", skill_id, agent);
 
-    let mut settings = state.settings_manager.lock()
-        .map_err(|e| {
-            error!("Failed to acquire settings lock: {}", e);
-            format!("Failed to acquire lock: {}", e)
-        })?;
+    let mut settings = state
+        .settings_manager
+        .lock()
+        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
 
-    let skills = scanner::scan_all_skill_sources(&settings.get_config().skill_states, &settings.get_config().agents)
-        .map_err(|e| {
-            error!("Failed to scan skills: {}", e);
-            format!("Failed to scan skills: {}", e)
-        })?;
+    let skills = scan_only(&mut settings)?;
+    let skill = skills
+        .into_iter()
+        .find(|s| s.id == skill_id)
+        .ok_or_else(|| format!("Skill '{}' not found", skill_id))?;
 
-    let skill = skills.into_iter()
-        .find(|s| s.id == skill_id && source_filter.map_or(true, |sf| s.source == sf))
-        .ok_or_else(|| {
-            error!("Skill '{}' not found", skill_id);
-            format!("Skill '{}' not found", skill_id)
-        })?;
-
-    let state_key = skill_state_key(&skill.source, &skill.id);
     let config = settings.get_config().clone();
-    let linker = LinkManager::new(config.linking_strategy);
+    let linker = LinkManager::new(config.linking_strategy.clone());
 
-    if let Some(agent_name) = agent {
-        info!("Disabling skill for specific agent: {}", agent_name);
-        let agent_config = config.agents.iter()
-            .find(|a| a.name == agent_name)
-            .ok_or_else(|| {
-                error!("Agent '{}' not found", agent_name);
-                format!("Agent '{}' not found", agent_name)
-            })?;
-
-        settings.get_config_mut()
-            .skill_states
-            .entry(state_key)
-            .or_insert_with(HashMap::new)
-            .insert(agent_name.clone(), false);
-
-        settings.save()
-            .map_err(|e| {
-                error!("Failed to save config: {}", e);
-                format!("Failed to save config: {}", e)
-            })?;
-
-        linker.unlink_skill_from_agent(&skill, agent_config)
-            .map_err(|e| {
-                error!("Failed to unlink skill: {}", e);
-                format!("Failed to unlink skill: {}", e)
-            })?;
+    let target_agents: Vec<AgentConfig> = if let Some(ref a) = agent {
+        config
+            .agents
+            .iter()
+            .filter(|ac| &ac.name == a)
+            .cloned()
+            .collect()
     } else {
-        info!("Disabling skill globally for all agents");
-        let mut disabled_count = 0;
-        let config = settings.get_config().clone();
+        config
+            .agents
+            .iter()
+            .filter(|ac| ac.enabled && ac.detected)
+            .cloned()
+            .collect()
+    };
 
-        for agent_config in &config.agents {
-            if agent_config.enabled {
-                settings.get_config_mut()
-                    .skill_states
-                    .entry(state_key.clone())
-                    .or_insert_with(HashMap::new)
-                    .insert(agent_config.name.clone(), false);
-
-                match linker.unlink_skill_from_agent(&skill, agent_config) {
-                    Ok(_) => disabled_count += 1,
-                    Err(e) => warn!("Failed to unlink from agent {}: {}", agent_config.name, e),
-                }
-            }
+    if target_agents.is_empty() {
+        if let Some(ref a) = agent {
+            return Err(format!("Agent '{}' not found", a));
         }
-
-        settings.save()
-            .map_err(|e| {
-                error!("Failed to save config: {}", e);
-                format!("Failed to save config: {}", e)
-            })?;
-
-        info!("Successfully disabled skill for {} agents", disabled_count);
+        return Ok(());
     }
 
+    let entry = match settings.get_config_mut().skill_states.get_mut(&skill_id) {
+        Some(e) => e,
+        None => return Ok(()),
+    };
+
+    let mut unlinked = 0usize;
+    for agent_config in &target_agents {
+        if is_native(entry, &agent_config.name) {
+            warn!(
+                "Skipping disable for native agent '{}' on skill '{}'",
+                agent_config.name, skill_id
+            );
+            continue;
+        }
+        entry.open.retain(|n| n != &agent_config.name);
+        match linker.unlink_skill_from_agent(&skill, agent_config) {
+            Ok(_) => unlinked += 1,
+            Err(e) => warn!(
+                "Failed to unlink from agent {}: {}",
+                agent_config.name, e
+            ),
+        }
+    }
+
+    settings
+        .save()
+        .map_err(|e| format!("Failed to save config: {}", e))?;
+    info!("Successfully disabled skill for {} agents", unlinked);
     Ok(())
 }
 
-/// 获取技能内容
+/// 设置技能的 `primary`（链接到非原生 Agent 时所用的源副本）。
+/// 切换时会把现有 `open` Agent 重新 unlink + link。
+#[tauri::command]
+pub async fn set_skill_primary(
+    skill_id: String,
+    new_primary: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    info!("Setting primary for '{}' → '{}'", skill_id, new_primary);
+
+    let mut settings = state
+        .settings_manager
+        .lock()
+        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
+
+    let skills = scan_only(&mut settings)?;
+    let skill = skills
+        .into_iter()
+        .find(|s| s.id == skill_id)
+        .ok_or_else(|| format!("Skill '{}' not found", skill_id))?;
+
+    if !skill.sources.iter().any(|s| s == &new_primary) {
+        return Err(format!(
+            "Source '{}' is not in skill '{}' sources: {:?}",
+            new_primary, skill_id, skill.sources
+        ));
+    }
+
+    // primary 没变：什么都不用做
+    if skill.primary == new_primary {
+        return Ok(());
+    }
+
+    let config = settings.get_config().clone();
+    let linker = LinkManager::new(config.linking_strategy.clone());
+    let skills_base = dummy_skills_base();
+
+    // 1. 先按旧 primary 把 open Agent 全部 unlink
+    for agent_name in &skill.open {
+        if let Some(agent_config) = config.agents.iter().find(|a| &a.name == agent_name) {
+            if let Err(e) = linker.unlink_skill_from_agent(&skill, agent_config) {
+                warn!("unlink before repoint failed for {}: {}", agent_name, e);
+            }
+        }
+    }
+
+    // 2. 清中央缓存：让 link 时能从新 primary 重新拷贝一份。
+    //    但若 global 在 sources 里，中央目录本身就是 global 源本体，不能清——
+    //    此时 linker 链接到的始终是 global（canonical），新 primary 只影响元数据展示
+    //    （primary 字段会保留，但物理链接还是指向 global 源，这是符合预期的）。
+    let has_global = skill.sources.iter().any(|s| s == SOURCE_GLOBAL);
+    if !has_global {
+        clear_central_storage(&skill_id);
+    }
+
+    // 3. 改 primary
+    {
+        let entry = settings
+            .get_config_mut()
+            .skill_states
+            .get_mut(&skill_id)
+            .ok_or_else(|| format!("Skill '{}' missing in skill_states", skill_id))?;
+        entry.primary = new_primary;
+    }
+
+    // 4. 重新扫描拿到新的 skill.path（primary 变了），再 link
+    let skills = scan_only(&mut settings)?;
+    let skill = skills
+        .into_iter()
+        .find(|s| s.id == skill_id)
+        .ok_or_else(|| format!("Skill '{}' not found after repoint", skill_id))?;
+
+    for agent_name in skill.open.clone() {
+        if let Some(agent_config) = config.agents.iter().find(|a| a.name == agent_name) {
+            if let Err(e) = linker.link_skill_to_agent(&skill, agent_config, &skills_base) {
+                warn!("relink after repoint failed for {}: {}", agent_name, e);
+            }
+        }
+    }
+
+    settings
+        .save()
+        .map_err(|e| format!("Failed to save config: {}", e))?;
+    Ok(())
+}
+
+/// 获取技能内容（始终读中央存储里的 SKILL.md）
 #[tauri::command]
 pub async fn get_skill_content(
     skill_id: String,
     _state: State<'_, AppState>,
 ) -> Result<String, String> {
-    info!("Reading content for skill: {}", skill_id);
-
     let skills_dir = AppSettingsManager::get_skills_dir();
     let skill_md = skills_dir.join(&skill_id).join("SKILL.md");
 
-    info!("Reading skill file: {:?}", skill_md);
-    std::fs::read_to_string(&skill_md)
-        .map_err(|e| {
-            error!("Failed to read skill content: {}", e);
-            format!("Failed to read skill content: {}", e)
-        })
+    std::fs::read_to_string(&skill_md).map_err(|e| format!("Failed to read skill content: {}", e))
 }
 
 /// 获取技能文件目录
+///
+/// `source` 参数保留用于选择读哪个物理副本（前端"查看某来源的文件"）。
 #[tauri::command]
 pub async fn get_skill_files(
     skill_id: String,
@@ -279,38 +341,35 @@ pub async fn get_skill_files(
     state: State<'_, AppState>,
 ) -> Result<Vec<SkillFileEntry>, String> {
     info!("Getting files for skill: {} (source: {:?})", skill_id, source);
-    let source_filter = source.and_then(|s| SkillSource::from_str_opt(&s));
 
-    let guard = state.settings_manager.lock()
+    let guard = state
+        .settings_manager
+        .lock()
         .map_err(|e| format!("Failed to acquire lock: {}", e))?;
     let config = guard.get_config();
     let skills = scanner::scan_all_skill_sources(&config.skill_states, &config.agents)
-        .map_err(|e| {
-            error!("Failed to scan skills: {}", e);
-            format!("Failed to scan skills: {}", e)
-        })?;
+        .map_err(|e| format!("Failed to scan skills: {}", e))?;
 
-    let skill = skills.iter()
-        .find(|s| s.id == skill_id && source_filter.map_or(true, |sf| s.source == sf))
-        .ok_or_else(|| {
-            error!("Skill '{}' not found", skill_id);
-            format!("Skill '{}' not found", skill_id)
-        })?;
+    let skill = skills
+        .iter()
+        .find(|s| s.id == skill_id)
+        .ok_or_else(|| format!("Skill '{}' not found", skill_id))?;
 
-    let skill_path = skill.path.as_ref()
+    // 优先用 source 参数对应的物理路径；否则用 primary 对应的路径
+    let source_key = source.as_deref().unwrap_or(skill.primary.as_str());
+    let skill_path = skill
+        .source_paths
+        .get(source_key)
+        .cloned()
         .ok_or_else(|| "Skill has no path".to_string())?;
 
-    info!("Scanning directory: {:?}", skill_path);
-
-    // 递归扫描目录
     fn scan_dir(path: &std::path::Path) -> Result<SkillFileEntry, String> {
-        let name = path.file_name()
+        let name = path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-
-        let metadata = std::fs::metadata(path)
-            .map_err(|e| format!("Failed to read metadata: {}", e))?;
+        let metadata = std::fs::metadata(path).map_err(|e| format!("Failed to read metadata: {}", e))?;
 
         if path.is_dir() {
             let mut children = Vec::new();
@@ -319,7 +378,6 @@ pub async fn get_skill_files(
                 .filter_map(|e| e.ok())
                 .collect();
 
-            // 排序：目录在前，文件在后
             entries.sort_by(|a, b| {
                 let a_is_dir = a.path().is_dir();
                 let b_is_dir = b.path().is_dir();
@@ -334,7 +392,6 @@ pub async fn get_skill_files(
 
             for entry in entries {
                 let entry_path = entry.path();
-                // 跳过隐藏文件和DS_Store
                 if let Some(file_name) = entry_path.file_name() {
                     let name_str = file_name.to_string_lossy();
                     if name_str.starts_with('.') || name_str == "DS_Store" || name_str == "node_modules" {
@@ -362,7 +419,7 @@ pub async fn get_skill_files(
         }
     }
 
-    let path = std::path::Path::new(skill_path);
+    let path = std::path::Path::new(&skill_path);
     if !path.exists() {
         return Ok(Vec::new());
     }
@@ -378,58 +435,52 @@ pub async fn read_skill_file(
     source: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    info!("Reading file {} for skill: {} (source: {:?})", file_path, skill_id, source);
-    let source_filter = source.and_then(|s| SkillSource::from_str_opt(&s));
-
-    let guard = state.settings_manager.lock()
+    let guard = state
+        .settings_manager
+        .lock()
         .map_err(|e| format!("Failed to acquire lock: {}", e))?;
     let config = guard.get_config();
     let skills = scanner::scan_all_skill_sources(&config.skill_states, &config.agents)
-        .map_err(|e| {
-            error!("Failed to scan skills: {}", e);
-            format!("Failed to scan skills: {}", e)
-        })?;
+        .map_err(|e| format!("Failed to scan skills: {}", e))?;
 
-    let skill = skills.iter()
-        .find(|s| s.id == skill_id && source_filter.map_or(true, |sf| s.source == sf))
-        .ok_or_else(|| {
-            error!("Skill '{}' not found", skill_id);
-            format!("Skill '{}' not found", skill_id)
-        })?;
+    let skill = skills
+        .iter()
+        .find(|s| s.id == skill_id)
+        .ok_or_else(|| format!("Skill '{}' not found", skill_id))?;
 
-    let skill_path = skill.path.as_ref()
+    let source_key = source.as_deref().unwrap_or(skill.primary.as_str());
+    let base_path = skill
+        .source_paths
+        .get(source_key)
+        .cloned()
         .ok_or_else(|| "Skill has no path".to_string())?;
 
     let requested_path = std::path::Path::new(&file_path);
-    let base_path = std::path::Path::new(skill_path);
+    let base_path = std::path::Path::new(&base_path);
 
-    // 安全检查：确保请求的文件在技能目录内
     if !requested_path.starts_with(base_path) {
         return Err("Access denied: file is outside skill directory".to_string());
     }
 
-    std::fs::read_to_string(requested_path)
-        .map_err(|e| {
-            error!("Failed to read file: {}", e);
-            format!("Failed to read file: {}", e)
-        })
+    std::fs::read_to_string(requested_path).map_err(|e| format!("Failed to read file: {}", e))
 }
 
 /// 重新扫描技能目录
 #[tauri::command]
-pub async fn rescan_skills(
-    state: State<'_, AppState>,
-) -> Result<Vec<SkillMetadata>, String> {
+pub async fn rescan_skills(state: State<'_, AppState>) -> Result<Vec<SkillMetadata>, String> {
     info!("Rescanning skills directory...");
-    let result = list_skills(state).await;
-    match &result {
-        Ok(skills) => info!("Rescan complete: found {} skills", skills.len()),
-        Err(e) => error!("Rescan failed: {}", e),
-    }
-    result
+    list_skills(state).await
 }
 
-/// 删除技能（支持任意来源）
+/// 删除技能：
+/// - 若指定 `source`：只删除该物理副本 + 从 `SkillEntry.sources` 摘除
+/// - 若未指定 `source`：删除所有物理副本
+///
+/// 无论哪种模式，都会：
+/// 1. 把 `entry.open` 里所有 agent 全部 unlink（否则 symlink 会悬挂）
+/// 2. 清中央存储里的副本（它可能是被删源的快照；下次用户 re-enable 再从新 primary 拷贝）
+/// 3. 清空 `entry.open`（避免脏状态）
+/// 4. 更新 / 删除 `skill_states` 记录
 #[tauri::command]
 pub async fn delete_skill(
     skill_id: String,
@@ -437,66 +488,119 @@ pub async fn delete_skill(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     info!("Deleting skill: {} (source: {:?})", skill_id, source);
-    let source_filter = source.and_then(|s| SkillSource::from_str_opt(&s));
 
-    let (skill_path, skill_source, linking_strategy, agents) = {
-        let guard = state.settings_manager.lock()
+    let (source_paths_to_delete, open_agents, agents, linking_strategy, will_have_global) = {
+        let guard = state
+            .settings_manager
+            .lock()
             .map_err(|e| format!("Failed to acquire lock: {}", e))?;
         let config = guard.get_config();
 
         let skills = scanner::scan_all_skill_sources(&config.skill_states, &config.agents)
             .map_err(|e| format!("Failed to scan skills: {}", e))?;
 
-        let skill = skills.into_iter()
-            .find(|s| s.id == skill_id && source_filter.map_or(true, |sf| s.source == sf))
+        let skill = skills
+            .into_iter()
+            .find(|s| s.id == skill_id)
             .ok_or_else(|| format!("技能 '{}' 未找到", skill_id))?;
 
-        let path = skill.path
-            .ok_or_else(|| format!("技能 '{}' 没有路径信息", skill_id))?;
+        let to_delete: Vec<(String, String)> = if let Some(src) = source.as_ref() {
+            skill
+                .source_paths
+                .iter()
+                .filter(|(s, _)| s.as_str() == src.as_str())
+                .map(|(s, p)| (s.clone(), p.clone()))
+                .collect()
+        } else {
+            skill
+                .source_paths
+                .iter()
+                .map(|(s, p)| (s.clone(), p.clone()))
+                .collect()
+        };
 
-        (path, skill.source, config.linking_strategy.clone(), config.agents.clone())
+        // 删除完成后还会剩哪些源？用来决定能不能清中央缓存。
+        let will_have_global = match source.as_deref() {
+            Some(SOURCE_GLOBAL) => false,          // 就是删 global
+            None => false,                          // 整体删除
+            Some(_) => skill.sources.iter().any(|s| s == SOURCE_GLOBAL), // 删别的源但 global 还在
+        };
+
+        (
+            to_delete,
+            skill.open.clone(),
+            config.agents.clone(),
+            config.linking_strategy.clone(),
+            will_have_global,
+        )
     };
 
+    // 无论删除哪个源，都 unlink 所有 open agent + 删物理副本
     let skill_id_clone = skill_id.clone();
-    tokio::task::spawn_blocking(move || {
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
         let linker = LinkManager::new(linking_strategy);
-        for agent_config in &agents {
-            if agent_config.enabled {
+
+        for agent_name in &open_agents {
+            if let Some(agent_config) = agents.iter().find(|a| &a.name == agent_name) {
                 if let Err(e) = linker.unlink_skill_id_from_agent(&skill_id_clone, agent_config) {
-                    warn!("Failed to unlink skill from agent {}: {}", agent_config.name, e);
+                    warn!(
+                        "Failed to unlink skill from agent {}: {}",
+                        agent_config.name, e
+                    );
                 }
             }
         }
 
-        let path = std::path::Path::new(&skill_path);
-        if path.exists() {
-            std::fs::remove_dir_all(path)
-                .map_err(|e| format!("删除技能目录失败: {}", e))?;
-            info!("Skill directory deleted: {:?}", skill_path);
+        for (_src, path) in &source_paths_to_delete {
+            let p = std::path::Path::new(path);
+            if p.exists() {
+                std::fs::remove_dir_all(p)
+                    .map_err(|e| format!("删除技能目录失败 {:?}: {}", p, e))?;
+                info!("Skill directory deleted: {:?}", p);
+            }
         }
 
-        Ok::<(), String>(())
+        Ok(())
     })
     .await
     .map_err(|e| format!("任务执行失败: {}", e))??;
 
-    {
-        let mut settings = state.settings_manager.lock()
-            .map_err(|e| format!("Failed to acquire lock: {}", e))?;
-
-        let state_key = skill_state_key(&skill_source, &skill_id);
-        let states = &mut settings.get_config_mut().skill_states;
-        states.remove(&state_key);
-        states.remove(&skill_id);
-
-        settings.save()
-            .map_err(|e| format!("保存配置失败: {}", e))?;
+    // 中央目录 `~/.skills-manager/skills/<id>` 有双重角色：
+    // - 当 global ∈ sources：它**就是** global 源本身，清理会破坏数据
+    // - 当 global ∉ sources：它只是某个非 global primary 的链接缓存，清理是安全且必要的
+    // 所以只有在 "删完后 global 已经不在 sources" 的情况下才清中央缓存。
+    // 另外：如果是删 global 源本身或整体删除，`remove_dir_all` 的循环其实已经
+    // 把中央目录 remove 掉了，这里再调一次也是幂等 no-op。
+    if !will_have_global {
+        clear_central_storage(&skill_id);
     }
 
-    let central_path = AppSettingsManager::get_skills_dir().join(&skill_id);
-    if central_path.exists() {
-        let _ = std::fs::remove_dir_all(&central_path);
-        info!("Central storage copy removed: {:?}", central_path);
+    // 更新 skill_states
+    {
+        let mut settings = state
+            .settings_manager
+            .lock()
+            .map_err(|e| format!("Failed to acquire lock: {}", e))?;
+
+        if let Some(src) = source.as_ref() {
+            if let Some(entry) = settings.get_config_mut().skill_states.get_mut(&skill_id) {
+                entry.sources.retain(|s| s != src);
+                // primary 若指向被删源，ensure_valid_primary 会按优先级挑新的
+                if entry.primary == *src {
+                    entry.primary = String::new();
+                }
+                entry.ensure_valid_primary();
+                // 不论是否还有其它源，都清空 open：中央存储已重置，必须让用户主动重新 enable
+                entry.open.clear();
+                if entry.is_orphan() {
+                    settings.get_config_mut().skill_states.remove(&skill_id);
+                }
+            }
+        } else {
+            settings.get_config_mut().skill_states.remove(&skill_id);
+        }
+
+        settings.save().map_err(|e| format!("保存配置失败: {}", e))?;
     }
 
     info!("Skill '{}' deleted successfully", skill_id);
@@ -505,9 +609,7 @@ pub async fn delete_skill(
 
 /// 导入技能文件夹（从外部路径复制到中央存储）
 #[tauri::command]
-pub async fn import_skill_folder(
-    folder_path: String,
-) -> Result<String, String> {
+pub async fn import_skill_folder(folder_path: String) -> Result<String, String> {
     let source = std::path::Path::new(&folder_path);
 
     if !source.exists() || !source.is_dir() {
@@ -519,18 +621,16 @@ pub async fn import_skill_folder(
         return Err("文件夹中没有找到 SKILL.md 文件，无法识别为有效技能".to_string());
     }
 
-    // 尝试从 SKILL.md 中提取技能名称
-    let content = std::fs::read_to_string(&skill_md)
-        .map_err(|e| format!("读取 SKILL.md 失败: {}", e))?;
+    let content =
+        std::fs::read_to_string(&skill_md).map_err(|e| format!("读取 SKILL.md 失败: {}", e))?;
 
-    let skill_name = extract_skill_name_from_md(&content)
-        .unwrap_or_else(|| {
-            // 如果无法提取名称，使用文件夹名作为后备
-            source.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .to_string()
-        });
+    let skill_name = extract_skill_name_from_md(&content).unwrap_or_else(|| {
+        source
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string()
+    });
 
     let skills_dir = AppSettingsManager::get_skills_dir();
     std::fs::create_dir_all(&skills_dir).map_err(|e| format!("创建技能目录失败: {}", e))?;
@@ -540,10 +640,12 @@ pub async fn import_skill_folder(
         return Err(format!("技能 '{}' 已存在，请先删除再导入", skill_name));
     }
 
-    copy_dir_recursive(source, &target)
-        .map_err(|e| format!("复制文件夹失败: {}", e))?;
+    copy_dir_recursive(source, &target).map_err(|e| format!("复制文件夹失败: {}", e))?;
 
-    info!("Imported skill folder '{}' to {:?} (skill name: {})", folder_path, target, skill_name);
+    info!(
+        "Imported skill folder '{}' to {:?} (skill name: {})",
+        folder_path, target, skill_name
+    );
     Ok(skill_name)
 }
 

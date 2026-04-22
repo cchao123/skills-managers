@@ -4,11 +4,12 @@ import { skillsApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
 import { TelemetryEvent } from '@/constants/events';
 import { trackEvent } from '@/lib/telemetry';
-import type { SkillMetadata, MergedSkillInfo, AgentConfig } from '@/types';
+import type { SkillMetadata, AgentConfig } from '@/types';
 import { SOURCE } from '@/pages/Dashboard/utils/source';
+import { appendOperationLog } from '@/pages/Dashboard/hooks/useOperationLog';
 
-const matchSkill = (s: SkillMetadata, skill: SkillMetadata) =>
-  s.id === skill.id && s.source === skill.source;
+// Schema v2：同一 skill_id 只有一条记录，直接按 id 比对
+const matchSkill = (s: SkillMetadata, skill: SkillMetadata) => s.id === skill.id;
 
 export const useSkillActions = (
   _skills: SkillMetadata[],
@@ -22,74 +23,6 @@ export const useSkillActions = (
   const availableAgents = agents
     .filter(agent => agent.detected && agent.enabled)
     .map(agent => agent.name);
-
-  const handleToggleSkill = useCallback(async (skill: SkillMetadata) => {
-    try {
-      const newState = !skill.enabled;
-
-      if (newState === false) {
-        console.log('Turning off main switch, disabling all agents');
-
-        // 获取所有启用的 agents
-        const agentsToDisable = Object.keys(skill.agent_enabled || {}).filter(
-          agent => skill.agent_enabled[agent] === true
-        );
-
-        setSkills(prevSkills =>
-          prevSkills.map(s =>
-            matchSkill(s, skill)
-              ? {
-                  ...s,
-                  enabled: false,
-                  agent_enabled: Object.keys(s.agent_enabled || {}).reduce((acc, agent) => {
-                    acc[agent] = false;
-                    return acc;
-                  }, {} as Record<string, boolean>)
-                }
-              : s
-          )
-        );
-
-        agentsToDisable.forEach(agent => {
-          skillsApi.disable(skill.id, agent, skill.source).then(() => {
-            trackEvent(TelemetryEvent.SKILL_DISABLED, { skill_id: skill.id, agent });
-          }).catch(error => {
-            console.error(`Failed to disable ${skill.id} for agent ${agent}:`, error);
-          });
-        });
-      } else {
-        console.log('Turning on main switch, enabling all available agents');
-
-        // 启用所有可用的 agents
-        const newAgentStates = availableAgents.reduce((acc, agent) => {
-          acc[agent] = true;
-          return acc;
-        }, {} as Record<string, boolean>);
-
-        setSkills(prevSkills =>
-          prevSkills.map(s =>
-            matchSkill(s, skill)
-              ? {
-                  ...s,
-                  enabled: true,
-                  agent_enabled: newAgentStates
-                }
-              : s
-          )
-        );
-
-        availableAgents.forEach(agent => {
-          skillsApi.enable(skill.id, agent, skill.source).then(() => {
-            trackEvent(TelemetryEvent.SKILL_ENABLED, { skill_id: skill.id, agent });
-          }).catch(error => {
-            console.error(`Failed to enable ${skill.id} for agent ${agent}:`, error);
-          });
-        });
-      }
-    } catch (error) {
-      console.error('Failed to toggle skill:', error);
-    }
-  }, [setSkills, availableAgents]);
 
   const handleToggleAgent = useCallback(async (skill: SkillMetadata, agentName: string) => {
     try {
@@ -120,15 +53,25 @@ export const useSkillActions = (
 
       if (isEnabled) {
         console.log(`Disabling skill ${skill.name} for agent ${agentName}`);
-        skillsApi.disable(skill.id, agentName, skill.source).then(() => {
+        skillsApi.disable(skill.id, agentName).then(() => {
           trackEvent(TelemetryEvent.SKILL_AGENT_DISABLED, { skill_id: skill.id, agent: agentName });
         }).catch(error => {
           console.error('Failed to disable skill:', error);
         });
       } else {
         console.log(`Enabling skill ${skill.name} for agent ${agentName}`);
-        skillsApi.enable(skill.id, agentName, skill.source).then(() => {
+        // 已在根目录的 skill 再启用其它 agent，仅建链接不会产生"新拷入根目录"的动作，不记日志
+        const alreadyInRoot = (skill.sources ?? []).includes(SOURCE.Global);
+        skillsApi.enable(skill.id, agentName).then(() => {
           trackEvent(TelemetryEvent.SKILL_AGENT_ENABLED, { skill_id: skill.id, agent: agentName });
+          if (!alreadyInRoot) {
+            appendOperationLog({
+              type: 'enableAgent',
+              skillName: skill.name,
+              targetAgent: agentName,
+              source: skill.primary,
+            });
+          }
         }).catch(error => {
           console.error('Failed to enable skill:', error);
         });
@@ -138,62 +81,106 @@ export const useSkillActions = (
     }
   }, [setSkills]);
 
-  /** 合并卡片：toggle 主开关 → 只对 Global 来源执行 */
-  const handleToggleSkillMerged = useCallback(async (merged: MergedSkillInfo) => {
-    const newState = !merged.primary.enabled;
+  /**
+   * 合并卡片主开关（三态视觉：off / partial / on）。
+   *
+   * 行为约定：
+   * - native agent（sources 中的非 global 项）的 agent_enabled 由物理副本派生，不在本开关作用范围内。
+   * - 只批量切换 availableAgents 中「非 native」的部分：
+   *   - 若所有非 native agent 均已启用 → 一键关闭（native 保持启用）
+   *   - 否则 → 一键启用所有非 native agent
+   * - 当所有可用 agent 都是 native（没有可切换对象）时点击无效。
+   */
+  const handleToggleSkillMerged = useCallback(async (skill: SkillMetadata) => {
+    const nativeSet = new Set((skill.sources ?? []).filter(s => s !== SOURCE.Global));
+    const togglableAgents = availableAgents.filter(name => !nativeSet.has(name));
+    if (togglableAgents.length === 0) return;
 
-    // 检查是否会影响原生 agent（关闭时）
-    if (newState === false && merged.nativeAgents.size > 0) {
-      const agentNames = Array.from(merged.nativeAgents).join('、');
-      showToast('warning', t('dashboard.toast.nativeAgentsWarning', { agents: agentNames }));
-      return;
-    }
+    const allTogglableOn = togglableAgents.every(name => skill.agent_enabled[name]);
+    const shouldEnable = !allTogglableOn;
 
-    // 只对 Global 来源的技能执行 toggle
-    const globalSourceSkill = merged.sourceSkills.find(s => s.source === SOURCE.Global);
-    if (globalSourceSkill) {
-      await handleToggleSkill(globalSourceSkill);
-    } else {
-      // 如果没有 Global 来源，就操作第一个
-      await handleToggleSkill(merged.sourceSkills[0]);
-    }
-  }, [handleToggleSkill, showToast]);
+    setSkills(prevSkills =>
+      prevSkills.map(s => {
+        if (!matchSkill(s, skill)) return s;
+        const nextAgentEnabled = { ...(s.agent_enabled ?? {}) };
+        togglableAgents.forEach(name => { nextAgentEnabled[name] = shouldEnable; });
+        const anyOn = nativeSet.size > 0 || Object.values(nextAgentEnabled).some(Boolean);
+        return { ...s, agent_enabled: nextAgentEnabled, enabled: anyOn };
+      })
+    );
 
-  /** 合并卡片：toggle 某个 agent → 找到正确的 sourceSkill 路由 */
-  const handleToggleAgentMerged = useCallback(async (merged: MergedSkillInfo, agentName: string) => {
-    // 检查是否是 agent 原生技能
-    if (merged.nativeAgents.has(agentName)) {
+    const alreadyInRoot = (skill.sources ?? []).includes(SOURCE.Global);
+    togglableAgents.forEach(agent => {
+      const op = shouldEnable
+        ? skillsApi.enable(skill.id, agent)
+        : skillsApi.disable(skill.id, agent);
+      op.then(() => {
+        trackEvent(
+          shouldEnable ? TelemetryEvent.SKILL_ENABLED : TelemetryEvent.SKILL_DISABLED,
+          { skill_id: skill.id, agent },
+        );
+        if (shouldEnable && !alreadyInRoot) {
+          appendOperationLog({
+            type: 'enableAgent',
+            skillName: skill.name,
+            targetAgent: agent,
+            source: skill.primary,
+          });
+        }
+      }).catch(err => {
+        console.error(`Failed to ${shouldEnable ? 'enable' : 'disable'} ${skill.id}/${agent}:`, err);
+      });
+    });
+  }, [setSkills, availableAgents]);
+
+  /** 合并卡片：toggle 某个 agent（原生 agent 禁止关闭） */
+  const handleToggleAgentMerged = useCallback(async (skill: SkillMetadata, agentName: string) => {
+    if ((skill.sources ?? []).includes(agentName)) {
       showToast('warning', t('dashboard.toast.nativeAgentWarning', { agent: agentName }));
       return;
     }
 
-    const sourceSkill = merged.sourceSkills.find(s => s.source === SOURCE.Global)
-      || merged.sourceSkills[0];
-    await handleToggleAgent(sourceSkill, agentName);
-  }, [handleToggleAgent, showToast]);
+    await handleToggleAgent(skill, agentName);
+  }, [handleToggleAgent, showToast, t]);
 
-  const handleDeleteSkill = useCallback(async (skill: SkillMetadata, silent = false) => {
+  /**
+   * 删除指定源或整个技能。
+   * - `source` 显式指定要删的源（由 Dashboard 从 `SkillDeletionRow` 透传）；
+   *   省略时表示删除所有源的物理副本。
+   * - 本方法**不做**本地 `setSkills` 过滤：单源删除时整体记录可能仍在（还剩其它源），
+   *   正确的状态由调用方在批量删除完成后的 `refreshSkills()` 统一拉回。
+   */
+  const handleDeleteSkill = useCallback(async (
+    skill: SkillMetadata,
+    source?: string,
+    silent = false,
+  ) => {
     try {
-      await skillsApi.delete(skill.id, skill.source);
-      setSkills(prevSkills => prevSkills.filter(s => !matchSkill(s, skill)));
-      trackEvent(TelemetryEvent.SKILL_DELETED, { skill_id: skill.id, source: skill.source || 'unknown' });
+      await skillsApi.delete(skill.id, source);
+      trackEvent(TelemetryEvent.SKILL_DELETED, { skill_id: skill.id, source: source || 'all' });
       if (!silent) showToast('success', t('dashboard.toast.skillDeleted', { name: skill.name }));
-      console.log(`Skill ${skill.name} deleted`);
+      console.log(`Skill ${skill.name} / source=${source ?? 'all'} deleted`);
     } catch (error) {
       console.error('Failed to delete skill:', error);
       if (!silent) showToast('error', t('dashboard.toast.skillDeleteFailed'));
     }
-  }, [setSkills, showToast, t]);
+  }, [showToast, t]);
 
-  const handleAddToRoot = useCallback(async (skill: SkillMetadata) => {
+  /**
+   * 把技能副本同步到中央仓库（root）。
+   * - `sourcePath` 指定要拷贝的物理副本路径（从 `skill.source_paths[someSource]` 取得）。
+   * - 缺失时回退到 primary 副本的路径。
+   */
+  const handleAddToRoot = useCallback(async (skill: SkillMetadata, sourcePath?: string) => {
     try {
-      if (!skill.path) {
+      const pathToImport = sourcePath ?? skill.source_paths?.[skill.primary];
+      if (!pathToImport) {
         console.error('[handleAddToRoot] 技能路径为空:', skill);
         showToast('error', t('dashboard.toast.cannotGetSkillPath'));
         return;
       }
-      console.log('[handleAddToRoot] 开始拷贝技能:', skill.name, '路径:', skill.path);
-      await skillsApi.importFolder(skill.path);
+      console.log('[handleAddToRoot] 开始拷贝技能:', skill.name, '路径:', pathToImport);
+      await skillsApi.importFolder(pathToImport);
       showToast('success', t('dashboard.toast.skillCopiedToRoot', { name: skill.name }));
       console.log('[handleAddToRoot] 拷贝完成');
     } catch (error) {
@@ -204,8 +191,6 @@ export const useSkillActions = (
   }, [showToast, t]);
 
   return {
-    handleToggleSkill,
-    handleToggleAgent,
     handleToggleSkillMerged,
     handleToggleAgentMerged,
     handleDeleteSkill,

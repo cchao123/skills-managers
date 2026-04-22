@@ -3,7 +3,7 @@
  *
  * 要点：暗色用略高的 white/α + saturate + 更强 blur，否则在 #141414 类背景上几乎像实色块。
  */
-export const LIQUID_GLASS_BASE_CLASS =
+const LIQUID_GLASS_BASE_CLASS =
   [
     'isolate',
     'bg-white/80 dark:bg-white/[0.12]',
@@ -18,11 +18,3 @@ export const LIQUID_GLASS_BASE_CLASS =
 /** Toast 横排：左图标 + 文案 + 关闭 */
 export const LIQUID_GLASS_TOAST_PANEL_CLASS =
   `pointer-events-auto w-full flex gap-4 ${LIQUID_GLASS_BASE_CLASS}`;
-
-/** 详情等大弹窗：纵向 + 裁切滚动 */
-export const LIQUID_GLASS_MODAL_PANEL_CLASS =
-  `pointer-events-auto flex max-h-[85vh] flex-col overflow-hidden ${LIQUID_GLASS_BASE_CLASS}`;
-
-/** 弹窗遮罩：略淡 + 中 blur，衬底托住玻璃卡片（与 Toast 无遮罩不同，但卡片本体与 Toast 一致） */
-export const LIQUID_GLASS_MODAL_OVERLAY_CLASS =
-  'bg-slate-900/35 dark:bg-black/50 backdrop-blur-md';

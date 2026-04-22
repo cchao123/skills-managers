@@ -5,11 +5,6 @@ export const GITHUB_URLS = {
   ISSUES: 'https://github.com/cchao123/skills-managers/issues',
 } as const;
 
-// External URLs
-export const EXTERNAL_URLS = {
-  DOCS: 'https://docs.anthropic.com',
-} as const;
-
 // Languages configuration
 export const LANGUAGES = [
   { code: 'zh', name: '中文', abbr: '中' },
@@ -18,7 +13,7 @@ export const LANGUAGES = [
 
 // Theme options: 重用 @/constants/theme 中的 THEME / Theme
 import { THEME, type Theme } from '@/constants';
-export { THEME, type Theme };
+export type { Theme };
 
 export const THEME_OPTIONS = [
   { value: THEME.Light, labelKey: 'settings.themeLight', icon: 'light_mode' },

@@ -1,4 +1,4 @@
-use crate::models::{AgentConfig, AppConfig, LinkStrategy};
+use crate::models::{AgentConfig, AppConfig, LinkStrategy, CURRENT_SCHEMA_VERSION};
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -27,12 +27,32 @@ pub struct AppSettingsManager {
 }
 
 impl AppSettingsManager {
-    /// 加载或创建配置文件
+    /// 加载或创建配置文件。
+    ///
+    /// 版本兼容策略：
+    /// - 文件不存在 → 用默认配置（含 `schema_version = CURRENT_SCHEMA_VERSION`）并写盘
+    /// - 文件存在但 `schema_version` 与当前不符（或缺失）→ 保留 `linking_strategy`、`agents`、
+    ///   `language`、`skill_hide_prefixes`，**丢弃 `skill_states`** 让 scanner 自愈重建；
+    ///   同时把 `schema_version` 写成当前值并立即持久化。
     pub fn load_or_create(config_path: &Path) -> Result<Self, AppSettingsError> {
         let config = if config_path.exists() {
-            // 加载现有配置
             let content = fs::read_to_string(config_path)?;
-            serde_json::from_str(&content)?
+            let mut loaded: AppConfig = serde_json::from_str(&content)?;
+
+            if loaded.schema_version != CURRENT_SCHEMA_VERSION {
+                eprintln!(
+                    "[settings] schema_version mismatch (file={:?}, current={}). \
+                     Dropping skill_states and rebuilding on next scan.",
+                    loaded.schema_version, CURRENT_SCHEMA_VERSION
+                );
+                loaded.schema_version = CURRENT_SCHEMA_VERSION.to_string();
+                loaded.skill_states.clear();
+
+                let content = serde_json::to_string_pretty(&loaded)?;
+                fs::write(config_path, content)?;
+            }
+
+            loaded
         } else {
             // 创建默认配置并添加预设 Agent
             let mut default = AppConfig::default();

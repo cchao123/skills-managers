@@ -46,9 +46,13 @@
     "total": "Total Skills",
     "enabled": "Partially Enabled",
     "disabled": "Not Enabled",
+    "mainToggle": {
+      "allOn": "All enabled",
+      "allOff": "All disabled",
+      "nativeOnly": "Only native enabled: {{agents}}. Click to enable the rest"
+    },
     "toast": {
       "nativeAgentWarning": "Belongs to {{agent}} native directory, cannot be disabled",
-      "nativeAgentsWarning": "Belongs to {{agents}} native directory, cannot be disabled",
       "skillDeleted": "Skill \"{{name}}\" has been deleted",
       "skillDeleteFailed": "Failed to delete skill",
       "skillDeletedFrom": "Skill \"{{name}}\" has been deleted from {{sources}}",
@@ -111,13 +115,28 @@
     "noSkillsHint": "Try adjusting your search or filter",
     "retry": "Retry",
     "errorMessage": "Make sure the app is running in Tauri environment, not in a browser.",
-    "localAgentDirectory": "Local Agent Details",
+    "localAgentDirectory": "Directory Details",
+    "operationLog": {
+      "title": "Operation Log",
+      "panelTitle": "Actions that triggered \"Copy to Root\"",
+      "empty": "No copy/import/enable records yet",
+      "clear": "Clear",
+      "copyFromSource": "Copied \"{{skill}}\" from {{source}} to root",
+      "dragImport": "Drag-imported \"{{skill}}\" to root",
+      "enableAgent": "Enabled \"{{skill}}\" for {{target}} (source: {{source}})"
+    },
     "viewFlat": "Flat View",
     "viewBySource": "By Source",
     "openAgentSettings": "Open Agents in Settings",
     "viewHelp": "View Guide",
     "viewHelpFlat": "Scan all local Agents and show all available Skills regardless of source",
     "viewHelpBySource": "Group Skills by Agent source, so you can clearly see which Skills belong to each Agent",
+    "mainToggleHelp": {
+      "title": "Main toggle states",
+      "off": "Not enabled",
+      "nativeOnly": "Only native enabled",
+      "on": "Partially or fully enabled"
+    },
     "rootPathLabel": "Root: ",
     "githubTipMid": " — skills under this path can be synced via",
     "githubTipLink": " GitHub Backup",

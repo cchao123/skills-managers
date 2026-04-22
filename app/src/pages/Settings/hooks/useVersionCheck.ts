@@ -8,7 +8,7 @@ const REPO_API_BASE = GITHUB_URLS.REPO.replace(
 const LATEST_RELEASE_API = `${REPO_API_BASE}/releases/latest`;
 const TAGS_API = `${REPO_API_BASE}/tags?per_page=1`;
 
-export type VersionStatus =
+type VersionStatus =
   | 'idle'
   | 'checking'
   | 'up-to-date'
@@ -16,7 +16,7 @@ export type VersionStatus =
   | 'no-release'
   | 'error';
 
-export interface VersionInfo {
+interface VersionInfo {
   current: string;
   latest: string | null;
   hasUpdate: boolean;

@@ -1,19 +1,21 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { SkillMetadata, GitHubConfig, AgentConfig, AppConfig, SkillFileEntry, LinkType } from '@/types';
-import { adaptSkillMetadataList, BackendSkillMetadata } from '@/adapters/skillAdapter';
 
 export const skillsApi = {
   list: async (): Promise<SkillMetadata[]> => {
-    const data = await invoke<BackendSkillMetadata[]>('list_skills');
-    return adaptSkillMetadataList(data);
+    return await invoke<SkillMetadata[]>('list_skills');
   },
 
-  enable: async (skillId: string, agent?: string, source?: string): Promise<void> => {
-    await invoke('enable_skill', { skillId, agent, source });
+  enable: async (skillId: string, agent?: string): Promise<void> => {
+    await invoke('enable_skill', { skillId, agent });
   },
 
-  disable: async (skillId: string, agent?: string, source?: string): Promise<void> => {
-    await invoke('disable_skill', { skillId, agent, source });
+  disable: async (skillId: string, agent?: string): Promise<void> => {
+    await invoke('disable_skill', { skillId, agent });
+  },
+
+  setPrimary: async (skillId: string, newPrimary: string): Promise<void> => {
+    await invoke('set_skill_primary', { skillId, newPrimary });
   },
 
   getContent: async (skillId: string): Promise<string> => {
@@ -29,8 +31,7 @@ export const skillsApi = {
   },
 
   rescan: async (): Promise<SkillMetadata[]> => {
-    const data = await invoke<BackendSkillMetadata[]>('rescan_skills');
-    return adaptSkillMetadataList(data);
+    return await invoke<SkillMetadata[]>('rescan_skills');
   },
 
   delete: async (skillId: string, source?: string): Promise<void> => {
