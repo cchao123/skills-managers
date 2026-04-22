@@ -2,9 +2,8 @@
 
 <img src="docs/assets/logo.png" alt="Skills Manager" width="520" />
 
-# 技能管理器
+### <strong>一键共享 + 一键同步</strong>、在多Agent中更优雅的使用skill，并通过 <strong>Skills Manager</strong> 更优雅的管理并构建你的专属技能仓库。
 
-基于 **Tauri 2**、**React** 与 **TypeScript** 的桌面应用，用于集中管理 Claude Code、Cursor 等环境下的 **Skills**（技能）：扫描、启用/禁用、市场浏览与 GitHub 备份同步。
 
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=000)](https://tauri.app/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=000)](https://reactjs.org/)
@@ -27,35 +26,31 @@
 
 ## 功能概览
 
-### 已安装技能（Dashboard）
+### 已安装技列表
 
-- 汇总展示本机已扫描到的技能，支持按来源区分（中央存储、Claude 插件缓存、Cursor 等）
-- 总开关与各 Agent 子开关（级联逻辑）
-- 按名称、描述等搜索与启用/禁用筛选
-- 查看详情、删除（仅限中央存储中的技能）、支持文件夹拖入导入（需含 `SKILL.md`）
+- **一键共享**：通过总开关/子开关链接至目标Agent；
+- **多种试图**：汇总展示、高效管理已有Skill，快速查看Skill详情；
+- **拖拽导入**： 支持文件夹拖入导入（需含 SKILL.md）
 
-### 技能市场（Marketplace）
+![主页](docs/screen-shot/zh-skills-home.png)
+![主页](docs/screen-shot/zh-skills-source.png)
+![技能详情](docs/screen-shot/zh-skills-detail.png)
+![拖拽导入](docs/screen-shot/zh-skills-drop.png)
 
-- 浏览与搜索社区技能仓库
-- 从 GitHub 安装技能到本地环境
+### GitHub 备份 / 构建Claude Code Marketplace
 
-### GitHub 备份
-
-- 配置仓库、分支、路径与 Personal Access Token（PAT）
 - **同步到 GitHub**：将中央存储技能推送到远端
 - **从 GitHub 恢复**：在新机器上拉取仓库中的技能到本地
-- 连接测试、Star 官方仓库等
+- **构建Marketplace**：备份后的仓库可作为Claude Code Marketplace提供他人使用。
+
+![GitHub](docs/screen-shot/zh-github.png)
 
 ### 设置
+- **记忆过滤**：在视图中过滤由cli/workflow 注入的skill，列表更清爽。
+- **删除保护**：作为插件，默认无权限编辑Agent下文件，需要手动开启。
 
-- 外观：浅色 / 深色 / 跟随系统
-- 语言：中文 / English
-- 关于、更新日志（可跳转 Releases）
+![设置](docs/screen-shot/zh-setting.png)
 
-### 其他
-
-- 单实例运行、系统托盘、Windows 安装包与开始菜单
-- 国际化（i18n）、深色模式、Material Symbols 图标
 
 ---
 

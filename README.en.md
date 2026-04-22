@@ -2,9 +2,7 @@
 
 <img src="docs/assets/logo.png" alt="Skills Manager" width="520" />
 
-# Skills Manager
-
-Desktop app built with **Tauri 2**, **React**, and **TypeScript** to manage **skills** for Claude Code, Cursor, and similar tools: scan, enable/disable, marketplace, and GitHub backup (push & restore).
+### <strong>One-Click Sharing + One-Click Sync</strong>. Use skills more elegantly across multiple Agents, and build your personal skill repository more gracefully through <strong>Skills Manager</strong>.
 
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=000)](https://tauri.app/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=000)](https://reactjs.org/)
@@ -25,35 +23,30 @@ Desktop app built with **Tauri 2**, **React**, and **TypeScript** to manage **sk
 
 ## Features
 
-### Dashboard (installed skills)
+### Installed Skills List
 
-- Aggregates scanned skills with source hints (central store, Claude plugin cache, Cursor, etc.)
-- Master toggle and per-agent sub-toggles (cascading logic)
-- Search and enable/disable filters by name, description, etc.
-- Details view, delete (central storage only), drag-and-drop folder import (requires `SKILL.md`)
+- **One-Click Sharing**: Link to target Agents via master toggle/sub-toggles;
+- **Multiple Views**: Aggregate and efficiently manage existing skills, quickly view skill details;
+- **Drag & Drop Import**: Support dragging folders into the app (requires SKILL.md)
 
-### Marketplace
+![Home](docs/screen-shot/en-skills-home.png)
+![Source View](docs/screen-shot/en-skills-source.png)
+![Skill Details](docs/screen-shot/en-skills-detail.png)
+![Drag Import](docs/screen-shot/en-skills-drop.png)
 
-- Browse and search community skill repositories
-- Install skills from GitHub into the local environment
+### GitHub Backup / Build Claude Code Marketplace
 
-### GitHub backup
+- **Sync to GitHub**: Push central storage skills to remote
+- **Restore from GitHub**: Pull skills from repo to local on new machine
+- **Build Marketplace**: Backed up repo can serve as Claude Code Marketplace for others
 
-- Configure repo, branch, path, and Personal Access Token (PAT)
-- **Sync to GitHub**: push central skills to remote
-- **Restore from GitHub**: pull skills from the repo on a new machine
-- Connection test, star official repo, etc.
+![GitHub](docs/screen-shot/en-github.png)
 
 ### Settings
+- **Memory Filtering**: Filter skills injected by cli/workflow in views for cleaner lists
+- **Delete Protection**: As a plugin, no permission to edit Agent files by default, manual enable required
 
-- Appearance: light / dark / follow system
-- Language: Chinese / English
-- About, changelog (optional link to Releases)
-
-### Other
-
-- Single instance, system tray, Windows installer and Start menu
-- i18n, dark mode, Material Symbols icons
+![Settings](docs/screen-shot/en-setting.png)
 
 ---
 
