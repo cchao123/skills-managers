@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Skills Manager —— 为 Claude Code、Cursor、Codex 等多 Agent 提供统一的技能管理、一键共享与 GitHub 备份/恢复的桌面应用。" />
+    <meta property="og:title" content="Skills Manager · 你的多 Agent 技能总部" />
+    <meta property="og:description" content="一键共享、一键同步，在多 Agent 中更优雅地使用 Skills。" />
+    <meta property="og:image" content="./assets/logo.png" />
+    <title>Skills Manager · 多 Agent 技能管理桌面应用</title>
+    <link rel="icon" href="./assets/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0713;
+        --bg-soft: #130a23;
+        --panel: rgba(255, 255, 255, 0.04);
+        --panel-border: rgba(255, 255, 255, 0.08);
+        --text: #f1ecff;
+        --text-muted: #a9a2c4;
+        --accent: #b275ff;
+        --accent-2: #7c3aed;
+        --accent-soft: rgba(178, 117, 255, 0.18);
+        --danger: #ff4d6a;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      a { color: inherit; text-decoration: none; }
+      button, input { font-family: inherit; }
+      img { max-width: 100%; display: block; }
+
+      .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+      /* ---- NAV ---- */
+      .nav {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(11, 7, 19, 0.72);
+        backdrop-filter: saturate(160%) blur(18px);
+        border-bottom: 1px solid var(--panel-border);
+      }
+      .nav-inner {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 0;
+      }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+      .brand img { height: 28px; width: auto; }
+      .nav-links { display: flex; gap: 28px; font-size: 14px; color: var(--text-muted); }
+      .nav-links a:hover { color: var(--text); }
+      .nav-cta {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 16px; border-radius: 999px;
+        background: linear-gradient(135deg, #a14dff, #7c3aed);
+        color: #fff; font-size: 13px; font-weight: 600;
+        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+        transition: transform .2s, box-shadow .2s;
+      }
+      .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(124, 58, 237, 0.5); }
+
+      /* ---- HERO ---- */
+      .hero {
+        position: relative;
+        padding: 96px 0 80px;
+        text-align: center;
+        overflow: hidden;
+      }
+      .hero::before {
+        content: "";
+        position: absolute; inset: -20% -10% auto -10%; height: 720px;
+        background:
+          radial-gradient(60% 60% at 50% 0%, rgba(162, 77, 255, 0.35), transparent 60%),
+          radial-gradient(40% 40% at 80% 30%, rgba(76, 29, 149, 0.4), transparent 70%),
+          radial-gradient(40% 40% at 10% 20%, rgba(236, 72, 153, 0.18), transparent 70%);
+        filter: blur(60px);
+        z-index: -1;
+      }
+      .hero-logo { height: 120px; margin: 0 auto 28px; opacity: .98; }
+      .hero-title {
+        font-size: clamp(36px, 6vw, 64px);
+        line-height: 1.1;
+        font-weight: 800;
+        margin: 0 0 18px;
+        letter-spacing: -0.02em;
+      }
+      .hero-title .accent {
+        background: linear-gradient(100deg, #c9a4ff 0%, #8b5cf6 50%, #ec4899 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .hero-sub {
+        font-size: clamp(15px, 1.5vw, 18px);
+        color: var(--text-muted);
+        max-width: 680px;
+        margin: 0 auto 36px;
+        line-height: 1.7;
+      }
+      .hero-ctas { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; }
+      .btn {
+        display: inline-flex; align-items: center; gap: 10px;
+        padding: 14px 28px; border-radius: 12px;
+        font-weight: 600; font-size: 15px;
+        transition: transform .2s, box-shadow .2s, background .2s, border-color .2s;
+        cursor: pointer; border: none;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #a14dff, #7c3aed);
+        color: #fff;
+        box-shadow: 0 14px 34px rgba(124, 58, 237, 0.4);
+      }
+      .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(124, 58, 237, 0.55); }
+      .btn-ghost {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        border: 1px solid var(--panel-border);
+      }
+      .btn-ghost:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.18); }
+      .btn svg { width: 18px; height: 18px; }
+
+      .platforms {
+        margin-top: 34px;
+        display: flex; justify-content: center; gap: 32px;
+        color: var(--text-muted); font-size: 13px;
+      }
+      .platforms span { display: inline-flex; align-items: center; gap: 6px; }
+
+      /* ---- HERO PREVIEW ---- */
+      .hero-preview {
+        margin-top: 64px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
+        border: 1px solid var(--panel-border);
+        padding: 6px;
+        box-shadow: 0 40px 80px -30px rgba(124, 58, 237, 0.45);
+      }
+      .hero-preview img { border-radius: 12px; width: 100%; height: auto; }
+
+      /* ---- SECTION ---- */
+      section { padding: 96px 0; position: relative; }
+      section .eyebrow {
+        text-transform: uppercase; letter-spacing: 0.25em; font-size: 12px;
+        color: var(--accent); margin-bottom: 12px; font-weight: 600;
+      }
+      section h2 {
+        font-size: clamp(28px, 4vw, 44px); font-weight: 800; margin: 0 0 16px;
+        letter-spacing: -0.01em;
+      }
+      section .lead { color: var(--text-muted); font-size: 16px; line-height: 1.75; max-width: 640px; }
+
+      .feature-row {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 72px;
+        align-items: center;
+      }
+      .feature-row.reverse { direction: rtl; }
+      .feature-row.reverse > * { direction: ltr; }
+
+      .feature-row .shot {
+        border-radius: 14px; padding: 8px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+        border: 1px solid var(--panel-border);
+        box-shadow: 0 30px 60px -30px rgba(124, 58, 237, 0.35);
+      }
+      .feature-row .shot img { border-radius: 10px; width: 100%; }
+
+      .bullet-list { margin-top: 28px; display: grid; gap: 14px; }
+      .bullet {
+        display: flex; gap: 12px; align-items: flex-start;
+        color: var(--text-muted); font-size: 15px; line-height: 1.6;
+      }
+      .bullet .dot {
+        flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+        background: var(--accent-soft); color: var(--accent);
+        display: inline-flex; align-items: center; justify-content: center; font-size: 12px;
+        margin-top: 2px;
+      }
+      .bullet strong { color: var(--text); font-weight: 600; margin-right: 6px; }
+
+      /* ---- FEATURE CARDS ---- */
+      .cards-grid {
+        margin-top: 56px;
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        padding: 24px;
+        transition: transform .3s, border-color .3s, background .3s;
+      }
+      .card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(178, 117, 255, 0.35);
+        background: rgba(255,255,255,0.06);
+      }
+      .card .ico {
+        width: 44px; height: 44px; border-radius: 12px;
+        background: linear-gradient(135deg, rgba(162, 77, 255, 0.3), rgba(124, 58, 237, 0.3));
+        display: inline-flex; align-items: center; justify-content: center;
+        color: var(--accent); margin-bottom: 18px; font-size: 22px; font-weight: 700;
+      }
+      .card h3 { margin: 0 0 10px; font-size: 18px; font-weight: 700; }
+      .card p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.7; }
+
+      /* ---- GITHUB BANNER ---- */
+      .cta-banner {
+        margin: 0 auto;
+        background: linear-gradient(135deg, rgba(162, 77, 255, 0.14), rgba(124, 58, 237, 0.08));
+        border: 1px solid rgba(178, 117, 255, 0.25);
+        border-radius: 24px;
+        padding: 56px 48px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .cta-banner::before {
+        content: ""; position: absolute; inset: -60% -30% auto auto;
+        width: 600px; height: 600px;
+        background: radial-gradient(circle, rgba(236, 72, 153, 0.18), transparent 60%);
+        filter: blur(50px); z-index: 0;
+      }
+      .cta-banner > * { position: relative; z-index: 1; }
+      .cta-banner h2 { margin: 0 0 14px; }
+      .cta-banner p { color: var(--text-muted); margin: 0 0 28px; max-width: 520px; margin-left: auto; margin-right: auto; }
+
+      /* ---- FAQ ---- */
+      .faq-list { display: grid; gap: 12px; margin-top: 36px; max-width: 820px; }
+      details.faq {
+        background: var(--panel); border: 1px solid var(--panel-border);
+        border-radius: 12px; padding: 18px 22px;
+      }
+      details.faq[open] { border-color: rgba(178, 117, 255, 0.35); }
+      details.faq summary {
+        list-style: none; cursor: pointer; font-weight: 600; font-size: 16px;
+        display: flex; justify-content: space-between; align-items: center;
+      }
+      details.faq summary::-webkit-details-marker { display: none; }
+      details.faq summary::after {
+        content: "+"; color: var(--accent); font-size: 22px; transition: transform .2s;
+      }
+      details.faq[open] summary::after { content: "−"; }
+      details.faq p { color: var(--text-muted); line-height: 1.75; margin: 14px 0 0; font-size: 14px; }
+
+      /* ---- FOOTER ---- */
+      footer {
+        border-top: 1px solid var(--panel-border);
+        padding: 48px 0 40px;
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+      .footer-inner {
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+      }
+      .footer-inner .brand img { height: 24px; }
+
+      /* ---- RESPONSIVE ---- */
+      @media (max-width: 820px) {
+        .nav-links { display: none; }
+        .feature-row { grid-template-columns: 1fr; gap: 40px; }
+        .feature-row.reverse { direction: ltr; }
+        .cards-grid { grid-template-columns: 1fr; }
+        section { padding: 72px 0; }
+        .cta-banner { padding: 40px 24px; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- NAV -->
+    <nav class="nav">
+      <div class="container nav-inner">
+        <a href="#" class="brand">
+          <img src="./assets/logo.png" alt="Skills Manager" />
+          <span>Skills Manager</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">功能</a>
+          <a href="#views">界面</a>
+          <a href="#github">备份同步</a>
+          <a href="#faq">FAQ</a>
+        </div>
+        <a class="nav-cta" href="https://github.com/cchao123/skills-managers/releases" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 .5C5.73.5.77 5.46.77 11.73c0 4.94 3.2 9.12 7.64 10.6.56.1.76-.24.76-.54v-1.88c-3.11.67-3.77-1.5-3.77-1.5-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.69.08-.69 1.13.08 1.73 1.16 1.73 1.16 1 1.73 2.63 1.23 3.27.94.1-.73.39-1.23.71-1.51-2.48-.29-5.08-1.24-5.08-5.51 0-1.22.43-2.21 1.14-2.99-.11-.29-.5-1.43.11-2.97 0 0 .93-.3 3.06 1.14.89-.25 1.85-.38 2.8-.38.95 0 1.91.13 2.8.38 2.13-1.45 3.06-1.14 3.06-1.14.61 1.54.22 2.68.11 2.97.71.78 1.14 1.77 1.14 2.99 0 4.29-2.61 5.22-5.09 5.5.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54 4.43-1.48 7.63-5.66 7.63-10.6C23.23 5.46 18.27.5 12 .5z"/></svg>
+          下载
+        </a>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <header class="hero">
+      <div class="container">
+        <img src="./assets/logo.png" alt="Skills Manager logo" class="hero-logo" />
+        <h1 class="hero-title">
+          你的 <span class="accent">多 Agent 技能总部</span>
+        </h1>
+        <p class="hero-sub">
+          一款为 Claude Code、Cursor、Codex 等 AI Agent 打造的桌面应用。<br />
+          <strong style="color:var(--text)">一键共享、一键同步</strong>、跨 Agent 统一管理 Skills，用 GitHub 备份打造专属的技能仓库。
+        </p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="https://github.com/cchao123/skills-managers/releases" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.77 5.46.77 11.73c0 4.94 3.2 9.12 7.64 10.6.56.1.76-.24.76-.54v-1.88c-3.11.67-3.77-1.5-3.77-1.5-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.69.08-.69 1.13.08 1.73 1.16 1.73 1.16 1 1.73 2.63 1.23 3.27.94.1-.73.39-1.23.71-1.51-2.48-.29-5.08-1.24-5.08-5.51 0-1.22.43-2.21 1.14-2.99-.11-.29-.5-1.43.11-2.97 0 0 .93-.3 3.06 1.14.89-.25 1.85-.38 2.8-.38.95 0 1.91.13 2.8.38 2.13-1.45 3.06-1.14 3.06-1.14.61 1.54.22 2.68.11 2.97.71.78 1.14 1.77 1.14 2.99 0 4.29-2.61 5.22-5.09 5.5.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54 4.43-1.48 7.63-5.66 7.63-10.6C23.23 5.46 18.27.5 12 .5z"/></svg>
+            在 GitHub 下载
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/cchao123/skills-managers" target="_blank" rel="noopener">
+            查看源码
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
+          </a>
+        </div>
+        <div class="platforms">
+          <span>● macOS 12+</span>
+          <span>● Windows 10+</span>
+          <span>● Apple Silicon / Intel</span>
+        </div>
+
+        <div class="hero-preview">
+          <img src="./screen-shot/zh-skills-home.png" alt="Skills Manager 主界面预览" loading="eager" />
+        </div>
+      </div>
+    </header>
+
+    <!-- INTRO CARDS -->
+    <section id="features">
+      <div class="container">
+        <p class="eyebrow">Core Features</p>
+        <h2>一个窗口，管理所有 Agent 的 Skills</h2>
+        <p class="lead">不再为 Claude Code、Cursor、Codex 各自的技能目录反复切换。把 Skills 集中在一起看、一起管、一起分发。</p>
+
+        <div class="cards-grid">
+          <div class="card">
+            <div class="ico">⚡</div>
+            <h3>一键共享到目标 Agent</h3>
+            <p>主开关 / 子开关分别支持整体和细粒度控制，把任意 Skill 瞬间链接到 Cursor、Codex 或 Claude 等目标 Agent 上。</p>
+          </div>
+          <div class="card">
+            <div class="ico">☁</div>
+            <h3>GitHub 备份 & 跨机同步</h3>
+            <p>一键把本地 Skills 推到 GitHub，新机器克隆即恢复。备份仓库可直接作为 Claude Code Marketplace，让团队共享你的技能。</p>
+          </div>
+          <div class="card">
+            <div class="ico">⇣</div>
+            <h3>拖拽导入 · 零配置</h3>
+            <p>把任意含 <code>SKILL.md</code> 的文件夹拖入窗口即可入库，无需命令行、无需路径参数，秒级完成导入。</p>
+          </div>
+          <div class="card">
+            <div class="ico">⇆</div>
+            <h3>平铺 / 按来源双视图</h3>
+            <p>平铺视图看"有哪些 Skill"；按来源视图看"每个 Agent 里有啥"。不同任务切不同视角，不丢信息。</p>
+          </div>
+          <div class="card">
+            <div class="ico">✦</div>
+            <h3>智能三态开关</h3>
+            <p>红 / 灰 / 黄一目了然地显示"全部启用 / 未启用 / 仅原生目录"三态，包含 native 来源的 Skill 也能清晰识别。</p>
+          </div>
+          <div class="card">
+            <div class="ico">◆</div>
+            <h3>原生级桌面体验</h3>
+            <p>基于 <strong>Tauri 2 + Rust</strong> 构建，冷启动 &lt; 1 秒，占用内存极低；前端 React 18 + Tailwind，流畅丝滑。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW MODES -->
+    <section id="views" style="background: linear-gradient(180deg, transparent, rgba(162, 77, 255, 0.04));">
+      <div class="container">
+        <div class="feature-row">
+          <div>
+            <p class="eyebrow">View · 平铺展示</p>
+            <h2>扫描本地所有 Agent，<br />把 Skill 聚合成一张清单</h2>
+            <p class="lead">不区分来源，按 Skill 维度聚合。再也不用在 <code>.claude/skills</code>、<code>.cursor/agents</code>、<code>~/.codex</code> 之间来回跳。</p>
+            <div class="bullet-list">
+              <div class="bullet"><span class="dot">1</span><span><strong>搜索 & 分类筛选</strong> 关键词秒筛、按启用状态快速过滤</span></div>
+              <div class="bullet"><span class="dot">2</span><span><strong>一屏看全 Agent 状态</strong> 每张卡片显示 4/4 Agent 的启用情况</span></div>
+              <div class="bullet"><span class="dot">3</span><span><strong>主开关三态视觉</strong> 灰 / 黄 / 红 清晰区分未启用 / 仅 native / 部分或全部启用</span></div>
+            </div>
+          </div>
+          <div class="shot">
+            <img src="./screen-shot/zh-skills-home.png" alt="平铺视图" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="feature-row reverse">
+          <div>
+            <p class="eyebrow">View · 按来源展示</p>
+            <h2>想看每个 Agent 里<br />到底装了啥？切一下</h2>
+            <p class="lead">按来源分组展示，同一 Skill 在不同 Agent 的拷贝状态一目了然，方便你决定哪些收录到根目录、哪些保留在本地。</p>
+            <div class="bullet-list">
+              <div class="bullet"><span class="dot">✓</span><span><strong>一键拷贝到根目录</strong> 纳入统一仓库，可被其它 Agent 复用</span></div>
+              <div class="bullet"><span class="dot">✓</span><span><strong>原生 Skill 特殊标识</strong> 黄色圆点直观提示"这是属于 Agent 自带的"</span></div>
+              <div class="bullet"><span class="dot">✓</span><span><strong>操作日志</strong> 记录哪些行为触发了"复制到根目录"，可回溯</span></div>
+            </div>
+          </div>
+          <div class="shot">
+            <img src="./screen-shot/zh-skills-source.png" alt="按来源展示视图" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="feature-row">
+          <div>
+            <p class="eyebrow">Skill Detail</p>
+            <h2>技能详情 · 文件树 +<br />Agent 启用状态</h2>
+            <p class="lead">点击任意 Skill 即可查看完整文件结构、<code>SKILL.md</code> 内容，以及该 Skill 在各 Agent 的共享状态。可在面板里直接拖拽调整宽度，照顾不同屏幕。</p>
+            <div class="bullet-list">
+              <div class="bullet"><span class="dot">◎</span><span><strong>内联文件预览</strong> 点文件查看内容，无需外部编辑器</span></div>
+              <div class="bullet"><span class="dot">◎</span><span><strong>删除保护</strong> 默认不允许编辑 Agent 目录，开启高阶模式后才能精准删除</span></div>
+            </div>
+          </div>
+          <div class="shot">
+            <img src="./screen-shot/zh-skills-detail.png" alt="Skill 详情" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GITHUB BACKUP -->
+    <section id="github" style="background: linear-gradient(180deg, rgba(124, 58, 237, 0.06), transparent);">
+      <div class="container">
+        <div class="feature-row reverse">
+          <div>
+            <p class="eyebrow">GitHub · 备份 / 恢复 / Marketplace</p>
+            <h2>把你的技能<br />变成一个 Marketplace</h2>
+            <p class="lead">接入个人 GitHub 仓库，<strong style="color:var(--text)">一键同步 · 一键恢复</strong>。仓库既是你跨机器的"云端技能库"，又可直接作为 <strong style="color:var(--text)">Claude Code Plugin Marketplace</strong> 给团队或社区使用。</p>
+            <div class="bullet-list">
+              <div class="bullet"><span class="dot">↑</span><span><strong>同步到 GitHub</strong> 全部中央仓库 Skills 推到远端，增量 commit</span></div>
+              <div class="bullet"><span class="dot">↓</span><span><strong>从 GitHub 恢复</strong> 新机器安装即可拉回你的全部技能</span></div>
+              <div class="bullet"><span class="dot">★</span><span><strong>一键分享</strong> 让他人通过 Claude Code 的 Marketplace 命令一键安装你的 Skills</span></div>
+            </div>
+          </div>
+          <div class="shot">
+            <img src="./screen-shot/zh-github.png" alt="GitHub 备份界面" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DRAG IMPORT + SETTINGS COMBO -->
+    <section>
+      <div class="container">
+        <div class="feature-row">
+          <div>
+            <p class="eyebrow">Drag & Drop · 零门槛</p>
+            <h2>拖进来，就完成了</h2>
+            <p class="lead">不会用命令行也没关系。直接把包含 <code>SKILL.md</code> 的文件夹从文件管理器拖进窗口，立刻入库、立刻可共享到其它 Agent。</p>
+            <div class="bullet-list">
+              <div class="bullet"><span class="dot">⇣</span><span><strong>秒级反馈</strong> 入库后自动静默刷新列表，无闪烁 loading</span></div>
+              <div class="bullet"><span class="dot">⇣</span><span><strong>批量拖拽</strong> 支持多文件夹同时导入，失败的文件夹会分别提示</span></div>
+            </div>
+          </div>
+          <div class="shot">
+            <img src="./screen-shot/zh-skills-drop.png" alt="拖拽导入" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="feature-row reverse">
+          <div>
+            <p class="eyebrow">Settings · 可控可靠</p>
+            <h2>记忆过滤 · 删除保护 ·<br />高阶模式一应俱全</h2>
+            <p class="lead">默认以"只读观察者"身份加入你的 Agent 生态，需要时再开启高阶模式执行写入或删除，避免误伤原有技能。</p>
+            <div class="bullet-list">
+              <div class="bullet"><span class="dot">✦</span><span><strong>记忆过滤</strong> 把 CLI / workflow 注入的临时 Skill 从视图里屏蔽</span></div>
+              <div class="bullet"><span class="dot">✦</span><span><strong>中英文切换 · 暗色模式</strong> 跟随系统或手动切换</span></div>
+              <div class="bullet"><span class="dot">✦</span><span><strong>开箱即用</strong> 无需账号注册，配置即走</span></div>
+            </div>
+          </div>
+          <div class="shot">
+            <img src="./screen-shot/zh-setting.png" alt="设置页" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOWNLOAD CTA -->
+    <section>
+      <div class="container">
+        <div class="cta-banner">
+          <p class="eyebrow">Free · Open Source · MIT</p>
+          <h2>现在就把 Skills 接管起来</h2>
+          <p>免费、开源、跨平台。从 GitHub Releases 下载最新安装包，或 clone 仓库自行构建。</p>
+          <div class="hero-ctas">
+            <a class="btn btn-primary" href="https://github.com/cchao123/skills-managers/releases" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 .5C5.73.5.77 5.46.77 11.73c0 4.94 3.2 9.12 7.64 10.6.56.1.76-.24.76-.54v-1.88c-3.11.67-3.77-1.5-3.77-1.5-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.69.08-.69 1.13.08 1.73 1.16 1.73 1.16 1 1.73 2.63 1.23 3.27.94.1-.73.39-1.23.71-1.51-2.48-.29-5.08-1.24-5.08-5.51 0-1.22.43-2.21 1.14-2.99-.11-.29-.5-1.43.11-2.97 0 0 .93-.3 3.06 1.14.89-.25 1.85-.38 2.8-.38.95 0 1.91.13 2.8.38 2.13-1.45 3.06-1.14 3.06-1.14.61 1.54.22 2.68.11 2.97.71.78 1.14 1.77 1.14 2.99 0 4.29-2.61 5.22-5.09 5.5.4.35.76 1.03.76 2.08v3.08c0 .3.2.65.77.54 4.43-1.48 7.63-5.66 7.63-10.6C23.23 5.46 18.27.5 12 .5z"/></svg>
+              在 GitHub 下载
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/cchao123/skills-managers" target="_blank" rel="noopener">⭐ Star 本项目</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq">
+      <div class="container">
+        <p class="eyebrow">FAQ</p>
+        <h2>常见问题</h2>
+        <div class="faq-list">
+          <details class="faq">
+            <summary>Skills Manager 要收费吗？</summary>
+            <p>完全免费、开源，基于 MIT License 发布，仓库在 GitHub 上公开。你可以自由使用、修改、分发，也欢迎提 Issue 或 PR。</p>
+          </details>
+          <details class="faq">
+            <summary>它会修改我本地已有的 Skills 吗？</summary>
+            <p>默认不会。应用以观察者模式扫描各 Agent 目录，并在你授权（启用开关 / 拖拽导入 / 拷贝到根目录）时才创建符号链接或拷贝文件。误删保护默认开启，高阶写操作需要在"设置 → 高阶模式"里显式打开。</p>
+          </details>
+          <details class="faq">
+            <summary>支持哪些 Agent？</summary>
+            <p>当前已支持 Claude Code、Cursor、Codex、OpenClaw 等主流 AI Agent。只要 Agent 的 Skill 目录符合 <code>SKILL.md</code> 约定，理论上都能被扫描和管理。新增 Agent 的支持欢迎发起 PR。</p>
+          </details>
+          <details class="faq">
+            <summary>GitHub 备份需要付费账号吗？</summary>
+            <p>不需要。使用你自己的个人 GitHub 账号即可（Public / Private 仓库都支持）。如果希望作为 Claude Code Marketplace 分享给他人，建议使用 Public 仓库。</p>
+          </details>
+          <details class="faq">
+            <summary>支持哪些平台？</summary>
+            <p>目前提供 macOS (Apple Silicon + Intel) 与 Windows 10+ 的安装包。Linux 用户可 clone 仓库后执行 <code>npm run tauri:build</code> 自行构建。</p>
+          </details>
+          <details class="faq">
+            <summary>和 CLI 脚本 / 其它 Skill manager 相比有什么区别？</summary>
+            <p>核心差异是"跨 Agent 视角 + 桌面级交互"。大多数 CLI 只处理单个 Agent；Skills Manager 把所有 Agent 的 Skill 聚合到同一个界面，三态开关 + 主开关 + 拖拽让多 Agent 场景的日常管理不再切目录、不再手敲命令。</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="container footer-inner">
+        <div class="brand">
+          <img src="./assets/logo.png" alt="Skills Manager" />
+          <span>Skills Manager</span>
+        </div>
+        <div>© 2026 Skills Manager · MIT License · <a href="https://github.com/cchao123/skills-managers" target="_blank" rel="noopener" style="color:var(--accent)">GitHub</a></div>
+      </div>
+    </footer>
+  </body>
+</html>
