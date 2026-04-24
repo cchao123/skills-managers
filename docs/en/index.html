@@ -771,6 +771,21 @@
 
     <script>
       /**
+       * 把嵌入的 Live Preview 应用的语言同步成当前官网语言。
+       *
+       * 官网和 iframe 都在同一 origin（GitHub Pages 下的 /docs），所以它们
+       * 共享 localStorage。Preview 应用里的 i18next-browser-languagedetector
+       * 按默认配置会先读 `i18nextLng`（见 app/src/i18n/config.ts），在 iframe
+       * 首次渲染前把这个 key 写成当前页语言，就能让 React 应用以匹配的语言启动。
+       *
+       * 每次进入官网都覆写一遍，保证"官网语言 = preview 语言"。用户若在
+       * preview 里手动改过语言，也只在本次会话内保留，下次刷新又会跟随官网。
+       */
+      try {
+        localStorage.setItem("i18nextLng", "en");
+      } catch (e) { /* localStorage 不可用时忽略即可，preview 会退回 navigator 语言 */ }
+
+      /**
        * 首访语言自动识别：
        * - 如果访问者还没手动选过语言（localStorage 无 sm_lang_picked=1）
        * - 且浏览器语言与当前页不符，就一次性跳到更合适的版本
