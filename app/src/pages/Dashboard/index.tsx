@@ -13,6 +13,7 @@ import { OCTOPUS_LOGO_URL } from '@/lib/assets';
 import { useSkillData } from '@/pages/Dashboard/hooks/useSkillData';
 import { useSkillFilters } from '@/pages/Dashboard/hooks/useSkillFilters';
 import { usePrefixFilteredSkills } from '@/pages/Dashboard/hooks/usePrefixFilteredSkills';
+import { FILTER_TYPE } from '@/pages/Dashboard/constants/filterType';
 import { useSkillActions } from '@/pages/Dashboard/hooks/useSkillActions';
 import { useSkillModal } from '@/pages/Dashboard/hooks/useSkillModal';
 import { useDragDrop } from '@/pages/Dashboard/hooks/useDragDrop';
@@ -193,6 +194,8 @@ function Dashboard({
     };
   }, []);
   const { searchTerm, setSearchTerm, filterType, setFilterType, filteredSkills } = useSkillFilters(skills);
+  const filterTypeRef = useRef(filterType);
+  filterTypeRef.current = filterType;
   const prefixFilteredSkills = usePrefixFilteredSkills(skills);
   const { handleToggleSkillMerged, handleToggleAgentMerged, handleDeleteSkill, handleAddToRoot } = useSkillActions(skills, setSkills, agents);
   const detectedAgents = useDetectedAgents(agents);
@@ -283,15 +286,21 @@ function Dashboard({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [showDetailModal, deleteTarget, handleCloseDetailModal]);
 
-  const { isDragOver, importing } = useDragDrop(useCallback((importedNames: string[]) => {
-    // 拖拽导入通常几十毫秒就能完成，用静默刷新避免 loading spinner 闪一下
-    void refreshSkills();
+  const { isDragOver, importing } = useDragDrop(useCallback(async (importedNames: string[]) => {
     // 拖拽导入后新技能只会存在于根目录，切回根目录 tab 避免用户停留在其他 source tab 时误以为没导入成功
     setSelectedSource(SOURCE.Global);
+    // 若用户当前处在"仅启用/仅禁用"过滤下，新导入的技能可能被过滤掉（通常未启用任何 agent），
+    // 重置成 All 保证能立刻看到结果。
+    if (filterTypeRef.current !== FILTER_TYPE.All) {
+      setFilterType(FILTER_TYPE.All);
+    }
+    // 关键：必须等 refresh 真正落地后再 setSearchTerm，否则搜索会在旧 skills 列表上跑，
+    // 出现"提示已安装 / 成功但搜不到，右键刷新才出现"的竞态。
+    await refreshSkills();
     if (importedNames.length === 1) {
       setSearchTerm(importedNames[0]);
     }
-  }, [refreshSkills, setSearchTerm]));
+  }, [refreshSkills, setSearchTerm, setFilterType]));
   const { leftPanelWidth, isResizing, handleMouseDown } = usePanelResize();
 
   // Handlers
