@@ -147,7 +147,8 @@ impl GitHubIntegrator {
             Ok(resp) if resp.status() == 200 => {}
             Ok(resp) => anyhow::bail!("检查分支时返回状态码 {}", resp.status()),
             Err(ureq::Error::Status(404, _)) => {
-                anyhow::bail!("分支 '{}' 不存在，请检查分支名是否正确", branch);
+                // 分支不存在，可能是空仓库。尝试自动初始化
+                return Self::try_init_empty_repo(owner, repo, branch, token);
             }
             Err(ureq::Error::Status(code, _)) => {
                 anyhow::bail!("检查分支时返回错误 (HTTP {})", code);
@@ -157,6 +158,110 @@ impl GitHubIntegrator {
             }
         }
 
+        Ok(true)
+    }
+
+    /// 尝试初始化空仓库（创建初始提交和分支）
+    fn try_init_empty_repo(owner: &str, repo: &str, branch: &str, token: &str) -> Result<bool> {
+        eprintln!("[init] 检测到空仓库，尝试自动初始化...");
+
+        // 创建唯一的临时目录（使用时间戳避免冲突）
+        let timestamp = chrono::Utc::now().timestamp();
+        let temp_dir = std::env::temp_dir()
+            .join("skills-manager-init")
+            .join(format!("{}-{}-{}", owner, repo, timestamp));
+
+        // 确保临时目录不存在（清理之前的残留）
+        if temp_dir.exists() {
+            fs::remove_dir_all(&temp_dir)?;
+        }
+        fs::create_dir_all(&temp_dir)?;
+
+        // 初始化本地仓库
+        let local_repo = Repository::init(&temp_dir)
+            .context("初始化本地仓库失败")?;
+
+        // 创建一个初始的 README.md
+        let readme_path = temp_dir.join("README.md");
+        let readme_content = format!(
+            "# Skills\n\nManaged by [Skills Manager](https://github.com/cchao123/skills-managers)\n\n---\n_This repository was automatically initialized by Skills Manager._",
+        );
+        fs::write(&readme_path, readme_content)?;
+
+        // 配置 git 用户信息
+        let sig = Signature::now("Skills Manager", "skills-manager@local")
+            .or_else(|_| Signature::now("SkillsManager", "skills-manager@local"))?;
+
+        // 添加文件到索引
+        let mut index = local_repo.index()?;
+        index.add_all(
+            ["*"].iter(),
+            git2::IndexAddOption::DEFAULT,
+            None,
+        )?;
+        index.write()?;
+
+        // 创建初始提交
+        let tree_id = index.write_tree()?;
+        let tree = local_repo.find_tree(tree_id)?;
+
+        // 获取当前 HEAD 作为父提交（如果存在）
+        let parents: Vec<git2::Commit> = match local_repo.head() {
+            Ok(head_ref) => {
+                // HEAD 已存在，获取其指向的提交作为父提交
+                if let Ok(commit) = head_ref.peel_to_commit() {
+                    eprintln!("[init] 检测到现有提交，将其作为父提交");
+                    vec![commit]
+                } else {
+                    vec![]
+                }
+            }
+            Err(_) => {
+                // HEAD 不存在（真正的空仓库）
+                vec![]
+            }
+        };
+
+        let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
+
+        // 创建初始提交（不直接使用 HEAD，而是先创建提交对象）
+        let oid = local_repo.commit(
+            None, // 不直接更新 HEAD
+            &sig,
+            &sig,
+            "Initial commit - Skills Manager",
+            &tree,
+            parent_refs.as_slice(),
+        )?;
+
+        eprintln!("[init] 初始提交创建成功: {}", oid);
+
+        // 创建本地分支引用
+        let branch_ref = format!("refs/heads/{}", branch);
+        local_repo.reference(
+            &branch_ref,
+            oid,
+            true,
+            "Set branch to initial commit",
+        )?;
+
+        // 设置 HEAD 指向新创建的分支
+        local_repo.set_head(&branch_ref)?;
+
+        eprintln!("[init] 分支 '{}' 已创建并设置为 HEAD", branch);
+
+        // 添加远程仓库
+        let url = build_auth_url(owner, repo, Some(token));
+        local_repo.remote("origin", &url)?;
+
+        // 推送到远程仓库
+        eprintln!("[init] 推送初始提交到远端分支 '{}'...", branch);
+        push_to_origin(&local_repo, branch, Some(token), true)?;
+
+        // 清理临时目录
+        fs::remove_dir_all(&temp_dir)?;
+
+        eprintln!("[init] ✅ 空仓库初始化成功！");
         Ok(true)
     }
 
