@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { RepoConfig } from '../hooks/useGitHubConfig';
 import { GITHUB_TOKENS_URL } from '../constants/config';
 
+import { Icon } from '@/components/Icon';
 interface GitHubFormProps {
   config: RepoConfig;
   connected: boolean;
@@ -94,9 +95,7 @@ export const GitHubForm = ({
                 onClick={() => setShowToken(!showToken)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition-colors"
               >
-                <span className="material-symbols-outlined text-xl">
-                  {showToken ? 'visibility_off' : 'visibility'}
-                </span>
+                <Icon name={showToken ? 'visibility_off' : 'visibility'} className="text-xl" />
               </button>
             )}
           </div>

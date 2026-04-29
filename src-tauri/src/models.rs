@@ -50,6 +50,11 @@ pub struct AgentConfig {
     pub skills_path: String,
     pub enabled: bool,
     pub detected: bool,
+    /// 额外的安装根目录（如 trae-cn 的 ~/.trae-cn）。
+    /// 检测时只要主路径或任一 extra_paths 存在即视为"已安装"。
+    /// 扫描时会对主路径和所有 extra_paths 均执行 skills_path 子目录扫描。
+    #[serde(default)]
+    pub extra_paths: Vec<String>,
 }
 
 /// 代表中央仓库（`~/.skills-manager/skills/`）的特殊 source 标识。
@@ -163,6 +168,9 @@ pub struct AppConfig {
     /// 按前缀隐藏 skill 的规则（大小写不敏感）。前端与托盘菜单共享该列表。
     #[serde(default)]
     pub skill_hide_prefixes: Vec<String>,
+    /// 用户在 Dashboard 中"置顶"的 skill_id 列表。前端据此把这些卡片排在最前面。
+    #[serde(default)]
+    pub pinned_skills: Vec<String>,
 }
 
 fn default_language() -> String {
@@ -179,6 +187,7 @@ impl Default for AppConfig {
             skill_states: HashMap::new(),
             language: default_language(),
             skill_hide_prefixes: Vec::new(),
+            pinned_skills: Vec::new(),
         }
     }
 }

@@ -174,6 +174,9 @@ pub fn run() {
             commands::github::check_github_star,
             // Theme commands
             commands::theme::set_window_theme,
+            // Pin commands（命令文件名沿用 window.rs，实际是 skill 置顶）
+            commands::window::set_skill_pinned,
+            commands::window::get_pinned_skills,
             // Tray commands
             tray::update_tray_language,
             tray::set_skill_hide_prefixes,

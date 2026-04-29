@@ -10,7 +10,3 @@ export const DEFAULT_REPO_CONFIG = {
   token: '',
 } as const;
 
-// UI constants
-export const STAR_REPO_OWNER = 'cchao123';
-export const STAR_REPO_NAME = 'skills-managers';
-export const STAR_REPO_URL = `https://github.com/${STAR_REPO_OWNER}/${STAR_REPO_NAME}`;

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
+import { Icon } from '@/components/Icon';
 interface ActionButtonsProps {
   connected: boolean;
   testing: boolean;
@@ -11,6 +12,7 @@ interface ActionButtonsProps {
   onEdit: () => void;
   onRestore: (overwriteLocal: boolean) => void | Promise<void>;
   onSync: (overwriteRemote: boolean) => void | Promise<void>;
+  onOpenFolder: () => void;
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -22,6 +24,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onEdit,
   onRestore,
   onSync,
+  onOpenFolder,
 }) => {
   const { t } = useTranslation();
   const [syncMenuOpen, setSyncMenuOpen] = useState(false);
@@ -90,19 +93,17 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         <button
           onClick={onTest}
           disabled={testing}
-          className="px-5 py-1 rounded-xl text-sm font-medium bg-[#adb5bd] hover:bg-[#999] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-5 py-2 rounded-xl text-sm font-medium bg-[#adb5bd] hover:bg-[#999] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          <span className="material-symbols-outlined text-lg">
-            {testing ? 'hourglass_top' : 'link'}
-          </span>
+          <Icon name={testing ? 'hourglass_top' : 'link'} className="text-lg" />
           {testing ? t('githubBackup.buttons.testing') : t('githubBackup.buttons.testConnection')}
         </button>
       ) : (
         <button
           onClick={onEdit}
-          className="px-5 py-1 rounded-xl text-sm font-medium bg-[#adb5bd] hover:bg-[#999] text-white transition-all flex items-center gap-2"
+          className="px-5 py-2 rounded-xl text-sm font-medium bg-[#adb5bd] hover:bg-[#999] text-white transition-all flex items-center gap-2"
         >
-          <span className="material-symbols-outlined text-lg">edit</span>
+          <Icon name="edit" className="text-lg" />
           {t('githubBackup.buttons.editConfig')}
         </button>
       )}
@@ -120,11 +121,9 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
               }
             }}
             disabled={restoring || syncing}
-            className="pl-4 pr-3 py-1 text-sm font-medium bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-r border-[#e1e3e4] dark:border-dark-border"
+            className="pl-4 pr-3 py-2 text-sm font-medium bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-r border-[#e1e3e4] dark:border-dark-border"
           >
-            <span className={`material-symbols-outlined text-lg ${restoring ? 'animate-spin' : ''}`}>
-              cloud_download
-            </span>
+            <Icon name="cloud_download" className={`text-lg ${restoring ? 'animate-spin' : ''}`} />
             {restoring ? t('githubBackup.buttons.restoring') : t('githubBackup.buttons.restoreNow')}
           </button>
           <button
@@ -133,15 +132,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             aria-haspopup="menu"
             onClick={() => { setRestoreMenuOpen(o => !o); setSyncMenuOpen(false); }}
             disabled={restoring || syncing}
-            className="w-7 shrink-0 px-0 py-1 text-sm font-medium bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-7 shrink-0 px-0 py-2 text-sm font-medium bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             title={t('githubBackup.buttons.restoreNow')}
           >
-            <span
-              className={`material-symbols-outlined text-[1.125rem] leading-none transition-transform ${restoreMenuOpen ? 'rotate-180' : ''}`}
-              style={{ fontVariationSettings: "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20" }}
-            >
-              expand_more
-            </span>
+            <Icon
+              name="expand_more"
+              className={`text-[1.125rem] leading-none transition-transform ${restoreMenuOpen ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
         {restoreMenuOpen &&
@@ -190,11 +187,9 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
               }
             }}
             disabled={syncing || restoring}
-            className="pl-4 pr-3 py-1 text-sm font-medium bg-[#b71422] hover:bg-[#a01220] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-r border-white/25"
+            className="pl-4 pr-3 py-2 text-sm font-medium bg-[#b71422] hover:bg-[#a01220] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-r border-white/25"
           >
-            <span className={`material-symbols-outlined text-lg ${syncing ? 'animate-spin' : ''}`}>
-              cloud_upload
-            </span>
+            <Icon name="cloud_upload" className={`text-lg ${syncing ? 'animate-spin' : ''}`} />
             {syncing ? t('githubBackup.buttons.syncing') : t('githubBackup.buttons.syncNow')}
           </button>
           <button
@@ -203,15 +198,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             aria-haspopup="menu"
             onClick={() => { setSyncMenuOpen((o) => !o); setRestoreMenuOpen(false); }}
             disabled={syncing || restoring}
-            className="w-7 shrink-0 px-0 py-1 text-sm font-medium bg-[#b71422] hover:bg-[#a01220] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-7 shrink-0 px-0 py-2 text-sm font-medium bg-[#b71422] hover:bg-[#a01220] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             title={t('githubBackup.syncMenu.openTitle')}
           >
-            <span
-              className={`material-symbols-outlined text-[1.125rem] leading-none transition-transform ${syncMenuOpen ? 'rotate-180' : ''}`}
-              style={{ fontVariationSettings: "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20" }}
-            >
-              expand_more
-            </span>
+            <Icon
+              name="expand_more"
+              className={`text-[1.125rem] leading-none transition-transform ${syncMenuOpen ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
         {syncMenuOpen &&
@@ -247,16 +240,22 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           )}
       </div>
 
+      {/* Open local folder */}
+      <button
+        onClick={onOpenFolder}
+        className="ml-auto px-3 py-2 rounded-xl text-sm font-medium bg-white dark:bg-dark-bg-secondary hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary text-slate-700 dark:text-white transition-all border border-[#e1e3e4] dark:border-dark-border flex items-center gap-2 shadow-sm"
+        title={t('githubBackup.buttons.openLocal')}
+      >
+        <Icon name="folder_open" className="text-lg" />
+        {t('githubBackup.buttons.openLocal')}
+      </button>
+
       {/* 强制同步确认框 */}
       {showForceConfirm && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10 backdrop-blur-[2px]">
           <div className="w-full max-w-md bg-white/95 dark:bg-dark-bg-card backdrop-blur-xl rounded-3xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25),0_18px_36px_-18px_rgba(0,0,0,0.3)] border border-white/50 dark:border-dark-border overflow-hidden flex flex-col items-center text-center p-8">
             <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-6">
-              <span className="material-symbols-outlined text-amber-500 text-4xl"
-                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-              >
-                warning
-              </span>
+              <Icon name="warning" className="text-amber-500 text-4xl" />
             </div>
             <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">{t('githubBackup.confirm.forceSyncTitle')}</h3>
             <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed mb-8 px-4">
@@ -289,11 +288,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10 backdrop-blur-[2px]">
           <div className="w-full max-w-md bg-white/95 dark:bg-dark-bg-card backdrop-blur-xl rounded-3xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25),0_18px_36px_-18px_rgba(0,0,0,0.3)] border border-white/50 dark:border-dark-border overflow-hidden flex flex-col items-center text-center p-8">
             <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-6">
-              <span className="material-symbols-outlined text-amber-500 text-4xl"
-                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-              >
-                warning
-              </span>
+              <Icon name="warning" className="text-amber-500 text-4xl" />
             </div>
             <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">{t('githubBackup.confirm.overwriteRestoreTitle')}</h3>
             <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed mb-8 px-4">

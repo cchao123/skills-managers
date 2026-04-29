@@ -196,7 +196,8 @@ fn find_all_skills_dirs(base_path: &Path) -> Vec<PathBuf> {
 }
 
 /// 收集所有物理副本（按 id 分组，未合并）。
-fn collect_discoveries() -> Vec<SkillDiscovery> {
+/// 动态读取 agents 配置，对每个已检测到的 agent 扫描其 skills 目录。
+fn collect_discoveries(agents: &[AgentConfig]) -> Vec<SkillDiscovery> {
     let mut all = Vec::new();
 
     // 1. 中央仓库
@@ -204,34 +205,41 @@ fn collect_discoveries() -> Vec<SkillDiscovery> {
         all.extend(walk_strict(&p, SOURCE_GLOBAL));
     }
 
-    // 2. 各 Agent 的用户自定义 skills 目录
-    for (path_str, src) in &[
-        ("~/.claude/skills", "claude"),
-        ("~/.cursor/skills", "cursor"),
-        ("~/.openclaw/skills", "openclaw"),
-        ("~/.codex/skills", "codex"),
-    ] {
-        if let Some(p) = expand_tilde(Path::new(path_str)) {
-            all.extend(walk_user_custom(&p, src));
+    // 2. 各 Agent 的用户自定义 skills 目录（从配置动态读取，仅扫描已检测到的）
+    for agent in agents {
+        if !agent.detected {
+            continue;
+        }
+        // 主路径 + extra_paths 统一处理
+        let mut root_paths = vec![agent.path.clone()];
+        root_paths.extend(agent.extra_paths.iter().cloned());
+        for root in &root_paths {
+            let skills_path_str = format!("{}/{}", root, agent.skills_path);
+            if let Some(p) = expand_tilde(Path::new(&skills_path_str)) {
+                all.extend(walk_user_custom(&p, &agent.name));
+            }
         }
     }
 
-    // 3. Cursor 内置 skills-cursor
-    if let Some(p) = expand_tilde(Path::new("~/.cursor/skills-cursor")) {
-        all.extend(walk_user_custom(&p, "cursor"));
-    }
-
-    // 4. Cursor 社区插件缓存
-    if let Some(p) = expand_tilde(Path::new("~/.cursor/plugins/cache/cursor-public")) {
-        for skills_path in find_all_skills_dirs(&p) {
-            all.extend(walk_strict(&skills_path, "cursor"));
+    // 3. Cursor 额外目录（内置 skills-cursor）
+    if agents.iter().any(|a| a.name == "cursor" && a.detected) {
+        if let Some(p) = expand_tilde(Path::new("~/.cursor/skills-cursor")) {
+            all.extend(walk_user_custom(&p, "cursor"));
+        }
+        // 4. Cursor 社区插件缓存
+        if let Some(p) = expand_tilde(Path::new("~/.cursor/plugins/cache/cursor-public")) {
+            for skills_path in find_all_skills_dirs(&p) {
+                all.extend(walk_strict(&skills_path, "cursor"));
+            }
         }
     }
 
     // 5. Claude 插件缓存
-    if let Some(p) = expand_tilde(Path::new("~/.claude/plugins/cache")) {
-        for skills_path in find_all_skills_dirs(&p) {
-            all.extend(walk_strict(&skills_path, "claude"));
+    if agents.iter().any(|a| a.name == "claude" && a.detected) {
+        if let Some(p) = expand_tilde(Path::new("~/.claude/plugins/cache")) {
+            for skills_path in find_all_skills_dirs(&p) {
+                all.extend(walk_strict(&skills_path, "claude"));
+            }
         }
     }
 
@@ -268,7 +276,7 @@ pub fn scan_and_merge(
     skill_states: &mut HashMap<String, SkillEntry>,
     agents: &[AgentConfig],
 ) -> Result<Vec<SkillMetadata>, ScannerError> {
-    let discoveries = collect_discoveries();
+    let discoveries = collect_discoveries(agents);
 
     // 按 id 分组
     let mut by_id: HashMap<String, Vec<SkillDiscovery>> = HashMap::new();

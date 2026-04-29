@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Collapse } from '@/components/Collapse';
 import { Steps, Step } from '@/components/Steps';
 
+import { Icon } from '@/components/Icon';
 function CopyButton({ text }: { text: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -17,9 +18,7 @@ function CopyButton({ text }: { text: string }) {
       className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
       title={copied ? t('githubBackup.shared.copied') : t('githubBackup.shared.copy')}
     >
-      <span className="material-symbols-outlined text-base text-gray-500 dark:text-gray-400">
-        {copied ? 'check' : 'content_copy'}
-      </span>
+      <Icon name={copied ? 'check' : 'content_copy'} className="text-base text-gray-500 dark:text-gray-400" />
     </button>
   );
 }
@@ -43,7 +42,7 @@ export const Shared: React.FC<{ owner: string; repo: string }> = ({ owner, repo 
     >
 
       <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-        <span className="material-symbols-outlined text-base text-[#b71422]">terminal</span>
+        <Icon name="terminal" className="text-base text-[#b71422]" />
         {t('githubBackup.shared.claudeCode')}
         <span className="text-xs font-normal text-slate-400 dark:text-gray-500">{t('githubBackup.shared.viaMarketplace')}</span>
       </h3>
@@ -69,7 +68,7 @@ export const Shared: React.FC<{ owner: string; repo: string }> = ({ owner, repo 
       {/* https://cursor.com/cn/docs/skills#github  转化成点mdc效果不好 */}
       
       {/* <h3 className="pt-8 text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-        <span className="material-symbols-outlined text-base text-[#b71422]">terminal</span>
+        <Icon name="terminal" className="text-base text-[#b71422]" />
         {t('githubBackup.shared.cursor')}
         <span className="text-xs font-normal text-slate-400 dark:text-gray-500">{t('githubBackup.shared.viaRemoteRule')}</span>
       </h3>

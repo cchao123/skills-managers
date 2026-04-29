@@ -1,12 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatsBar } from '@/pages/Dashboard/components/StatsBar';
 import { SourceTabs } from '@/pages/Dashboard/components/SourceTabs';
+import { AgentFilterButton } from '@/pages/Dashboard/components/AgentFilterButton';
 import { VIEW_MODE, type ViewMode } from '@/pages/Dashboard/constants/viewMode';
 import type { FilterType } from '@/pages/Dashboard/constants/filterType';
 import type { SkillMetadata, AgentConfig } from '@/types';
-import { useSkillHidePrefixes } from '@/hooks/useSkillHidePrefixes';
+import { useSkillHidePrefixes, matchesAnyPrefix } from '@/hooks/useSkillHidePrefixes';
+import { useSearchBarPrefs } from '@/hooks/useSearchBarPrefs';
+import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
 
+import { Icon } from '@/components/Icon';
 interface SearchAndFilterBarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -15,8 +19,15 @@ interface SearchAndFilterBarProps {
   skills: SkillMetadata[];
   agents: AgentConfig[];
   viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   selectedSource: string;
   onSourceSelect: (source: string) => void;
+  /** 平铺视图下「按 Agent 快筛」当前选中项；'' 表示不筛 */
+  agentFilter: string;
+  /** 切换快筛选中项 */
+  onAgentFilterChange: (value: string) => void;
+  /** 渲染在搜索栏最右侧的额外操作（如操作日志、帮助按钮等） */
+  rightActions?: React.ReactNode;
 }
 
 export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
@@ -27,133 +38,213 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
   skills,
   agents,
   viewMode,
+  onViewModeChange,
   selectedSource,
   onSourceSelect,
+  agentFilter,
+  onAgentFilterChange,
+  rightActions,
 }) => {
   const { t } = useTranslation();
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
   const { prefixes, addPrefix, removePrefix } = useSkillHidePrefixes();
+  const { prefs: searchBarPrefs } = useSearchBarPrefs();
+  const detectedAgents = useDetectedAgents(agents);
 
-  // Esc 关闭弹窗：仅在打开时挂 window 级 keydown 监听，避免常驻全局监听器
+  // 隐藏搜索框时同时清空已输入的关键字，避免出现"看不到输入但仍在过滤"的隐式状态
   useEffect(() => {
-    if (!isFilterModalOpen) return;
+    if (!searchBarPrefs.showSearch && searchTerm) {
+      onSearchChange('');
+    }
+  }, [searchBarPrefs.showSearch, searchTerm, onSearchChange]);
+
+  // Esc / 点击外部 关闭下拉
+  useEffect(() => {
+    if (!isFilterDropdownOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        setIsFilterModalOpen(false);
+        setIsFilterDropdownOpen(false);
+      }
+    };
+    const onClickOutside = (e: MouseEvent) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target as Node)) {
+        setIsFilterDropdownOpen(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isFilterModalOpen]);
+    document.addEventListener('mousedown', onClickOutside);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('mousedown', onClickOutside);
+    };
+  }, [isFilterDropdownOpen]);
+
+  const isFlatView = viewMode === VIEW_MODE.Flat;
+
+  const switchView = (mode: ViewMode) => {
+    if (mode === viewMode) return;
+    onViewModeChange(mode);
+  };
 
   return (
-    <div className="flex items-center gap-3">
-      <button
-        onClick={() => setIsFilterModalOpen(true)}
-        className="relative hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg p-1 transition-colors"
-        title={t('settings.skillFilter.title')}
-      >
-        <span className="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">
-          filter_alt_off
-        </span>
-        {prefixes.length > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full text-[10px] text-white flex items-center justify-center font-semibold">
-            {prefixes.length}
-          </span>
-        )}
-      </button>
-      {/* Search Box */}
-      <div className="relative flex-1">
-        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-400">
-          search
-        </span>
-        <input
-          type="text"
-          placeholder={t('dashboard.search.placeholder')}
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-xl py-2.5 pl-12 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-[#b71422]/20 focus:border-[#b71422] transition-all shadow-sm"
-        />
-        {searchTerm && (
-          <button
-            onClick={() => onSearchChange('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-200"
-          >
-            <span className="material-symbols-outlined text-lg">close</span>
-          </button>
-        )}
+    <div className="flex items-center gap-3 h-11">
+      <div className="relative">
+        {/* 滑块式视图切换 */}
+        <div className="relative flex items-center rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-slate-100 dark:bg-dark-bg-tertiary p-0.5 h-9">
+          {/* 滑动高亮块 */}
+          <div
+            className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-white dark:bg-dark-bg-card shadow-sm transition-transform duration-200 ease-in-out ${
+              isFlatView ? 'translate-x-0.5' : 'translate-x-[calc(100%+2px)]'
+            }`}
+          />
+          <div className="relative z-50 group">
+            <button
+              onClick={() => switchView(VIEW_MODE.Flat)}
+              className="flex items-center justify-center w-8 h-full rounded-md transition-colors"
+              aria-pressed={isFlatView}
+            >
+              <Icon name="grid_view" className={`text-xl transition-colors ${isFlatView ? 'text-slate-700 dark:text-white' : 'text-slate-400 dark:text-gray-500'}`} />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[9999] pointer-events-none hidden group-hover:block">
+              <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
+                {t('dashboard.viewFlat')}
+              </div>
+            </div>
+          </div>
+          <div className="relative z-50 group">
+            <button
+              onClick={() => switchView(VIEW_MODE.Agent)}
+              className="flex items-center justify-center w-8 h-full rounded-md transition-colors"
+              aria-pressed={!isFlatView}
+            >
+              <Icon name="smart_toy" className={`text-xl transition-colors ${!isFlatView ? 'text-slate-700 dark:text-white' : 'text-slate-400 dark:text-gray-500'}`} />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[9999] pointer-events-none hidden group-hover:block">
+              <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
+                {t('dashboard.viewBySource')}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+      {searchBarPrefs.showSearch && (
+        <div ref={filterDropdownRef} className="relative w-64 shrink-0">
+          <div className={`flex items-center h-9 rounded-lg border transition-colors focus-within:border-[#b71422] bg-white dark:bg-dark-bg-card overflow-hidden ${
+            searchTerm ? 'border-[#b71422]/40 dark:border-[#fca5a5]/40' : 'border-[#e1e3e4] dark:border-dark-border'
+          }`}>
+            {searchBarPrefs.showFilter && (
+              <button
+                onClick={() => setIsFilterDropdownOpen((v) => !v)}
+                className={`relative flex-shrink-0 self-stretch px-2.5 flex items-center border-r border-[#e1e3e4] dark:border-dark-border transition-colors ${
+                  isFilterDropdownOpen
+                    ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 dark:text-rose-400'
+                    : 'bg-slate-50 dark:bg-dark-bg-tertiary hover:bg-slate-100 dark:hover:bg-dark-bg-secondary text-slate-400 hover:text-slate-600 dark:hover:text-gray-200'
+                }`}
+                title={t('settings.skillFilter.title')}
+              >
+                <Icon name="filter_alt_off" className="text-xl" />
+                {prefixes.length > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-rose-500 rounded-full text-[7px] text-white flex items-center justify-center font-semibold leading-none">
+                    {prefixes.length}
+                  </span>
+                )}
+              </button>
+            )}
+            <Icon name="search" className={`flex-shrink-0 text-slate-400 dark:text-gray-400 ${searchBarPrefs.showFilter ? 'ml-2.5' : 'ml-3'}`} />
+            <input
+              type="text"
+              placeholder={t('dashboard.search.placeholder')}
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className={`flex-1 h-full bg-transparent border-0 outline-none ring-0 focus:ring-0 pl-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 ${searchTerm ? 'pr-7' : 'pr-3'}`}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => onSearchChange('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-200"
+              >
+                <Icon name="close" className="text-lg" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Dropdown */}
+          {isFilterDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1.5 w-96 bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border shadow-xl z-50 overflow-hidden animate-toast-in">
+              <div className="px-4 py-3 border-b border-[#e1e3e4] dark:border-dark-border flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Icon name="filter_alt_off" className="text-base text-slate-500 dark:text-gray-300" />
+                  {t('settings.skillFilter.title')}
+                </h3>
+                <button
+                  onClick={() => setIsFilterDropdownOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-gray-200 transition-colors"
+                >
+                  <Icon name="close" className="text-base" />
+                </button>
+              </div>
+              <FilterDropdownContent
+                prefixes={prefixes}
+                addPrefix={addPrefix}
+                removePrefix={removePrefix}
+                skills={skills}
+              />
+            </div>
+          )}
+        </div>
+      )}
+      {!searchBarPrefs.showSearch && <div className="flex-1" />}
 
       {viewMode === VIEW_MODE.Flat && (
-        <div className="shrink-0">
-          <StatsBar skills={skills} filterType={filterType} onFilterChange={onFilterChange} />
-        </div>
+        <>
+          <AgentFilterButton
+            agents={detectedAgents}
+            selected={agentFilter}
+            onSelect={onAgentFilterChange}
+          />
+          <div className="shrink-0 ml-auto">
+            <StatsBar skills={skills} filterType={filterType} onFilterChange={onFilterChange} />
+          </div>
+        </>
       )}
 
       {viewMode === VIEW_MODE.Agent && (
-        <SourceTabs
-          agents={agents}
-          selectedSource={selectedSource}
-          onSelect={onSourceSelect}
-        />
-      )}
-
-      {/* Filter Modal */}
-      {isFilterModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
-          onClick={() => setIsFilterModalOpen(false)}
-        >
-          <div
-            className="bg-white dark:bg-dark-bg-card rounded-2xl border border-[#e1e3e4] dark:border-dark-border shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-[#e1e3e4] dark:border-dark-border flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">
-                    filter_alt_off
-                  </span>
-                  {t('settings.skillFilter.title')}
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-gray-400 mt-1 leading-relaxed">
-                  {t('settings.skillFilter.subtitle')}
-                </p>
-              </div>
-              <button
-                onClick={() => setIsFilterModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-gray-200 transition-colors"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <FilterModalContent
-              prefixes={prefixes}
-              addPrefix={addPrefix}
-              removePrefix={removePrefix}
-            />
-          </div>
+        <div className="ml-auto shrink-0">
+          <SourceTabs
+            agents={agents}
+            selectedSource={selectedSource}
+            onSelect={onSourceSelect}
+          />
         </div>
       )}
+
+      {searchBarPrefs.showActions && rightActions && (
+        <div className="flex items-center gap-1 shrink-0">{rightActions}</div>
+      )}
+
     </div>
   );
 };
 
-// Filter Modal Content Component
-interface FilterModalContentProps {
+// Filter Dropdown Content Component
+interface FilterDropdownContentProps {
   prefixes: string[];
   addPrefix: (prefix: string) => void;
   removePrefix: (prefix: string) => void;
+  skills: SkillMetadata[];
 }
 
-const FilterModalContent: React.FC<FilterModalContentProps> = ({
+const FilterDropdownContent: React.FC<FilterDropdownContentProps> = ({
   prefixes,
   addPrefix,
   removePrefix,
+  skills,
 }) => {
   const { t } = useTranslation();
+  const visibleCount = skills.filter((s) => !matchesAnyPrefix(s.name, prefixes)).length;
+  const isPartial = prefixes.length > 0 && visibleCount < skills.length;
   const [draft, setDraft] = useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -175,13 +266,11 @@ const FilterModalContent: React.FC<FilterModalContentProps> = ({
   };
 
   return (
-    <div className="px-6 py-5 space-y-4">
+    <div className="px-4 py-3 space-y-3">
       {/* Input row */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-400">
-            add
-          </span>
+          <Icon name="add" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-400 text-base" />
           <input
             ref={inputRef}
             type="text"
@@ -189,14 +278,14 @@ const FilterModalContent: React.FC<FilterModalContentProps> = ({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t('settings.skillFilter.placeholder')}
-            className="w-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-xl py-2.5 pl-12 pr-4 text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-[#b71422]/20 focus:border-[#b71422] transition-all shadow-sm"
+            className="w-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-lg py-2 pl-9 pr-3 text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-[#b71422]/20 focus:border-[#b71422] transition-all"
           />
         </div>
         <button
           type="button"
           onClick={commit}
           disabled={!draft.trim()}
-          className="px-4 py-2 rounded-xl text-sm font-bold bg-[#b71422] text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-2 rounded-lg text-sm font-bold bg-[#b71422] text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t('settings.skillFilter.add')}
         </button>
@@ -208,11 +297,11 @@ const FilterModalContent: React.FC<FilterModalContentProps> = ({
           {t('settings.skillFilter.empty')}
         </p>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {prefixes.map((prefix) => (
             <span
               key={prefix}
-              className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-mono font-semibold"
+              className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-mono font-semibold"
             >
               {prefix}
               <button
@@ -222,16 +311,26 @@ const FilterModalContent: React.FC<FilterModalContentProps> = ({
                 title={t('settings.skillFilter.remove', { prefix })}
                 className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
               >
-                <span className="material-symbols-outlined text-[12px]">close</span>
+                <Icon name="close" className="text-[11px]" />
               </button>
             </span>
           ))}
         </div>
       )}
 
-      <p className="text-[11px] text-slate-400 dark:text-gray-500 leading-relaxed">
-        {t('settings.skillFilter.hint')}
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] text-slate-400 dark:text-gray-500 leading-relaxed">
+          {t('settings.skillFilter.hint')}
+        </p>
+        <div className="flex items-center gap-1.5 shrink-0 ml-3">
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPartial ? 'bg-amber-400' : 'bg-green-400'}`} />
+          <span className="text-[11px] font-medium text-slate-500 dark:text-gray-400 whitespace-nowrap">
+            {isPartial
+              ? t('settings.skillFilter.statusPartial', { count: visibleCount })
+              : t('settings.skillFilter.statusAll', { count: visibleCount })}
+          </span>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { Icon } from '@/components/Icon';
 interface Tab {
   id: string;
   label: string;
@@ -14,7 +15,7 @@ interface TabSwitcherProps {
 
 export const TabSwitcher: React.FC<TabSwitcherProps> = ({ tabs, activeTab, onTabChange }) => {
   return (
-    <div className="flex items-center gap-1 bg-gray-100 dark:bg-black rounded-lg p-1">
+    <div className="flex items-center gap-1 bg-[#f5f5f5] dark:bg-dark-bg rounded-lg p-1">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -26,9 +27,7 @@ export const TabSwitcher: React.FC<TabSwitcherProps> = ({ tabs, activeTab, onTab
           }`}
         >
           {tab.icon && (
-            <span className="material-symbols-outlined text-[18px]">
-              {tab.icon}
-            </span>
+            <Icon name={tab.icon} className="text-[18px]" />
           )}
           <span>{tab.label}</span>
         </button>

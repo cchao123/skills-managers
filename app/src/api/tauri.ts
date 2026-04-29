@@ -111,6 +111,18 @@ export const agentsApi = {
   },
 };
 
+/** Skill 置顶（pin）相关命令 */
+export const pinApi = {
+  /** 设置某个 skill 是否置顶；持久化到 AppConfig.pinned_skills */
+  setPinned: async (skillId: string, pinned: boolean): Promise<void> => {
+    await invoke('set_skill_pinned', { skillId, pinned });
+  },
+  /** 读取持久化的置顶 skill_id 列表（按用户置顶顺序返回） */
+  list: async (): Promise<string[]> => {
+    return await invoke<string[]>('get_pinned_skills');
+  },
+};
+
 export const githubApi = {
   syncRepo: async (
     name: string,
@@ -155,11 +167,4 @@ export const githubApi = {
     await invoke('open_skills_manager_folder');
   },
 
-  starRepo: async (owner: string, repo: string, token: string): Promise<boolean> => {
-    return await invoke<boolean>('star_github_repo', { owner, repo, token });
-  },
-
-  checkStar: async (owner: string, repo: string, token: string): Promise<boolean> => {
-    return await invoke<boolean>('check_github_star', { owner, repo, token });
-  },
 };

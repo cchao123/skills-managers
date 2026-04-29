@@ -2,6 +2,7 @@ import { useState, useRef, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkillHidePrefixes } from '@/hooks/useSkillHidePrefixes';
 
+import { Icon } from '@/components/Icon';
 /**
  * 按前缀隐藏技能的配置卡片：
  * - 用户在输入框敲入前缀（例如 `lark-`），回车或点击"添加"后生成 chip；
@@ -36,9 +37,7 @@ export const SkillFilterSection: React.FC = () => {
     <div className="bg-white dark:bg-dark-bg-card rounded-2xl border border-[#e1e3e4] dark:border-dark-border overflow-hidden">
       <div className="px-6 py-4 border-b border-[#e1e3e4] dark:border-dark-border">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span className="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">
-            filter_alt_off
-          </span>
+          <Icon name="filter_alt_off" className="text-2xl text-slate-600 dark:text-gray-300" />
           {t('settings.skillFilter.title')}
         </h2>
         <p className="text-sm text-slate-500 dark:text-gray-400 mt-1 leading-relaxed">
@@ -50,9 +49,7 @@ export const SkillFilterSection: React.FC = () => {
         {/* 输入行 */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-400">
-              add
-            </span>
+            <Icon name="add" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-400" />
             <input
               ref={inputRef}
               type="text"
@@ -93,7 +90,7 @@ export const SkillFilterSection: React.FC = () => {
                   title={t('settings.skillFilter.remove', { prefix })}
                   className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[12px]">close</span>
+                  <Icon name="close" className="text-[12px]" />
                 </button>
               </span>
             ))}

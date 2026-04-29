@@ -75,6 +75,17 @@
     "agentDisabled": "未启用",
     "nativeSource": "原生目录",
     "alwaysEnabled": "始终启用",
+    "contextMenu": {
+      "pinCard": "置顶此技能",
+      "unpinCard": "取消置顶",
+      "openRoot": "打开根目录"
+    },
+    "agentFilter": {
+      "title": "按 Agent 筛选",
+      "activeTitle": "当前筛选：{{name}}（点击切换）",
+      "all": "ALL",
+      "clear": "清除"
+    },
     "nativeSourceTip": "原生目录无法关闭共享，如不需要可以开启高阶模式后进行删除",
     "openFolder": "打开技能文件夹",
     "dragDrop": {
@@ -103,7 +114,7 @@
       "deleteSkill": "删除技能"
     },
     "source": {
-      "global": "根目录",
+      "global": "Global",
       "removeFromRoot": "从根目录中移除",
       "existsInRoot": "根目录中已存在",
       "copyToRoot": "拷贝到根目录",
@@ -115,9 +126,8 @@
     "noSkillsHint": "尝试调整搜索或筛选条件",
     "retry": "重试",
     "errorMessage": "请确保应用在 Tauri 环境中运行，而不是在浏览器中。",
-    "localAgentDirectory": "目录详情",
     "operationLog": {
-      "title": "操作日志",
+      "title": "日志",
       "panelTitle": "触发\"复制到根目录\"的操作",
       "empty": "暂无拷贝/导入/启用记录",
       "clear": "清空",
@@ -128,9 +138,9 @@
     },
     "viewFlat": "平铺展示",
     "viewBySource": "按来源展示",
-    "openAgentSettings": "打开设置中的 Agents",
-    "viewHelp": "视图说明",
-    "viewHelpFlat": "扫描本地所有 Agent，显示所有可用的 Skills（不区分 Agent 来源）",
+    "viewSwitch": "切换视图",
+    "viewHelp": "帮助",
+    "viewHelpFlat": "聚合本地多个 Agent 的 skill 目录，合并成一份可管理视图",
     "viewHelpBySource": "按照不同的 Agent 对 Skills 进行分类展示，可以清晰地看到每个 Agent 下有哪些 Skills",
     "mainToggleHelp": {
       "title": "主开关状态",
@@ -138,13 +148,18 @@
       "nativeOnly": "仅原生目录启用",
       "on": "部分或全部启用"
     },
-    "rootPathLabel": "根目录：",
+    "pinHelp": {
+      "title": "卡片置顶标记",
+      "desc": "右键卡片可置顶 / 取消置顶，置顶后会显示左上角折角标记并优先排序"
+    },
+    "rootPathLabel": "扫描目录：",
     "githubTipMid": " 该路径下的技能可通过",
     "githubTipLink": " GitHub 备份",
     "githubTipAfter": "同步到远端仓库",
     "dismiss": "知道了",
-    "agentSourcePath": "根目录：",
-    "noSkillsInSource": "该来源下暂无技能"
+    "agentSourcePath": "扫描目录：",
+    "noSkillsInSource": "该来源下暂无技能",
+    "noSkillsInSourceSearch": "未找到「{{keyword}}」"
   },
   "githubBackup": {
     "title": "GitHub备份",
@@ -187,14 +202,6 @@
       "overwriteRestoreTitle": "覆盖恢复确认",
       "overwriteRestoreMessage": "当前已勾选「以远端版本覆盖本地」，恢复后本地独有的文件将被删除，本地内容完全与远端一致，且不可撤销。",
       "confirmRestore": "确认恢复"
-    },
-    "star": {
-      "starred": "已 Star",
-      "star": "Star",
-      "toast": {
-        "starSuccess": "Star 成功！感谢支持 ⭐",
-        "starFailed": "Star 失败，正在打开 GitHub 页面..."
-      }
     },
     "form": {
       "connectedTitle": "已连接，点击编辑按钮修改配置"
@@ -304,7 +311,7 @@
     "feedback": "反馈",
     "agents": {
       "title": "Agents",
-      "subtitle": "点击 Agent 可打开其配置目录",
+      "subtitle": "点击 Agent 可打开其配置目录 · 右键可快捷打开根目录",
       "installed": "已安装",
       "notInstalled": "未安装",
       "skillsManager": "Skills Manager",
@@ -312,7 +319,10 @@
       "scanPaths": "技能扫描目录",
       "scanPathsEmpty": "该 Agent 暂无专门的扫描目录",
       "expand": "展开扫描目录",
-      "collapse": "收起扫描目录"
+      "collapse": "收起扫描目录",
+      "manageTitle": "管理 Agents",
+      "manageSubtitle": "选择要在列表中显示的 Agent",
+      "manageConfirm": "确认"
     },
     "skillFilter": {
       "title": "按前缀隐藏技能",
@@ -321,7 +331,9 @@
       "add": "添加",
       "empty": "尚未配置前缀，所有技能均会显示。",
       "remove": "移除 {{prefix}}",
-      "hint": "按回车或逗号添加；输入框为空时按退格可删除最后一个标签。匹配不区分大小写。"
+      "hint": "按回车或逗号添加；输入框为空时按退格可删除最后一个标签。匹配不区分大小写。",
+      "statusAll": "{{count}} 全部启用",
+      "statusPartial": "{{count}} 启用中"
     },
     "appearance": "外观",
     "appearanceDescription": "自定义应用的外观和感觉",
@@ -331,6 +343,17 @@
     "themeLight": "浅色",
     "themeDark": "深色",
     "themeAuto": "跟随系统",
+    "searchBar": {
+      "title": "搜索栏组件",
+      "description": "自定义 Dashboard 顶部搜索栏显示哪些组件",
+      "showFilter": "前缀过滤按钮",
+      "showFilterHint": "左侧的漏斗按钮，用于按前缀隐藏指定技能",
+      "showSearch": "搜索输入框",
+      "showSearchHint": "中间的关键字搜索框",
+      "showActions": "帮助 / 日志按钮",
+      "showActionsHint": "右侧的「帮助」和「日志」按钮组",
+      "reset": "恢复默认"
+    },
     "about": "关于",
     "aboutDescription": "一个用于管理 Claude Code 技能和插件的桌面应用程序。支持从技能市场浏览、安装和启用技能，也可以从 GitHub 仓库同步自定义技能。",
     "version": {
@@ -347,12 +370,14 @@
       "viewOnGithub": "在 GitHub 查看"
     },
     "aboutHighlights": {
-      "visualSchedulingTitle": "可视化调度",
-      "visualSchedulingDescription": "一站式管理多 Agent Skills桌面应用；",
-      "cleanReuseTitle": "纯净复用",
-      "cleanReuseDescription": "一个技能，零侵入多端复用，保持环境原生纯净；",
-      "oneClickHubTitle": "一键沉淀",
-      "oneClickHubDescription": "云端同步 GitHub，构建专属的Skills Hub。"
+      "unifiedScanTitle": "统一扫描",
+      "unifiedScanDescription": "聚合本地多个 Agent 的 skill 目录，合并成一份可管理视图",
+      "crossAgentDistTitle": "跨 Agent 分发",
+      "crossAgentDistDescription": "通过链接或复制，把同一个 skill 分发到不同 Agent",
+      "centralStorageTitle": "集中存储",
+      "centralStorageDescription": "把可复用的 skills 放进中心目录，便于维护与迁移",
+      "githubBackupTitle": "GitHub 备份与恢复",
+      "githubBackupDescription": "将技能仓库推送到远端，或在新机器上一键恢复"
     },
     "builtWith": "基于",
     "advanced": {

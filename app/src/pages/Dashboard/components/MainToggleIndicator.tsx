@@ -22,8 +22,8 @@ const STYLE_MAP: Record<MainToggleState, ToggleStyle> = {
   },
   nativeOnly: {
     track: 'bg-[#CBD5E0] dark:bg-gray-600',
-    thumbPosition: 'translate-x-0',
-    thumbBg: 'bg-amber-100',
+    thumbPosition: 'translate-x-4',
+    thumbBg: 'bg-amber-200/80',
   },
   on: {
     track: 'bg-[#b71422]',

@@ -22,18 +22,21 @@ export default {
           900: '#171717',
           950: '#0a0a0a',
         },
-        // Dark theme 配色 - 优化文字对比度
+        // Dark theme 配色 - 与浅色模式的"明暗层级"对齐：
+        //   浅色 sidebar(#edeeef) → main(#f8f9fa) → card(#ffffff)
+        //   深色 sidebar(bg)      → main(bg-secondary) → card(bg-card)
+        // 让相邻层级的差距均匀（约 10 个单位），避免"卡片几乎贴在主区上"。
         dark: {
-          bg: '#0a0a0a',
-          'bg-secondary': '#141414',
-          'bg-tertiary': '#1c1c1c',
-          'bg-card': '#171717',
+          bg: '#0a0a0a',           // 侧边栏 / 最暗的次要面板
+          'bg-secondary': '#141414', // 主内容区背景
+          'bg-card': '#1f1f1f',    // 卡片（浮起在主区之上）
+          'bg-tertiary': '#262626',  // hover / 更亮一档的内嵌面板
           border: '#2a2a2a',
           text: '#f5f5f5',
           'text-secondary': '#c5c5c5',
           'text-tertiary': '#9a9a9a',
-          hover: '#222222',
-          active: '#2a2a2a',
+          hover: '#2a2a2a',
+          active: '#333333',
         },
         // Toast semantic colors
         info: '#007AFF',

@@ -1,11 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { open } from '@tauri-apps/plugin-shell';
 import { githubApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
 import { TelemetryEvent, WINDOW_EVENTS } from '@/constants/events';
 import { trackEvent } from '@/lib/telemetry';
-import { STAR_REPO_OWNER, STAR_REPO_NAME, STAR_REPO_URL } from '../constants/config';
 
 /** 通知 Dashboard 静默刷新 skills 列表（sync/restore 成功后）。 */
 const emitSkillsRefresh = () => {
@@ -35,8 +33,6 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [restoring, setRestoring] = useState(false);
-  const [starred, setStarred] = useState(false);
-  const [starring, setStarring] = useState(false);
 
   const handleTestConnection = useCallback(async () => {
     if (!repoConfig.owner || !repoConfig.repo || !repoConfig.token) {
@@ -158,43 +154,12 @@ export const useGitHubActions = (repoConfig: any, setConnected?: (connected: boo
     }
   }, [showToast, t, setConnected]);
 
-  const handleStar = useCallback(async () => {
-    if (starred || starring) return;
-
-    if (!repoConfig.token) {
-      open(STAR_REPO_URL);
-      return;
-    }
-
-    setStarring(true);
-    try {
-      const ok = await githubApi.starRepo(STAR_REPO_OWNER, STAR_REPO_NAME, repoConfig.token);
-      if (ok) {
-        setStarred(true);
-        showToast('success', t('githubBackup.star.toast.starSuccess'));
-      } else {
-        showToast('error', t('githubBackup.star.toast.starFailed'));
-        open(STAR_REPO_URL);
-      }
-    } catch (error) {
-      const errMsg = typeof error === 'string' ? error : (error as Error)?.message || t('githubBackup.star.toast.starFailed');
-      showToast('error', errMsg);
-      open(STAR_REPO_URL);
-    } finally {
-      setStarring(false);
-    }
-  }, [repoConfig.token, starred, starring, showToast]);
-
   return {
     testing,
     syncing,
     restoring,
-    starred,
-    starring,
     handleTestConnection,
     handleSync,
     handleRestore,
-    handleStar,
-    setStarred,
   };
 };

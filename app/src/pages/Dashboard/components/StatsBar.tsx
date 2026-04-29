@@ -12,7 +12,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({ skills, filterType, onFilter
   const { t } = useTranslation();
 
   return (
-    <div className="flex shrink-0 items-center justify-center gap-3 px-2 py-2 bg-[#f8f9fa] dark:bg-black rounded-lg border border-[#e1e3e4] dark:border-dark-border">
+    <div className="flex shrink-0 items-center justify-center gap-3 px-2 py-1 bg-[#f5f5f5] dark:bg-dark-bg rounded-lg">
       <button
         type="button"
         onClick={() => onFilterChange(FILTER_TYPE.All)}

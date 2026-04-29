@@ -3,6 +3,10 @@ import cursorIcon from '@/assets/agents/cursor.svg';
 import gptIcon from '@/assets/agents/GPT.svg';
 import openclawIcon from '@/assets/agents/openclaw.svg';
 import opencodeIcon from '@/assets/agents/opencode.svg';
+import traeIcon from '@/assets/agents/trae.svg';
+import qoderIcon from '@/assets/agents/qoder.svg';
+import antigravityIcon from '@/assets/agents/antigravity.svg';
+import kiroIcon from '@/assets/agents/kiro.svg';
 
 /**
  * 前端维护的 agent 元信息 —— 单一数据源。
@@ -63,6 +67,34 @@ const AGENT_META = {
     displayName: 'OpenCode',
     rootPath: '~/.opencode',
     icon: opencodeIcon,
+  },
+  trae: {
+    name: 'trae',
+    shortName: 'Trae',
+    displayName: 'Trae',
+    rootPath: '~/.trae',
+    icon: traeIcon,
+  },
+  qoder: {
+    name: 'qoder',
+    shortName: 'Qoder',
+    displayName: 'Qoder',
+    rootPath: '~/.qoder',
+    icon: qoderIcon,
+  },
+  antigravity: {
+    name: 'antigravity',
+    shortName: 'Antigravity',
+    displayName: 'Antigravity',
+    rootPath: '~/.antigravity',
+    icon: antigravityIcon,
+  },
+  kiro: {
+    name: 'kiro',
+    shortName: 'Kiro',
+    displayName: 'Kiro',
+    rootPath: '~/.kiro',
+    icon: kiroIcon,
   },
 } as const satisfies Record<string, AgentMeta>;
 

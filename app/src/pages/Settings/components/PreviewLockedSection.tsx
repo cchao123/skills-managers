@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { Icon } from '@/components/Icon';
 /**
  * 预览环境下对"需要桌面原生能力"的 Settings tab（Agents / Advanced）
  * 渲染的占位卡片。视觉风格和其他 Settings section 对齐（白底圆角 + 内容中置）。
@@ -33,9 +34,7 @@ export function PreviewLockedSection({ feature }: PreviewLockedSectionProps) {
   return (
     <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-10 shadow-sm border border-[#e1e3e4] dark:border-dark-border flex flex-col items-center text-center">
       <div className="w-14 h-14 rounded-2xl bg-[#b71422]/10 text-[#b71422] flex items-center justify-center mb-4">
-        <span className="material-symbols-outlined" style={{ fontSize: '28px' }}>
-          lock
-        </span>
+        <Icon name="lock" style={{ fontSize: '28px' }} />
       </div>
       <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 font-['Manrope']">
         {title}
@@ -49,9 +48,7 @@ export function PreviewLockedSection({ feature }: PreviewLockedSectionProps) {
         rel="noopener noreferrer"
         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#b71422] hover:bg-[#d81a2c] text-white font-bold text-sm transition-colors shadow-sm"
       >
-        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-          download
-        </span>
+        <Icon name="download" style={{ fontSize: '18px' }} />
         {isZh ? '下载桌面版' : 'Download desktop app'}
       </a>
     </div>

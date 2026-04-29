@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Icon } from '@/components/Icon';
 
 interface CollapseProps {
   title: React.ReactNode;
@@ -29,9 +30,10 @@ export const Collapse: React.FC<CollapseProps> = ({
         className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-bg-tertiary"
       >
         {title}
-        <span className={`material-symbols-outlined text-slate-400 dark:text-gray-500 text-2xl transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
-          expand_more
-        </span>
+        <Icon
+          name="expand_more"
+          className={`text-slate-400 dark:text-gray-500 text-2xl transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       <div

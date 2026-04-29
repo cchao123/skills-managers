@@ -21,6 +21,21 @@ const AGENT_SCAN_PATHS: Record<string, string[]> = {
   codex: [
     '~/.codex/skills',
   ],
+  opencode: [
+    '~/.opencode/skills',
+  ],
+  trae: [
+    '~/.trae/skills',
+  ],
+  qoder: [
+    '~/.qoder/skills',
+  ],
+  antigravity: [
+    '~/.antigravity/skills',
+  ],
+  kiro: [
+    '~/.kiro/skills',
+  ],
 };
 
 export const getAgentScanPaths = (name: string): string[] =>

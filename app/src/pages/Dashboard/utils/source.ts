@@ -1,4 +1,4 @@
-import { getAgentShortName } from '@/constants';
+import { getAgentShortName, KNOWN_AGENTS } from '@/constants';
 
 /**
  * 技能来源枚举：
@@ -48,9 +48,6 @@ const SOURCE_DISPLAY_NAME: Record<Source, string> = {
 export const sourceDisplayName = (s?: string) =>
   SOURCE_DISPLAY_NAME[(s as Source) ?? SOURCE.Global] ?? s ?? SOURCE.Global;
 
-export const isSource = (v: unknown): v is Source =>
-  v === SOURCE.Global
-  || v === SOURCE.Cursor
-  || v === SOURCE.Claude
-  || v === SOURCE.OpenClaw
-  || v === SOURCE.Codex;
+export const isSource = (v: unknown): v is string =>
+  typeof v === 'string' &&
+  (v === SOURCE.Global || KNOWN_AGENTS.some(a => a.name === v));

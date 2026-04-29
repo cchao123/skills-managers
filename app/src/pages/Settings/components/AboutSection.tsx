@@ -4,6 +4,7 @@ import { GITHUB_URLS } from '../constants/config';
 import { useVersionCheck } from '../hooks/useVersionCheck';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
 
+import { Icon } from '@/components/Icon';
 const DOCS_BASE_URL = `${GITHUB_URLS.REPO}/blob/main/docs`;
 
 export const AboutSection: React.FC = () => {
@@ -22,16 +23,20 @@ export const AboutSection: React.FC = () => {
     : `${DOCS_BASE_URL}/user-guide-en.md`;
   const aboutHighlights = [
     {
-      title: t('settings.aboutHighlights.visualSchedulingTitle'),
-      description: t('settings.aboutHighlights.visualSchedulingDescription'),
+      title: t('settings.aboutHighlights.unifiedScanTitle'),
+      description: t('settings.aboutHighlights.unifiedScanDescription'),
     },
     {
-      title: t('settings.aboutHighlights.cleanReuseTitle'),
-      description: t('settings.aboutHighlights.cleanReuseDescription'),
+      title: t('settings.aboutHighlights.crossAgentDistTitle'),
+      description: t('settings.aboutHighlights.crossAgentDistDescription'),
     },
     {
-      title: t('settings.aboutHighlights.oneClickHubTitle'),
-      description: t('settings.aboutHighlights.oneClickHubDescription'),
+      title: t('settings.aboutHighlights.centralStorageTitle'),
+      description: t('settings.aboutHighlights.centralStorageDescription'),
+    },
+    {
+      title: t('settings.aboutHighlights.githubBackupTitle'),
+      description: t('settings.aboutHighlights.githubBackupDescription'),
     },
   ];
 
@@ -70,7 +75,7 @@ export const AboutSection: React.FC = () => {
   const checking = status === 'checking';
 
   return (
-    <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-8 shadow-sm border border-[#e1e3e4] dark:border-dark-border">
+    <div className="flex-1 bg-white dark:bg-dark-bg-card rounded-2xl p-8 shadow-sm border border-[#e1e3e4] dark:border-dark-border flex flex-col justify-start">
       <div className="flex flex-col items-center text-center">
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#fff] to-[#f0f0f0] flex items-center justify-center mb-6 shadow-lg">
           <img src={OCTOPUS_LOGO_URL} alt="Octopus Logo" className="w-full h-full object-cover" />
@@ -109,9 +114,7 @@ export const AboutSection: React.FC = () => {
               className="text-slate-500 dark:text-gray-400 hover:text-[#b71422] dark:hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
               title={t('settings.version.recheck')}
             >
-              <span className={`material-symbols-outlined text-sm ${checking ? 'animate-spin' : ''}`}>
-                refresh
-              </span>
+              <Icon name="refresh" className={`text-sm ${checking ? 'animate-spin' : ''}`} />
               {t('settings.version.recheck')}
             </button>
           </div>
@@ -122,7 +125,7 @@ export const AboutSection: React.FC = () => {
                 onClick={() => open(releaseUrl)}
                 className="px-4 py-2 bg-[#b71422] hover:bg-[#a01220] text-white rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-base">download</span>
+                <Icon name="download" className="text-base" />
                 {t('settings.version.goDownload')}
               </button>
             </div>
@@ -134,7 +137,7 @@ export const AboutSection: React.FC = () => {
                 onClick={() => open(GITHUB_URLS.RELEASES)}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-dark-bg-tertiary dark:hover:bg-dark-bg-card text-slate-700 dark:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-base">open_in_new</span>
+                <Icon name="open_in_new" className="text-base" />
                 {t('settings.version.viewOnGithub')}
               </button>
             </div>
@@ -169,9 +172,16 @@ export const AboutSection: React.FC = () => {
             rel="noopener noreferrer"
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-dark-bg-tertiary dark:hover:bg-dark-bg-card text-slate-700 dark:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
           >
-            <span className="material-symbols-outlined text-base">description</span>
+            <Icon name="description" className="text-base" />
             Documentation
           </a>
+          <button
+            onClick={() => open(GITHUB_URLS.ISSUES)}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-dark-bg-tertiary dark:hover:bg-dark-bg-card text-slate-700 dark:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <Icon name="chat" className="text-base" />
+            {t('settings.feedback')}
+          </button>
         </div>
       </div>
     </div>

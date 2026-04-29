@@ -3,11 +3,14 @@ import type { SkillMetadata, AgentConfig } from '@/types';
 // TODO: 暂时隐藏技能图标，缺少每个技能对应的 icon 映射，恢复时一并启用
 // import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
-import { badgeClass, sourceLabel } from '@/pages/Dashboard/utils/source';
-import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
 import { useMergedView } from '@/pages/Dashboard/hooks/useMergedView';
+import { useVisibleAgents } from '@/pages/Dashboard/hooks/useVisibleAgents';
 import { MainToggleIndicator, type MainToggleState } from '@/pages/Dashboard/components/MainToggleIndicator';
+import { NativeSourceWatermark } from '@/pages/Dashboard/components/NativeSourceWatermark';
+import { PinIndicator } from '@/pages/Dashboard/components/PinIndicator';
+import { SOURCE } from '@/pages/Dashboard/utils/source';
 
+import { Icon } from '@/components/Icon';
 interface SkillCardProps {
   skill: SkillMetadata;
   agents: AgentConfig[];
@@ -16,6 +19,10 @@ interface SkillCardProps {
   onToggleSkill: (skill: SkillMetadata) => void;
   onToggleAgent: (skill: SkillMetadata, agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onShowDetail: (skill: SkillMetadata) => void;
+  /** 右键点击时触发，由父组件统一管理上下文菜单 */
+  onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** 当前卡片是否已被置顶（影响排序 + 显示 pin 标记） */
+  pinned?: boolean;
 }
 
 export const SkillCard: React.FC<SkillCardProps> = ({
@@ -26,10 +33,12 @@ export const SkillCard: React.FC<SkillCardProps> = ({
   onToggleSkill,
   onToggleAgent,
   onShowDetail,
+  onContextMenu,
+  pinned = false,
 }) => {
   const { t } = useTranslation();
   const { allSources, nativeAgents } = useMergedView(skill);
-  const detectedAgents = useDetectedAgents(agents);
+  const detectedAgents = useVisibleAgents(agents);
   const enabledCount = detectedAgents.filter(a => skill.agent_enabled[a.name]).length;
   const detectedNativeAgents = detectedAgents
     .map(a => a.name)
@@ -57,27 +66,34 @@ export const SkillCard: React.FC<SkillCardProps> = ({
     onToggleAgent(skill, agentName, e);
 
   return (
-    <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 overflow-hidden flex flex-col">
+    <div
+      className={`relative bg-white dark:bg-dark-bg-card rounded-xl border ${
+        pinned
+          ? 'border-[#b71422]/40 dark:border-[#b71422]/50 shadow-[0_0_0_1px_rgba(183,20,34,0.08)]'
+          : 'border-[#e1e3e4] dark:border-dark-border'
+      } hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 overflow-hidden flex flex-col`}
+      onContextMenu={onContextMenu}
+    >
+      <PinIndicator pinned={pinned} />
+
+      {/* 主信息区（top section + bottom bar）共享一个 relative 容器，
+          水印钉在这个区域的右下角 —— 即使 accordion 展开了，水印仍然停留在原来的位置。 */}
+      <div className="relative">
+      <NativeSourceWatermark nativeAgents={detectedNativeAgents} inRoot={allSources.includes(SOURCE.Global)} />
+
       {/* Top section: Icon + Info on left, STATUS + Toggle + Expand on right */}
-      <div className="p-4 pb-0">
+      <div className="relative z-10 p-4 pb-0">
         <div className="flex justify-between items-start gap-3">
           {/* Left: Icon + Name + Source Badges + Description */}
           <div className="flex items-start gap-3 min-w-0 flex-1">
             {/* 暂时隐藏技能图标：缺少每个技能对应的 icon 映射，先注释避免展示错位/兜底图
             <div className={`w-10 h-10 rounded-lg ${getSkillColor(skill.id)} flex items-center justify-center flex-shrink-0`}>
-              <span className="material-symbols-outlined text-xl" data-weight="fill" style={{ fontVariationSettings: "'FILL' 1" }}>
-                {getSkillIcon(skill.id)}
-              </span>
+              <Icon name={getSkillIcon(skill.id)} className="text-xl" />
             </div>
             */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h4 className="text-base font-bold truncate text-slate-900 dark:text-white">{skill.name}</h4>
-                {allSources.map(src => (
-                  <span key={src} className={`text-[10px] font-bold py-0.5 px-1.5 rounded flex-shrink-0 ${badgeClass(src)}`}>
-                    {sourceLabel(src)}
-                  </span>
-                ))}
               </div>
               <p className="text-xs text-[#5e5e5e] dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">{skill.description}</p>
             </div>
@@ -94,7 +110,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => onShowDetail(skill)} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded transition-colors">
-                <span className="material-symbols-outlined text-base text-slate-400 dark:text-gray-500">info</span>
+                <Icon name="info" className="text-base text-slate-400 dark:text-gray-500" />
               </button>
             </div>
           </div>
@@ -102,7 +118,12 @@ export const SkillCard: React.FC<SkillCardProps> = ({
       </div>
 
       {/* Bottom bar: agent summary + expand button (always visible) */}
-      <div className="border-t border-[#f0f0f0] dark:border-dark-border px-4 py-2.5 flex items-center justify-between" onClick={onToggleExpand} >
+      <div className="relative z-10 px-4 py-2.5 flex items-center cursor-pointer" onClick={onToggleExpand} >
+        {/* 短分割线：避开右下角的来源水印（水印 size=110，露出约 90px，留 ~20px 缓冲） */}
+        <span
+          className="absolute left-4 right-[110px] top-0 h-px bg-[#f0f0f0] dark:bg-dark-border pointer-events-none"
+          aria-hidden="true"
+        />
         <div className="flex items-center gap-1.5">
           {detectedAgents.map((agent) => (
             <div
@@ -117,17 +138,15 @@ export const SkillCard: React.FC<SkillCardProps> = ({
           <span className="text-[11px] text-slate-500 dark:text-black0 ml-1">
             {enabledCount}/{detectedAgents.length} {t('dashboard.agentsEnabled')}
           </span>
+          <Icon name={expanded ? 'expand_less' : 'expand_more'} className="text-base text-slate-400 dark:text-gray-500 ml-0.5" />
         </div>
-        <button className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded transition-colors cursor-pointer">
-          <span className="material-symbols-outlined text-base text-slate-500 dark:text-gray-400">
-            {expanded ? 'expand_less' : 'expand_more'}
-          </span>
-        </button>
+      </div>
       </div>
 
-      {/* Expandable: Agent toggles (accordion style) */}
+      {/* Expandable: Agent toggles (accordion style)
+          顶部 inset 阴影：让水印在衔接处自然"被压在下面"，避免硬切感。 */}
       {expanded && (
-        <div className="border-t border-[#f0f0f0] dark:border-dark-border bg-[#fafafa] dark:bg-dark-bg-secondary px-3 py-3 relative pb-1">
+        <div className="relative z-10 bg-[#fafafa] dark:bg-dark-bg-secondary px-3 py-3 pb-1 shadow-[inset_0_6px_8px_-6px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_6px_8px_-6px_rgba(0,0,0,0.5)]">
           {detectedAgents.map((agent, index) => {
             const isLast = index === detectedAgents.length - 1;
             const isNativeAgent = nativeAgents.has(agent.name);
@@ -153,7 +172,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
                       <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
                       {isNativeAgent && (
                         <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
-                          <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>terminal</span>
+                          <Icon name="terminal" style={{ fontSize: '11px' }} />
                           {t('dashboard.nativeSource')}
                         </span>
                       )}
@@ -177,7 +196,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
                     <div className="hidden group-hover/tip:flex absolute bottom-full right-0 mb-2 w-56 pointer-events-none z-50">
                       <div className="bg-white dark:bg-dark-bg-card border border-amber-200 dark:border-amber-500/30 rounded-lg shadow-lg p-2.5 flex gap-2 items-start">
                         <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
-                          <span className="material-symbols-outlined text-sm text-amber-600 dark:text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                          <Icon name="warning" className="text-sm text-amber-600 dark:text-amber-400" />
                         </div>
                         <p className="text-[11px] leading-relaxed text-slate-600 dark:text-gray-300">{t('dashboard.nativeSourceTip')}</p>
                       </div>

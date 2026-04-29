@@ -5,13 +5,14 @@ import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelper
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { badgeClass, sourceLabel, SOURCE } from '@/pages/Dashboard/utils/source';
 import { getAgentDisplayName } from '@/constants';
-import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
+import { useVisibleAgents } from '@/pages/Dashboard/hooks/useVisibleAgents';
 import { useMergedView } from '@/pages/Dashboard/hooks/useMergedView';
 import CardFileTree from '@/components/CardFileTree';
 import { FILE_TREE_HEIGHT } from '@/pages/Dashboard/constants/panel';
 import { agentsApi } from '@/api/tauri';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
 
+import { Icon } from '@/components/Icon';
 interface SkillDetailModalProps {
   skill: SkillMetadata;
   agents: AgentConfig[];
@@ -54,7 +55,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   const { t } = useTranslation();
   const isWindows = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
   const { allSources, nativeAgents, allPaths } = useMergedView(skill);
-  const detectedAgents = useDetectedAgents(agents);
+  const detectedAgents = useVisibleAgents(agents);
 
   // Esc 关闭弹窗：组件挂载即代表弹窗打开，卸载时自动清理
   useEffect(() => {
@@ -72,16 +73,20 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
     onToggleAgent(skill, agentName, e);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        // 仅当点击的是遮罩自身（不是其内部内容）时关闭
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-white dark:bg-dark-bg-card rounded-xl shadow-xl w-[65%] max-w-[1400px] max-h-[85vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-6 pb-3 border-b border-gray-200 dark:border-dark-border">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className={`w-12 h-12 rounded-lg ${getSkillColor(skill.id)} flex items-center justify-center`}>
-                <span className="material-symbols-outlined text-2xl">
-                  {getSkillIcon(skill.id)}
-                </span>
+                <Icon name={getSkillIcon(skill.id)} className="text-2xl" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -127,7 +132,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
               onClick={onClose}
               className="p-2 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded-lg transition-colors"
             >
-              <span className="material-symbols-outlined text-gray-600 dark:text-gray-300">close</span>
+              <Icon name="close" className="text-gray-600 dark:text-gray-300" />
             </button>
           </div>
           {/* Description */}
@@ -209,7 +214,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                     ) : (
                       <div className="h-full flex items-center justify-center text-slate-400 dark:text-gray-500">
                         <div className="text-center">
-                          <span className="material-symbols-outlined text-3xl mb-2">description</span>
+                          <Icon name="description" className="text-3xl mb-2" />
                           <p className="text-xs">{t('dashboard.detail.clickToView')}</p>
                         </div>
                       </div>
@@ -250,7 +255,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                   ) : (
                     <div className="h-full flex items-center justify-center">
                       <div className="text-center">
-                        <span className="material-symbols-outlined text-4xl text-gray-400 dark:text-gray-500 mb-2">folder_open</span>
+                        <Icon name="folder_open" className="text-4xl text-gray-400 dark:text-gray-500 mb-2" />
                         <p className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.detail.noFiles')}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{t('dashboard.detail.noFilesHint')}</p>
                       </div>
@@ -289,7 +294,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                             <span className="text-xs font-bold text-slate-700 dark:text-gray-200">{agent.display_name}</span>
                             {isNativeAgent && (
                               <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
-                                <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>home</span>
+                                <Icon name="home" style={{ fontSize: '11px' }} />
                                 {t('dashboard.nativeSource')}
                               </span>
                             )}
@@ -313,7 +318,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                           <div className="hidden group-hover/tip:flex absolute bottom-full right-0 mb-2 w-56 pointer-events-none z-50">
                             <div className="bg-white dark:bg-dark-bg-card border border-amber-200 dark:border-amber-500/30 rounded-lg shadow-lg p-2.5 flex gap-2 items-start">
                               <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
-                                <span className="material-symbols-outlined text-sm text-amber-600 dark:text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                                <Icon name="warning" className="text-sm text-amber-600 dark:text-amber-400" />
                               </div>
                               <p className="text-[11px] leading-relaxed text-slate-600 dark:text-gray-300">{t('dashboard.nativeSourceTip')}</p>
                             </div>
@@ -347,7 +352,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
               className="w-12 h-12 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors absolute left-1/2 -translate-x-1/2 bottom-4 shadow-lg"
               title={t('dashboard.detail.deleteSkill')}
             >
-              <span className="material-symbols-outlined text-lg">delete</span>
+              <Icon name="delete" className="text-lg" />
             </button>
           )}
         </div>

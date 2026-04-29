@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PAGE, pageToPath } from '@/constants';
 
+import { Icon } from '@/components/Icon';
 /**
  * 非 Dashboard 路由在预览模式下的占位页。
  *
@@ -40,9 +41,7 @@ export default function PreviewOnlyDesktop({ feature }: PreviewOnlyDesktopProps)
     <div className="h-full w-full flex items-center justify-center px-8">
       <div className="max-w-xl w-full text-center">
         <div className="mx-auto mb-6 w-16 h-16 rounded-2xl bg-[#b71422]/10 text-[#b71422] flex items-center justify-center">
-          <span className="material-symbols-outlined" style={{ fontSize: '32px' }}>
-            download_for_offline
-          </span>
+          <Icon name="download_for_offline" style={{ fontSize: '32px' }} />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white font-['Manrope'] mb-3">
           {title}
@@ -55,9 +54,7 @@ export default function PreviewOnlyDesktop({ feature }: PreviewOnlyDesktopProps)
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#b71422] hover:bg-[#d81a2c] text-white font-bold text-sm transition-colors shadow-sm"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-              download
-            </span>
+            <Icon name="download" style={{ fontSize: '18px' }} />
             {isZh ? '下载桌面版' : 'Download desktop app'}
           </a>
           <button
@@ -65,9 +62,7 @@ export default function PreviewOnlyDesktop({ feature }: PreviewOnlyDesktopProps)
             onClick={() => navigate(pageToPath(PAGE.Dashboard))}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border text-slate-700 dark:text-gray-200 font-bold text-sm hover:bg-slate-50 dark:hover:bg-dark-bg-tertiary transition-colors"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-              arrow_back
-            </span>
+            <Icon name="arrow_back" style={{ fontSize: '18px' }} />
             {isZh ? '返回 Dashboard' : 'Back to Dashboard'}
           </button>
         </div>

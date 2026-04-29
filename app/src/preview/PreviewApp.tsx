@@ -1,23 +1,60 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { HashRouter, Routes, Route, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import SideNavBar from '@/components/SideNavBar';
 import Dashboard from '@/pages/Dashboard';
 import Settings from '@/pages/Settings';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/components/Toast';
-import { PAGE, pathToPage, pageToPath, ROUTE_PATH, THEME, type Page } from '@/constants';
+import { PAGE, pathToPage, pageToPath, ROUTE_PATH, SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS, THEME, type Page } from '@/constants';
 import PreviewOnlyDesktop from './PreviewOnlyDesktop';
+import { VIEW_MODE, isViewMode, type ViewMode } from '@/pages/Dashboard/constants/viewMode';
 
-/**
- * Preview 模式的根布局：
- * 结构完全对齐 `RootLayout.tsx`。GitHub 路由整页替换成 PreviewOnlyDesktop，
- * Settings 路由使用真实组件（内部通过 `isPreview()` 关掉 Agents / Advanced tab），
- * Dashboard 用 mocked 数据正常跑起来。
- */
 function PreviewLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsedRaw] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(LOCAL_STORAGE_KEYS.sidebarCollapsed) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setIsSidebarCollapsed = useCallback((value: boolean) => {
+    setIsSidebarCollapsedRaw(value);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.sidebarCollapsed, value ? '1' : '0');
+    } catch { /* ignore */ }
+  }, []);
+
+  const [agentFilter, setAgentFilterRaw] = useState<string>(() => {
+    try {
+      return localStorage.getItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter) ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const setAgentFilter = useCallback((value: string) => {
+    setAgentFilterRaw(value);
+    try {
+      if (value) localStorage.setItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter, value);
+      else localStorage.removeItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter);
+    } catch { /* ignore */ }
+  }, []);
+
+  const [dashboardViewMode, setDashboardViewModeRaw] = useState<ViewMode>(() => {
+    try {
+      const v = sessionStorage.getItem(SESSION_STORAGE_KEYS.dashboardViewMode);
+      return isViewMode(v) ? v : VIEW_MODE.Flat;
+    } catch {
+      return VIEW_MODE.Flat;
+    }
+  });
+  const setDashboardViewMode = useCallback((mode: ViewMode) => {
+    setDashboardViewModeRaw(mode);
+    try {
+      sessionStorage.setItem(SESSION_STORAGE_KEYS.dashboardViewMode, mode);
+    } catch { /* ignore */ }
+  }, []);
 
   const currentPage: Page = pathToPage(location.pathname);
   const isDashboard = currentPage === PAGE.Dashboard;
@@ -33,9 +70,15 @@ function PreviewLayout() {
       <main
         className={`h-screen overflow-hidden ${isSidebarCollapsed ? 'ml-20' : 'ml-64'}`}
       >
-        {/* Dashboard 始终挂载，其他页由 Outlet 按路由切换（和 RootLayout 保持一致） */}
         <div className="h-full" style={{ display: isDashboard ? 'block' : 'none' }}>
-          <Dashboard onNavigate={setCurrentPage} isActive={isDashboard} />
+          <Dashboard
+            onNavigate={setCurrentPage}
+            isActive={isDashboard}
+            agentFilter={agentFilter}
+            onAgentFilterChange={setAgentFilter}
+            viewMode={dashboardViewMode}
+            onViewModeChange={setDashboardViewMode}
+          />
         </div>
         {!isDashboard && <Outlet />}
       </main>

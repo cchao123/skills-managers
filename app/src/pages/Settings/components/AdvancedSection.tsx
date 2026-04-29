@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { Icon } from '@/components/Icon';
 interface AdvancedSectionProps {
   advancedMode: boolean;
   onToggle: (value: boolean) => void;
@@ -15,7 +16,7 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({
     <div className="bg-white dark:bg-dark-bg-card rounded-2xl p-6 shadow-sm border border-[#e1e3e4] dark:border-dark-border">
       <div className="mb-4">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span className="material-symbols-outlined text-2xl text-slate-600 dark:text-gray-300">build</span>
+          <Icon name="build" className="text-2xl text-slate-600 dark:text-gray-300" />
           {t('settings.advanced.title')}
         </h3>
         <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
@@ -57,7 +58,7 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({
 
       {advancedMode && (
         <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
-          <span className="material-symbols-outlined text-base text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+          <Icon name="warning" className="text-base text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
             {t('settings.advanced.warning')}
           </p>

@@ -1,6 +1,13 @@
 use crate::models::{AgentConfig, AppConfig, LinkStrategy, CURRENT_SCHEMA_VERSION};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+/// 原子写：先写临时文件，再 rename，避免写入中途崩溃导致文件损坏。
+fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
+    let tmp = path.with_extension("tmp");
+    fs::write(&tmp, content)?;
+    fs::rename(&tmp, path)
+}
 use thiserror::Error;
 
 // ========== App Settings Manager (Phase 1) ==========
@@ -34,8 +41,24 @@ impl AppSettingsManager {
     /// - 文件存在但 `schema_version` 与当前不符（或缺失）→ 保留 `linking_strategy`、`agents`、
     ///   `language`、`skill_hide_prefixes`，**丢弃 `skill_states`** 让 scanner 自愈重建；
     ///   同时把 `schema_version` 写成当前值并立即持久化。
+    /// 所有前端已知 agent 的规范定义，顺序与前端 KNOWN_AGENTS 保持一致。
+    /// 新增 agent 时同步更新此列表。
+    fn known_agent_presets() -> Vec<AgentConfig> {
+        vec![
+            AgentConfig { name: "claude".to_string(),      display_name: "Claude Code".to_string(), path: "~/.claude".to_string(),      skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+            AgentConfig { name: "cursor".to_string(),      display_name: "Cursor".to_string(),      path: "~/.cursor".to_string(),      skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+            AgentConfig { name: "codex".to_string(),       display_name: "Codex".to_string(),       path: "~/.codex".to_string(),       skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+            AgentConfig { name: "openclaw".to_string(),    display_name: "OpenClaw".to_string(),    path: "~/.openclaw".to_string(),    skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+            AgentConfig { name: "opencode".to_string(),    display_name: "OpenCode".to_string(),    path: "~/.opencode".to_string(),    skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+            AgentConfig { name: "trae".to_string(),        display_name: "Trae".to_string(),        path: "~/.trae".to_string(),        skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+            AgentConfig { name: "qoder".to_string(),       display_name: "Qoder".to_string(),       path: "~/.qoder".to_string(),       skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+            AgentConfig { name: "antigravity".to_string(), display_name: "Antigravity".to_string(), path: "~/.antigravity".to_string(), skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+            AgentConfig { name: "kiro".to_string(),        display_name: "Kiro".to_string(),        path: "~/.kiro".to_string(),        skills_path: "skills".to_string(), enabled: true, detected: false, extra_paths: vec![] },
+        ]
+    }
+
     pub fn load_or_create(config_path: &Path) -> Result<Self, AppSettingsError> {
-        let config = if config_path.exists() {
+        let mut config = if config_path.exists() {
             let content = fs::read_to_string(config_path)?;
             let mut loaded: AppConfig = serde_json::from_str(&content)?;
 
@@ -49,57 +72,14 @@ impl AppSettingsManager {
                 loaded.skill_states.clear();
 
                 let content = serde_json::to_string_pretty(&loaded)?;
-                fs::write(config_path, content)?;
+                atomic_write(config_path, &content)?;
             }
 
             loaded
         } else {
             // 创建默认配置并添加预设 Agent
             let mut default = AppConfig::default();
-
-            // 添加默认 Agent 预设
-            default.agents = vec![
-                AgentConfig {
-                    name: "claude".to_string(),
-                    display_name: "Claude".to_string(),
-                    path: "~/.claude".to_string(),
-                    skills_path: "skills".to_string(),
-                    enabled: true,
-                    detected: false,
-                },
-                AgentConfig {
-                    name: "cursor".to_string(),
-                    display_name: "Cursor".to_string(),
-                    path: "~/.cursor".to_string(),
-                    skills_path: "skills".to_string(),
-                    enabled: true,
-                    detected: false,
-                },
-                AgentConfig {
-                    name: "codex".to_string(),
-                    display_name: "Codex".to_string(),
-                    path: "~/.codex".to_string(),
-                    skills_path: "skills".to_string(),
-                    enabled: true,
-                    detected: false,
-                },
-                AgentConfig {
-                    name: "openclaw".to_string(),
-                    display_name: "OpenClaw".to_string(),
-                    path: "~/.openclaw".to_string(),
-                    skills_path: "skills".to_string(),
-                    enabled: true,
-                    detected: false,
-                },
-                AgentConfig {
-                    name: "opencode".to_string(),
-                    display_name: "OpenCode".to_string(),
-                    path: "~/.opencode".to_string(),
-                    skills_path: "skills".to_string(),
-                    enabled: true,
-                    detected: false,
-                },
-            ];
+            default.agents = Self::known_agent_presets();
 
             // 确保父目录存在
             if let Some(parent) = config_path.parent() {
@@ -108,10 +88,39 @@ impl AppSettingsManager {
 
             // 保存默认配置
             let content = serde_json::to_string_pretty(&default)?;
-            fs::write(config_path, content)?;
+            atomic_write(config_path, &content)?;
 
             default
         };
+
+        // 清理：删除已从预设中移除的内置 agent（如 trae-cn 已合并到 trae）
+        const REMOVED_PRESETS: &[&str] = &["trae-cn"];
+        let before_len = config.agents.len();
+        config.agents.retain(|a| !REMOVED_PRESETS.contains(&a.name.as_str()));
+        let mut config_updated = config.agents.len() != before_len;
+        if config_updated {
+            eprintln!("[settings] removed deprecated agents: {:?}", REMOVED_PRESETS);
+        }
+
+        // 补全：把前端已知但 config 中缺失的 agent 追加进去；
+        // 同时把现有 agent 的 extra_paths 与 preset 保持同步（字段新增时的升级兼容）。
+        for preset in Self::known_agent_presets() {
+            if let Some(existing) = config.agents.iter_mut().find(|a| a.name == preset.name) {
+                // 仅在用户未设置（空数组）且 preset 有值时才补充，避免覆盖用户的自定义路径
+                if existing.extra_paths.is_empty() && !preset.extra_paths.is_empty() {
+                    existing.extra_paths = preset.extra_paths.clone();
+                    config_updated = true;
+                }
+            } else {
+                eprintln!("[settings] adding missing agent: {}", preset.name);
+                config.agents.push(preset);
+                config_updated = true;
+            }
+        }
+        if config_updated {
+            let content = serde_json::to_string_pretty(&config)?;
+            atomic_write(config_path, &content)?;
+        }
 
         Ok(Self {
             config_path: config_path.to_path_buf(),
@@ -132,7 +141,7 @@ impl AppSettingsManager {
     /// 保存配置
     pub fn save(&self) -> Result<(), AppSettingsError> {
         let content = serde_json::to_string_pretty(&self.config)?;
-        fs::write(&self.config_path, content)?;
+        atomic_write(&self.config_path, &content)?;
         Ok(())
     }
 
@@ -236,8 +245,19 @@ impl AppSettingsManager {
                 home_dir.join(&agent.path)
             };
 
+            let extra_exists = agent.extra_paths.iter().any(|ep| {
+                let p = if ep.starts_with("~/") {
+                    home_dir.join(&ep[2..])
+                } else if ep.starts_with('~') {
+                    home_dir.join(&ep[1..])
+                } else {
+                    home_dir.join(ep.as_str())
+                };
+                p.exists()
+            });
+
             eprintln!("Checking agent path: {:?}, exists: {}", agent_path, agent_path.exists());
-            agent.detected = agent_path.exists();
+            agent.detected = agent_path.exists() || extra_exists;
 
             if agent.detected {
                 detected_count += 1;

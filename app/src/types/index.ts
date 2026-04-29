@@ -75,6 +75,7 @@ export interface AppConfig {
   linking_strategy: LinkType;             // File linking strategy
   agents: AgentConfig[];                  // List of configured agents
   skill_hide_prefixes?: string[];         // Prefix rules used to hide skills in UI and tray
+  pinned_skills?: string[];               // Skill ids pinned to the top of the dashboard
 }
 
 export interface GitHubRepoConfig {

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { open as openUrl } from '@tauri-apps/plugin-shell';
 
+import { Icon } from '@/components/Icon';
 interface StatusBadgeProps {
   connected: boolean;
   repoConfig: {
@@ -32,7 +33,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ connected, repoConfig 
         >
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
           {path}
-          <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+          <Icon name="open_in_new" className="text-[14px]" />
         </button>
       )}
     </>

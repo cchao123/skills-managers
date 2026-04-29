@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { SkillMetadata, SkillDeletionRow } from '@/types';
 import { badgeClass, sourceLabel, SOURCE } from '@/pages/Dashboard/utils/source';
 
+import { Icon } from '@/components/Icon';
 type DeletePurpose = 'root-only' | 'multi-source';
 
 interface DeleteConfirmModalProps {
@@ -68,11 +69,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10 backdrop-blur-[2px]">
       <div className="w-full max-w-md bg-white/95 dark:bg-dark-bg-card backdrop-blur-xl rounded-3xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25),0_18px_36px_-18px_rgba(0,0,0,0.3)] border border-white/50 dark:border-dark-border overflow-hidden flex flex-col items-center text-center p-8">
         <div className="w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-6">
-          <span className="material-symbols-outlined text-red-500 text-4xl"
-            style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-          >
-            error
-          </span>
+          <Icon name="error" className="text-red-500 text-4xl" />
         </div>
         <h3 className="font-bold text-2xl text-slate-900 dark:text-white mb-2">
           {isRootOnly ? t('dashboard.delete.fromRootTitle') : t('dashboard.delete.title')}
@@ -124,7 +121,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                   <div className="hidden group-hover/del:flex absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-60 pointer-events-none z-50 justify-center">
                     <div className="bg-white dark:bg-dark-bg-card border border-amber-200 dark:border-amber-500/30 rounded-lg shadow-lg p-2.5 flex gap-2 items-start">
                       <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
-                        <span className="material-symbols-outlined text-sm text-amber-600 dark:text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                        <Icon name="warning" className="text-sm text-amber-600 dark:text-amber-400" />
                       </div>
                       <p className="text-[11px] leading-relaxed text-slate-600 dark:text-gray-300">{t('dashboard.delete.advancedRequired')}</p>
                     </div>

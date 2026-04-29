@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
 import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
 
+import { Icon } from '@/components/Icon';
 const TOAST_TYPE = {
   Info: 'info',
   Warning: 'warning',
@@ -72,7 +73,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {/* Toast container — top-right stacked */}
-      <div className="fixed top-20 right-6 z-[9999] flex flex-col items-end gap-3 pointer-events-none w-[360px]">
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col-reverse items-end gap-3 pointer-events-none w-[360px]">
         {toasts.map(toast => {
           const cfg = typeConfig[toast.type];
           const isCompact = !toast.description && toast.type === TOAST_TYPE.Info;
@@ -85,11 +86,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               {/* Icon */}
               <div className={`${isCompact ? 'w-8 h-8' : 'w-10 h-10'} rounded-full ${cfg.iconBg} flex items-center justify-center flex-shrink-0`}>
-                <span className={`material-symbols-outlined ${cfg.iconColor} ${isCompact ? 'text-xl' : ''}`}
-                  style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-                >
-                  {cfg.icon}
-                </span>
+                <Icon
+                  name={cfg.icon}
+                  className={`${cfg.iconColor} ${isCompact ? 'text-xl' : ''}`}
+                />
               </div>
 
               {/* Content */}
@@ -107,7 +107,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 onClick={() => removeToast(toast.id)}
                 className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 self-start transition-colors flex-shrink-0"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <Icon name="close" className="text-lg" />
               </button>
             </div>
           );

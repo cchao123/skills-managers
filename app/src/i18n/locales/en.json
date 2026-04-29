@@ -75,6 +75,17 @@
     "agentDisabled": "Disabled",
     "nativeSource": "Native",
     "alwaysEnabled": "Always enabled",
+    "contextMenu": {
+      "pinCard": "Pin to top",
+      "unpinCard": "Unpin",
+      "openRoot": "Open root directory"
+    },
+    "agentFilter": {
+      "title": "Filter by Agent",
+      "activeTitle": "Filtering: {{name}} (click to change)",
+      "all": "ALL",
+      "clear": "Clear"
+    },
     "nativeSourceTip": "Native sources can't be unshared. If you don't need it, enable Advanced Mode to delete it",
     "openFolder": "Open Skills Folder",
     "dragDrop": {
@@ -115,9 +126,8 @@
     "noSkillsHint": "Try adjusting your search or filter",
     "retry": "Retry",
     "errorMessage": "Make sure the app is running in Tauri environment, not in a browser.",
-    "localAgentDirectory": "Directory Details",
     "operationLog": {
-      "title": "Operation Log",
+      "title": "Log",
       "panelTitle": "Actions that triggered \"Copy to Root\"",
       "empty": "No copy/import/enable records yet",
       "clear": "Clear",
@@ -128,9 +138,9 @@
     },
     "viewFlat": "Flat View",
     "viewBySource": "By Source",
-    "openAgentSettings": "Open Agents in Settings",
-    "viewHelp": "View Guide",
-    "viewHelpFlat": "Scan all local Agents and show all available Skills regardless of source",
+    "viewSwitch": "Switch view",
+    "viewHelp": "Help",
+    "viewHelpFlat": "Aggregate skill directories from multiple local Agents into a unified, manageable view",
     "viewHelpBySource": "Group Skills by Agent source, so you can clearly see which Skills belong to each Agent",
     "mainToggleHelp": {
       "title": "Main toggle states",
@@ -138,13 +148,18 @@
       "nativeOnly": "Only native enabled",
       "on": "Partially or fully enabled"
     },
-    "rootPathLabel": "Root: ",
+    "pinHelp": {
+      "title": "Pinned card mark",
+      "desc": "Right-click a card to pin / unpin. Pinned cards show a folded-corner mark in the top-left and float to the top."
+    },
+    "rootPathLabel": "Scan path: ",
     "githubTipMid": " — skills under this path can be synced via",
     "githubTipLink": " GitHub Backup",
     "githubTipAfter": "to the remote repository",
     "dismiss": "Got it",
-    "agentSourcePath": "Root: ",
-    "noSkillsInSource": "No skills in this source"
+    "agentSourcePath": "Scan path: ",
+    "noSkillsInSource": "No skills in this source",
+    "noSkillsInSourceSearch": "No results for \"{{keyword}}\""
   },
   "githubBackup": {
     "title": "GitHub Backup",
@@ -187,14 +202,6 @@
       "overwriteRestoreTitle": "Overwrite Restore Confirmation",
       "overwriteRestoreMessage": "You have checked 'Overwrite local with remote'. After restoring, local-only files will be deleted and local content will match the remote exactly. This cannot be undone.",
       "confirmRestore": "Confirm Restore"
-    },
-    "star": {
-      "starred": "Starred",
-      "star": "Star",
-      "toast": {
-        "starSuccess": "Starred successfully! Thanks for your support ⭐",
-        "starFailed": "Star failed, opening GitHub page..."
-      }
     },
     "form": {
       "connectedTitle": "Connected. Click Edit Config to modify"
@@ -304,7 +311,7 @@
     "feedback": "Feedback",
     "agents": {
       "title": "Agents",
-      "subtitle": "Click an agent to open its directory",
+      "subtitle": "Click an agent to open its directory · Right-click for quick open",
       "installed": "Installed",
       "notInstalled": "Not Installed",
       "skillsManager": "Skills Manager",
@@ -312,7 +319,10 @@
       "scanPaths": "Skill Scan Paths",
       "scanPathsEmpty": "No dedicated scan paths for this agent",
       "expand": "Expand scan paths",
-      "collapse": "Collapse scan paths"
+      "collapse": "Collapse scan paths",
+      "manageTitle": "Manage Agents",
+      "manageSubtitle": "Select which agents to display in the list",
+      "manageConfirm": "Confirm"
     },
     "skillFilter": {
       "title": "Hide Skills by Prefix",
@@ -321,7 +331,9 @@
       "add": "Add",
       "empty": "No prefixes configured. All skills are visible.",
       "remove": "Remove {{prefix}}",
-      "hint": "Press Enter or comma to add; press Backspace in an empty input to remove the last tag. Matching is case-insensitive."
+      "hint": "Press Enter or comma to add; press Backspace in an empty input to remove the last tag. Matching is case-insensitive.",
+      "statusAll": "{{count}} enabled",
+      "statusPartial": "{{count}} active"
     },
     "appearance": "Appearance",
     "appearanceDescription": "Customize the application's appearance and feel",
@@ -331,6 +343,17 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeAuto": "System",
+    "searchBar": {
+      "title": "Search Bar Components",
+      "description": "Customize which components are shown in the Dashboard top search bar",
+      "showFilter": "Prefix filter button",
+      "showFilterHint": "The funnel button on the left for hiding skills by prefix",
+      "showSearch": "Search input",
+      "showSearchHint": "The keyword search input in the middle",
+      "showActions": "Help / Log buttons",
+      "showActionsHint": "The Help and Log button group on the right",
+      "reset": "Reset to default"
+    },
     "about": "About",
     "aboutDescription": "A desktop application for managing Claude Code skills and plugins. Browse, install, and enable skills from the marketplace, or sync custom skills from GitHub repositories.",
     "version": {
@@ -347,12 +370,14 @@
       "viewOnGithub": "View on GitHub"
     },
     "aboutHighlights": {
-      "visualSchedulingTitle": "Visual Scheduling",
-      "visualSchedulingDescription": "One-stop management for multi-agent skills desktop applications;",
-      "cleanReuseTitle": "Clean Reuse",
-      "cleanReuseDescription": "One skill, zero-intrusion reuse across platforms, while keeping native environments clean;",
-      "oneClickHubTitle": "One-Click Curation",
-      "oneClickHubDescription": "Sync to GitHub in the cloud and build your own Skills Hub."
+      "unifiedScanTitle": "Unified Scan",
+      "unifiedScanDescription": "Aggregates skill directories from multiple local Agents into a single manageable view",
+      "crossAgentDistTitle": "Cross-Agent Distribution",
+      "crossAgentDistDescription": "Distribute the same skill to different Agents via link or copy",
+      "centralStorageTitle": "Central Storage",
+      "centralStorageDescription": "Store reusable skills in a central directory for easy maintenance and migration",
+      "githubBackupTitle": "GitHub Backup & Restore",
+      "githubBackupDescription": "Push your skill repository to remote, or restore it on a new machine with one click"
     },
     "builtWith": "Built with",
     "advanced": {

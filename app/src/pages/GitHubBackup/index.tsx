@@ -1,18 +1,15 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import PageHeader from '@/components/PageHeader';
 import { useToast } from '@/components/Toast';
-import { githubApi, agentsApi } from '@/api/tauri';
+import { agentsApi } from '@/api/tauri';
 import { useGitHubConfig } from './hooks/useGitHubConfig';
 import { useGitHubActions } from './hooks/useGitHubActions';
-import { StarButton } from './components/StarButton';
 import { GitHubForm } from './components/GitHubForm';
 import { ActionButtons } from './components/ActionButtons';
 import { ConfigGuide } from './components/ConfigGuide';
 import { Shared } from './components/Shared';
 import { StatusBadge } from './components/StatusBadge';
 import { Collapse } from '@/components/Collapse';
-
 function GitHubBackup() {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -20,7 +17,6 @@ function GitHubBackup() {
     config,
     repoConfig,
     loading,
-    saving,
     connected,
     setConnected,
     loadConfig,
@@ -32,13 +28,9 @@ function GitHubBackup() {
     testing,
     syncing,
     restoring,
-    starred,
-    starring,
     handleTestConnection,
     handleSync,
     handleRestore,
-    handleStar,
-    setStarred,
   } = useGitHubActions(repoConfig, setConnected, async () => {
     // Trigger auto-save after connection test
     await triggerAutoSave(repoConfig);
@@ -49,19 +41,10 @@ function GitHubBackup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (connected && repoConfig.token) {
-      // Check star status
-      githubApi.checkStar('cchao123', 'skills-managers', repoConfig.token)
-        .then(setStarred)
-        .catch(() => { });
-    }
-  }, [connected, repoConfig.token]);
-
   if (loading) {
     return (
       <div className="h-full flex flex-col">
-        <PageHeader icon="backup" title={t('header.githubBackup')} />
+        <div className="h-4 flex-shrink-0" data-tauri-drag-region />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 dark:border-dark-bg-tertiary border-t-[#b71422] mb-4"></div>
@@ -74,39 +57,8 @@ function GitHubBackup() {
 
   return (
     <div className="h-full flex flex-col">
-      <PageHeader
-        icon="backup"
-        title={t('header.githubBackup')}
-        actions={
-          <>
-            {saving && (
-              <span className="text-xs text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
-                <span className="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-slate-200 dark:border-dark-bg-tertiary border-t-[#b71422]"></span>
-                {t('githubBackup.buttons.saving')}
-              </span>
-            )}
-            <StarButton
-              starred={starred}
-              starring={starring}
-              hasToken={!!repoConfig.token}
-              onStar={handleStar}
-            />
-            <button
-              onClick={() => agentsApi.openFolder().catch(() => {})}
-              className="px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5"
-              title={t('githubBackup.buttons.openLocal')}
-            >
-              <span className="material-symbols-outlined material-symbols-legacy text-lg text-slate-500 dark:text-gray-400">folder_open</span>
-              <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
-                {t('githubBackup.buttons.openLocal')}
-              </span>
-            </button>
-          </>
-        }
-      />
-
       <div className="flex-1 overflow-y-auto bg-[#f8f9fa] dark:bg-dark-bg-secondary">
-        <div className="p-8 space-y-6">
+        <div className="px-6 pt-3 pb-6 space-y-4" data-tauri-drag-region>
           {/* GitHub Repository Configuration Form */}
           <Collapse
             maxHeight="600px"
@@ -139,6 +91,7 @@ function GitHubBackup() {
               syncing={syncing}
               onTest={handleTestConnection}
               onEdit={() => setConnected(false)}
+              onOpenFolder={() => agentsApi.openFolder().catch(() => {})}
               onRestore={async (overwriteLocal) => {
                 if (!connected) {
                   showToast('warning', t('githubBackup.messages.testFirst'));

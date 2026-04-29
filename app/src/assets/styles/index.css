@@ -1,5 +1,5 @@
-/* 本地字体 - 离线可用，避免首次启动时依赖 Google Fonts CDN */
-@import 'material-symbols/outlined.css';
+/* 本地字体 - 离线可用，避免首次启动时依赖 Google Fonts CDN
+   注意：图标已迁移到 unplugin-icons + iconify SVG，不再需要 material-symbols 字体。 */
 @import '@fontsource-variable/inter/index.css';
 @import '@fontsource/manrope/700.css';
 @import '@fontsource/manrope/800.css';
@@ -49,26 +49,8 @@ body {
   color: hsl(var(--foreground));
 }
 
-.material-symbols-outlined {
-  /* 保留与 Google Fonts CDN 一致的默认行为：
-     - font-size 维持 npm 包默认 24px，允许 Tailwind 的 text-xxx 工具类按需覆盖
-     - 这里不要再设置 font-size，否则会因选择器优先级相同而压过 text-xxx */
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-}
-
-/* 旧版（Google Fonts CDN 时期）的图标样式：字号跟随父元素、严格的排版重置。
-   需要"之前那种和文字同字号、贴合行高"的效果时，再叠加这个 class。
-   注意：这里的 font-size: inherit 会压过 Tailwind 的 text-xxx，按需使用。 */
-.material-symbols-legacy {
-  font-size: inherit;
-  display: inline-block;
-  line-height: 1;
-  text-transform: none;
-  letter-spacing: normal;
-  word-wrap: normal;
-  white-space: nowrap;
-  direction: ltr;
-}
+/* 图标统一通过 <Icon> 组件渲染（见 app/src/components/Icon.tsx）
+   - SVG 默认 1em × 1em + currentColor，可直接用 Tailwind 的 text-xxx 控制大小/颜色 */
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
@@ -83,9 +65,26 @@ code {
 }
 
 /* Disable transition for theme icon itself to avoid flicker */
-.material-symbols-outlined,
 .no-transition {
   transition: none !important;
+}
+
+/* Text selection - red theme #b71422 (project brand color), translucent */
+::selection {
+  background-color: rgba(183, 20, 34, 0.25);
+  color: inherit;
+}
+::-moz-selection {
+  background-color: rgba(183, 20, 34, 0.25);
+  color: inherit;
+}
+.dark ::selection {
+  background-color: rgba(183, 20, 34, 0.45);
+  color: inherit;
+}
+.dark ::-moz-selection {
+  background-color: rgba(183, 20, 34, 0.45);
+  color: inherit;
 }
 
 /* Global input focus styles - red theme #b71422 */
@@ -94,18 +93,18 @@ textarea:focus,
 select:focus {
   outline: none !important;
   border-color: #b71422 !important;
-  box-shadow: 0 0 0 3px rgba(183, 20, 34, 0.1) !important;
+  box-shadow: none !important;
 }
 
 .dark input:focus,
 .dark textarea:focus,
 .dark select:focus {
   border-color: #b71422 !important;
-  box-shadow: 0 0 0 3px rgba(183, 20, 34, 0.2) !important;
+  box-shadow: none !important;
 }
 
 /* Input focus icon color change - when input is focused, adjacent icon turns red */
-.group:focus-within .material-symbols-outlined {
+.group:focus-within svg {
   color: #b71422 !important;
 }
 

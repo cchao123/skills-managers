@@ -8,9 +8,16 @@ import {
   type OperationLogEntry,
 } from '@/pages/Dashboard/hooks/useOperationLog';
 
+import { Icon } from '@/components/Icon';
 interface Props {
   anchorRect: DOMRect;
   onClose: () => void;
+  /** 鼠标进入面板（hover 模式下用于取消关闭计时） */
+  onPanelMouseEnter?: () => void;
+  /** 鼠标离开面板（hover 模式下用于启动关闭计时） */
+  onPanelMouseLeave?: () => void;
+  /** hover 触发时禁用 backdrop（避免占用整屏阻挡其他交互） */
+  hideBackdrop?: boolean;
 }
 
 const ICON_BY_TYPE: Record<OperationLogEntry['type'], string> = {
@@ -31,7 +38,13 @@ const formatTime = (ts: number) => {
   return `${mo}-${dd} ${hh}:${mm}`;
 };
 
-export const OperationLogPopover: React.FC<Props> = ({ anchorRect, onClose }) => {
+export const OperationLogPopover: React.FC<Props> = ({
+  anchorRect,
+  onClose,
+  onPanelMouseEnter,
+  onPanelMouseLeave,
+  hideBackdrop = false,
+}) => {
   const { t } = useTranslation();
   const entries = useOperationLog();
 
@@ -50,30 +63,37 @@ export const OperationLogPopover: React.FC<Props> = ({ anchorRect, onClose }) =>
   let left = anchorRect.right - width;
   left = Math.max(8, Math.min(left, vw - width - 8));
 
+  // hover 模式下面板向上贴近按钮，并预留一个 bridge 区便于鼠标从按钮平滑移入面板
+  const bridge = onPanelMouseEnter ? 12 : 0;
+
   return createPortal(
     <>
-      {/* 透明 backdrop：拦截点击并关闭 popover。
-          必须覆盖在 header 的 `data-tauri-drag-region` 之上，否则 OS 会吞掉 mousedown
-          导致点 header 关不掉弹窗。backdrop 本身不是 drag region，事件能正常冒泡。 */}
+      {!hideBackdrop && (
+        // 透明 backdrop：拦截点击并关闭 popover。
+        // 必须覆盖在 header 的 `data-tauri-drag-region` 之上，否则 OS 会吞掉 mousedown
+        // 导致点 header 关不掉弹窗。backdrop 本身不是 drag region，事件能正常冒泡。
+        <div
+          onMouseDown={onClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9997,
+            WebkitAppRegion: 'no-drag',
+          } as React.CSSProperties}
+        />
+      )}
       <div
-        onMouseDown={onClose}
         style={{
           position: 'fixed',
-          inset: 0,
-          zIndex: 9997,
-          // 兜底：即便外层祖先是 drag region，也显式声明这里不是，避免被 OS 接管
-          WebkitAppRegion: 'no-drag',
-        } as React.CSSProperties}
-      />
-      <div
-        style={{
-          position: 'fixed',
-          top: anchorRect.bottom + 6,
+          top: anchorRect.bottom - bridge,
           left,
           width,
+          paddingTop: bridge,
           zIndex: 9998,
         }}
         className="pointer-events-auto"
+        onMouseEnter={onPanelMouseEnter}
+        onMouseLeave={onPanelMouseLeave}
       >
       <div className={`${LIQUID_GLASS_TOAST_PANEL_CLASS} max-h-[min(70vh,28rem)] overflow-hidden p-3 animate-toast-in flex-col`}>
         <div className="flex items-center justify-between mb-2 px-1 gap-2">
@@ -96,9 +116,7 @@ export const OperationLogPopover: React.FC<Props> = ({ anchorRect, onClose }) =>
               aria-label={t('dashboard.operationLog.close')}
               className="flex items-center justify-center w-6 h-6 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/10 transition-colors"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                close
-              </span>
+              <Icon name="close" style={{ fontSize: '16px' }} />
             </button>
           </div>
         </div>
@@ -114,12 +132,8 @@ export const OperationLogPopover: React.FC<Props> = ({ anchorRect, onClose }) =>
                 key={entry.id}
                 className="flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-slate-100/60 dark:hover:bg-white/[0.04]"
               >
-                <span
-                  className="material-symbols-outlined text-base text-slate-500 dark:text-gray-400 mt-0.5 flex-shrink-0"
-                  style={{ fontSize: '16px' }}
-                >
-                  {ICON_BY_TYPE[entry.type]}
-                </span>
+                <Icon name={ICON_BY_TYPE[entry.type]} className="text-base text-slate-500 dark:text-gray-400 mt-0.5 flex-shrink-0"
+                  style={{ fontSize: '16px' }} />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs leading-snug text-slate-700 dark:text-gray-200 break-words">
                     {entry.type === 'copyFromSource'

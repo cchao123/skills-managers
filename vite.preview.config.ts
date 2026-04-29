@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import Icons from 'unplugin-icons/vite';
 import path from 'path';
 import { readFileSync } from 'fs';
 
@@ -22,7 +23,14 @@ export default defineConfig({
   // 本地 `npm run preview:dev` 时用相对路径，构建时再切到仓库路径
   base: './',
 
-  plugins: [react()],
+  plugins: [
+    react(),
+    Icons({
+      compiler: 'jsx',
+      jsx: 'react',
+      autoInstall: false,
+    }),
+  ],
 
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),

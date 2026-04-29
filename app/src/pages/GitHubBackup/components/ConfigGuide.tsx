@@ -4,6 +4,7 @@ import { Collapse } from '@/components/Collapse';
 import { Steps, Step } from '@/components/Steps';
 import { GITHUB_TOKENS_URL, GITHUB_NEW_REPO_URL } from '../constants/config';
 
+import { Icon } from '@/components/Icon';
 export const ConfigGuide: React.FC = () => {
   const { t } = useTranslation();
 
@@ -74,12 +75,7 @@ export const ConfigGuide: React.FC = () => {
       </Steps>
 
       <div className="mt-5 flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
-        <span
-          className="material-symbols-outlined text-base text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
-          style={{ fontVariationSettings: "'FILL' 1" }}
-        >
-          warning
-        </span>
+        <Icon name="warning" className="text-base text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
           {t('githubBackup.guide.notice')}
         </p>

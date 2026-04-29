@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { codeInspectorPlugin } from 'code-inspector-plugin';
+import Icons from 'unplugin-icons/vite';
 import path from "path";
 import { readFileSync } from "fs";
 
@@ -14,6 +15,11 @@ export default defineConfig(async () => ({
     react(),
     codeInspectorPlugin({
       bundler: 'vite',
+    }),
+    Icons({
+      compiler: 'jsx',
+      jsx: 'react',
+      autoInstall: false,
     }),
   ],
 

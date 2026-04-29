@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { PROJECT_NAME, PROJECT_VERSION, PAGE, SESSION_STORAGE_KEYS, WINDOW_EVENTS, pageToPath, type Page } from '@/constants';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
 
+import { Icon } from '@/components/Icon';
 interface SideNavBarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -45,7 +46,7 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
 
   return (
     <aside
-      className={`h-screen fixed left-0 top-0 bg-[#edeeef] dark:bg-dark-bg-secondary flex flex-col pt-14 pb-8 z-50 border-r border-[#e1e3e4] dark:border-dark-border ${
+      className={`h-screen fixed left-0 top-0 bg-[#edeeef] dark:bg-dark-bg flex flex-col pt-14 pb-8 z-50 border-r border-[#e1e3e4] dark:border-dark-border ${
         isCollapsed ? 'w-20 px-2' : 'w-64 px-4'
       }`}
     >
@@ -69,7 +70,7 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
             className={({ isActive }) => navButtonClass(isActive, isCollapsed)}
             title={isCollapsed ? item.label : ''}
           >
-            <span className="material-symbols-outlined" data-icon={item.icon}>{item.icon}</span>
+            <Icon name={item.icon} data-icon={item.icon} className="text-xl" />
             {!isCollapsed && <span className="font-['Manrope'] dark:text-gray-300">{item.label}</span>}
           </NavLink>
         ))}
@@ -81,14 +82,14 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
         className={({ isActive }) => navButtonClass(isActive, isCollapsed)}
         title={isCollapsed ? settingsItem.label : ''}
       >
-        <span className="material-symbols-outlined" data-icon={settingsItem.icon}>{settingsItem.icon}</span>
+        <Icon name={settingsItem.icon} data-icon={settingsItem.icon} className="text-xl" />
         {!isCollapsed && <span className="font-['Manrope'] dark:text-gray-300">{settingsItem.label}</span>}
       </NavLink>
 
       {/* Collapse Toggle Button - Fixed on the right edge */}
       <button
         onClick={onToggleCollapse}
-        className="fixed top-1/2 -translate-y-1/2 w-4 h-10 rounded-lg bg-white dark:bg-dark-bg-card shadow-md flex items-center justify-center z-50"
+        className="fixed top-1/2 -translate-y-1/2 w-4 h-10 rounded-lg bg-white dark:bg-dark-bg-card shadow-md flex items-center justify-center z-50 border border-transparent dark:border-dark-border"
         style={{
           left: isCollapsed ? '80px' : '256px',
           transform: 'translate(-50%, -50%)',
@@ -96,9 +97,7 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
         }}
         title={isCollapsed ? t('nav.expand') : t('nav.collapse')}
       >
-        <span className="material-symbols-outlined text-gray-400 dark:text-gray-500 text-xl">
-          {isCollapsed ? 'chevron_right' : 'chevron_left'}
-        </span>
+        <Icon name={isCollapsed ? 'chevron_right' : 'chevron_left'} className="text-gray-400 dark:text-gray-500 text-xl" />
       </button>
     </aside>
   );

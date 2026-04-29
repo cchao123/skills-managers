@@ -1,5 +1,6 @@
 import type { SkillFileEntry } from '@/types';
 
+import { Icon } from '@/components/Icon';
 interface CardFileTreeProps {
   files: SkillFileEntry[];
   expandedFolders: Set<string>;
@@ -67,9 +68,7 @@ export default function CardFileTree({
                 }
               }}
             >
-              <span className="material-symbols-outlined text-sm text-slate-400 dark:text-gray-500">
-                {isDir && isExpanded ? 'folder_open' : getFileIcon(file.name, isDir)}
-              </span>
+              <Icon name={isDir && isExpanded ? 'folder_open' : getFileIcon(file.name, isDir)} className="text-sm text-slate-400 dark:text-gray-500" />
               <span className="text-[11px] flex-1 truncate">{file.name}</span>
               {showFileSize && file.size && (
                 <span className="text-[10px] text-slate-400 dark:text-gray-500">{formatSize(file.size)}</span>
