@@ -62,14 +62,12 @@ function PreviewLayout() {
   const setCurrentPage = (page: Page) => navigate(pageToPath(page));
 
   return (
-    <div className="h-screen bg-[#f8f9fa] dark:bg-dark-bg-secondary">
+    <div className="h-screen bg-[#f8f9f9] dark:bg-dark-bg-secondary flex">
       <SideNavBar
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      <main
-        className={`h-screen overflow-hidden ${isSidebarCollapsed ? 'ml-20' : 'ml-64'}`}
-      >
+      <main className="flex-1 h-screen overflow-hidden">
         <div className="h-full" style={{ display: isDashboard ? 'block' : 'none' }}>
           <Dashboard
             onNavigate={setCurrentPage}
