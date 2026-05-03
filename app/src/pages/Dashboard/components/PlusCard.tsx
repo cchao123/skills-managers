@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import type { AgentConfig } from '@/types';
-import { getAgentDisplayName } from '@/constants';
 import { SOURCE } from '@/pages/Dashboard/utils/source';
 
 import { Icon } from '@/components/Icon';
