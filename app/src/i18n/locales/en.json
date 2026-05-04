@@ -152,7 +152,9 @@
       "selectAll": "Select All",
       "deselectAll": "Deselect All",
       "defaultEnabled": "Enable by default after import",
-      "import": "Import"
+      "import": "Import",
+      "labelExists": "Exists",
+      "labelAdded": "Added"
     },
     "viewFlat": "Flat View",
     "viewBySource": "By Source",
@@ -406,6 +408,13 @@
       "disabledHint": "Off by default. Only skills in the Skills Manager root directory can be deleted.",
       "enabledHint": "Enabled. You can delete skills from any source.",
       "warning": "With Advanced Mode on, a delete button will appear on detail pages for all skills, including those from Cursor, Claude, and other agents' native directories."
+    },
+    "previewLocked": {
+      "agentsTitle": "Agent management is desktop-only",
+      "agentsDesc": "Scanning Claude / Cursor / Codex native folders, showing detection status and opening local paths requires desktop-native capabilities.",
+      "advancedTitle": "Advanced options are desktop-only",
+      "advancedDesc": "Skill prefix filters, hide rules and symlink strategy change your local filesystem — desktop-only by design.",
+      "downloadApp": "Download desktop app"
     }
   },
   "common": {

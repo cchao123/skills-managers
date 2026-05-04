@@ -152,7 +152,9 @@
       "selectAll": "全选",
       "deselectAll": "清空",
       "defaultEnabled": "导入后默认开启",
-      "import": "导入"
+      "import": "导入",
+      "labelExists": "已存在",
+      "labelAdded": "已添加"
     },
     "viewFlat": "平铺展示",
     "viewBySource": "按来源展示",
@@ -406,6 +408,13 @@
       "disabledHint": "默认关闭，仅可删除 Skills Manager 根目录下的技能",
       "enabledHint": "已开启，可对所有来源的技能执行删除操作",
       "warning": "开启高阶模式后，详情页面将出现删除按钮，可删除来自 Cursor、Claude 等 Agent 原生目录的技能。"
+    },
+    "previewLocked": {
+      "agentsTitle": "Agent 管理仅桌面端可用",
+      "agentsDesc": "扫描 Claude / Cursor / Codex 等 Agent 的原生目录、展示检测状态、打开本地文件夹，都依赖桌面原生能力。",
+      "advancedTitle": "高级选项仅桌面端可用",
+      "advancedDesc": "技能前缀过滤、隐藏规则、符号链接策略等高级配置会真实修改你的本地文件系统，只在桌面版里开放。",
+      "downloadApp": "下载桌面版"
     }
   },
   "common": {

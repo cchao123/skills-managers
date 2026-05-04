@@ -84,7 +84,7 @@ function Settings() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold [&_*]:!transition-none ${
                 activeTab === tab.id
                   ? 'bg-[#b71422] text-white shadow-md'
                   : 'text-slate-600 dark:text-gray-300 hover:bg-[#f8f9fa] dark:hover:bg-dark-bg-tertiary'

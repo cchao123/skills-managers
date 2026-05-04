@@ -1,0 +1,452 @@
+{
+  "app": {
+    "name": "技能管理器",
+    "version": "v1.0.0"
+  },
+  "nav": {
+    "marketplace": "技能市場",
+    "dashboard": "已安裝技能",
+    "githubBackup": "GitHub備份",
+    "settings": "設定",
+    "expand": "展開",
+    "collapse": "收合"
+  },
+  "header": {
+    "marketplace": "技能市場",
+    "dashboard": "已安裝技能",
+    "githubBackup": "GitHub備份",
+    "settings": "設定",
+    "notifications": "通知",
+    "profile": "個人資料"
+  },
+  "marketplace": {
+    "title": "技能市場",
+    "search": "搜尋技能...",
+    "searchFull": "搜尋技能名稱、描述或分類...",
+    "filterAll": "全部",
+    "filterEnabled": "已啟用",
+    "filterDisabled": "已停用",
+    "enable": "啟用",
+    "disable": "停用",
+    "install": "安裝",
+    "uninstall": "解除安裝"
+  },
+  "dashboard": {
+    "title": "已安裝技能",
+    "search": {
+      "placeholder": "搜尋已安裝技能...",
+      "noResults": "未找到符合的技能"
+    },
+    "filter": {
+      "all": "全部",
+      "enabled": "部分啟用",
+      "disabled": "未啟用",
+      "noResults": "沒有符合條件的技能"
+    },
+    "total": "技能總數",
+    "enabled": "部分啟用",
+    "disabled": "未啟用",
+    "mainToggle": {
+      "allOn": "全部啟用",
+      "allOff": "全部關閉",
+      "nativeOnly": "僅原生目錄啟用：{{agents}}，點此可開啟其他 Agent",
+      "allNative": "全部原生：所有 Agent 目錄下都存在實體檔案"
+    },
+    "toast": {
+      "nativeAgentWarning": "屬於 {{agent}} 原生目錄，無法一鍵關閉",
+      "skillDeleted": "技能「{{name}}」已刪除",
+      "skillDeleteFailed": "刪除技能失敗",
+      "skillDeletedFrom": "技能「{{name}}」已從 {{sources}} 刪除",
+      "skillDeleteFromFailed": "技能「{{name}}」從 {{sources}} 刪除失敗",
+      "skillCopiedToRoot": "技能「{{name}}」已拷貝到根目錄",
+      "cannotGetSkillPath": "無法取得技能路徑",
+      "importSkillsSuccess": "成功匯入 {{count}} 個技能",
+      "loadDetailFailed": "載入技能詳情失敗",
+      "readFileFailed": "讀取檔案失敗"
+    },
+    "stats": {
+      "total": "總計",
+      "enabled": "部分啟用",
+      "disabled": "未啟用",
+      "dedupeFooter": "已過濾 {{count}} 條重複"
+    },
+    "agentsEnabled": "Agent 已啟用",
+    "notInstalled": "未安裝",
+    "agentEnabled": "已啟用",
+    "agentDisabled": "未啟用",
+    "nativeSource": "原生目錄",
+    "alwaysEnabled": "始終啟用",
+    "contextMenu": {
+      "pinCard": "置頂此技能",
+      "unpinCard": "取消置頂",
+      "openRoot": "開啟根目錄"
+    },
+    "agentFilter": {
+      "title": "按 Agent 篩選",
+      "activeTitle": "目前篩選：{{name}}（點擊切換）",
+      "all": "全部",
+      "clear": "清除"
+    },
+    "nativeSourceTip": "原生目錄無法關閉共享，如不需要可以開啟進階模式後進行刪除",
+    "openFolder": "開啟技能資料夾",
+    "dragDrop": {
+      "release": "釋放安裝",
+      "hint": "資料夾需包含 SKILL.md"
+    },
+    "importing": "正在匯入技能...",
+    "delete": {
+      "title": "刪除確認",
+      "message": "確定要刪除技能「{{name}}」嗎？",
+      "fromRootTitle": "從根目錄中刪除",
+      "fromRootMessage": "確定要從根目錄中刪除技能「{{name}}」嗎？",
+      "selectSources": "該技能存在於多個來源，請選擇要刪除的目錄：",
+      "description": "此操作將刪除上述目錄及其所有檔案，並移除關聯的符號連結，且不可撤銷。",
+      "confirm": "確認刪除",
+      "advancedRequired": "刪除非根目錄來源的技能需要在設定中開啟「進階模式」"
+    },
+    "detail": {
+      "fileDirectory": "檔案目錄：",
+      "clickToView": "點擊檔案檢視內容",
+      "loadingFiles": "載入檔案清單中...",
+      "noFiles": "暫無檔案",
+      "noFilesHint": "該技能目錄下沒有找到檔案",
+      "agentStatus": "Agent 共享啟用狀態：",
+      "dragResize": "拖曳調整寬度",
+      "deleteSkill": "刪除技能"
+    },
+    "source": {
+      "global": "Global",
+      "removeFromRoot": "從根目錄中移除",
+      "existsInRoot": "根目錄中已存在",
+      "copyToRoot": "拷貝到根目錄",
+      "collected": "已收錄",
+      "collect": "收錄",
+      "agentEnabled": "Agent 開啟"
+    },
+    "noSkillsFound": "未找到技能",
+    "noSkillsHint": "嘗試調整搜尋或篩選條件",
+    "retry": "重試",
+    "errorMessage": "請確保應用在 Tauri 環境中運行，而不是在瀏覽器中。",
+    "operationLog": {
+      "title": "日誌",
+      "panelTitle": "觸發「複製到根目錄」的操作",
+      "empty": "暫無拷貝/匯入/啟用記錄",
+      "clear": "清空",
+      "close": "關閉",
+      "copyFromSource": "從 {{source}} 拷貝「{{skill}}」到根目錄",
+      "dragImport": "拖曳匯入「{{skill}}」到根目錄",
+      "enableAgent": "為 {{target}} 啟用「{{skill}}」（來源：{{source}}）"
+    },
+    "import": {
+      "fromOther": "從 Agent 匯入到原生目錄",
+      "fromOtherRepo": "從其他儲存庫匯入",
+      "hint": "複製技能到原生目錄",
+      "title": "匯入技能",
+      "subtitle": "從其他 Agent 選擇技能匯入到目前 Agent",
+      "selectSource": "選擇來源 Agent",
+      "selectAgentHint": "請先選擇一個來源 Agent",
+      "available": "可選技能",
+      "noSkills": "該 Agent 暫無可匯入的技能",
+      "current": "目前 Agent 技能",
+      "noImported": "尚未匯入任何技能",
+      "selectAll": "全選",
+      "deselectAll": "清空",
+      "defaultEnabled": "匯入後預設開啟",
+      "import": "匯入",
+      "labelExists": "已存在",
+      "labelAdded": "已新增"
+    },
+    "viewFlat": "平鋪展示",
+    "viewBySource": "按來源展示",
+    "viewSwitch": "切換檢視",
+    "viewHelp": "說明",
+    "viewHelpFlat": "聚合本地多個 Agent 的 skill 目錄，合併成一份可管理檢視",
+    "viewHelpBySource": "按照不同的 Agent 對 Skills 進行分類展示，可以清晰地看到每個 Agent 下有哪些 Skills",
+    "mainToggleHelp": {
+      "title": "主開關狀態",
+      "off": "未啟用",
+      "nativeOnly": "僅原生目錄啟用",
+      "on": "部分或全部啟用",
+      "allNative": "全部原生：所有 Agent 目錄下都存在實體檔案"
+    },
+    "pinHelp": {
+      "title": "卡片置頂標記",
+      "desc": "右鍵卡片可置頂 / 取消置頂，置頂後會顯示左上角摺角標記並優先排序"
+    },
+    "rootPathLabel": "掃描目錄：",
+    "githubTipMid": " 該路徑下的技能可透過",
+    "githubTipLink": " GitHub 備份",
+    "githubTipAfter": "同步到遠端儲存庫",
+    "dismiss": "知道了",
+    "agentSourcePath": "掃描目錄：",
+    "noSkillsInSource": "該來源下暫無技能",
+    "noSkillsInSourceSearch": "未找到「{{keyword}}」"
+  },
+  "githubBackup": {
+    "title": "GitHub備份",
+    "description": "管理你的GitHub技能儲存庫",
+    "openFolder": "開啟本地目錄",
+    "openRemote": "開啟遠端儲存庫",
+    "config": {
+      "title": "GitHub 儲存庫設定",
+      "owner": "儲存庫擁有者",
+      "ownerPlaceholder": "例如: cchao123",
+      "ownerHelper": "GitHub 用戶名或組織名",
+      "repo": "儲存庫名稱",
+      "repoPlaceholder": "例如: my-skills-repo",
+      "repoHelper": "存放技能檔案的儲存庫名稱",
+      "createRepoLink": "還沒有？去建立 ➜",
+      "branch": "分支",
+      "branchPlaceholder": "main",
+      "branchHelper": "預設使用 main 或 master",
+      "path": "技能存放路徑",
+      "pathPlaceholder": "/skills",
+      "pathHelper": "儲存庫中技能定義的根目錄",
+      "token": "Personal Access Token",
+      "tokenPlaceholder": "ghp_xxxxxxxxxxxxxx",
+      "tokenHelperBefore": "在 GitHub ➜ Settings ➜ Developer settings ➜ ",
+      "tokenHelperAfter": " 中產生 (需要 repo 權限)"
+    },
+    "syncMenu": {
+      "openTitle": "同步選項",
+      "overwriteRemote": " 以本地版本覆蓋遠端",
+      "overwriteRemoteHint": "勾選後：不把本地重置為遠端再提交，而是按目前磁碟內容暫存（含刪除）並強制推送，使 GitHub 上的技能目錄與本地一致。分支若開啟保護可能無法強制推送。"
+    },
+    "restoreMenu": {
+      "overwriteLocal": "以遠端版本覆蓋本地",
+      "overwriteLocalHint": "勾選後，本地目錄將完全以遠端為準（本地獨有/未追蹤的檔案也會被刪除）"
+    },
+    "confirm": {
+      "forceSyncTitle": "強制同步確認",
+      "forceSyncMessage": "目前已勾選「以本地版本覆蓋遠端」，同步後將強制推送本地內容到遠端，遠端儲存庫中的其他變更將被覆蓋，且不可撤銷。",
+      "confirmContinue": "確認要繼續嗎？",
+      "confirmSync": "確認同步",
+      "overwriteRestoreTitle": "覆蓋還原確認",
+      "overwriteRestoreMessage": "目前已勾選「以遠端版本覆蓋本地」，還原後本地獨有的檔案將被刪除，本地內容完全與遠端一致，且不可撤銷。",
+      "confirmRestore": "確認還原"
+    },
+    "form": {
+      "connectedTitle": "已連線，點擊編輯按鈕修改設定"
+    },
+    "shared": {
+      "title": "分享給他人",
+      "subtitle": "透過 Claude Code Plugin Marketplace 讓他人安裝你的技能",
+      "claudeCode": "Claude Code",
+      "viaMarketplace": "via Plugin Marketplace",
+      "step1Title": "註冊 Marketplace",
+      "step1Desc": "在 Claude Code 中執行以下指令註冊 marketplace：",
+      "step2Title": "安裝外掛",
+      "step2Desc": "從 marketplace 安裝外掛：",
+      "copy": "複製",
+      "copied": "已複製",
+      "notice": "確認目前儲存庫為公開狀態",
+      "cursor": "Cursor",
+      "viaRemoteRule": "via Remote Rule",
+      "cursorStep1Title": "開啟設定並新增規則",
+      "cursorStep1Desc": "開啟 Cursor Settings ➜ Rules，在 Project Rules 部分點擊 Add Rule，選擇 Remote Rule (Github)",
+      "cursorStep2Title": "輸入儲存庫位址",
+      "cursorStep2Desc": "輸入以下 GitHub 儲存庫的 URL"
+    },
+    "buttons": {
+      "testConnection": "測試連線",
+      "testing": "測試中...",
+      "saveSettings": "儲存設定",
+      "saving": "儲存中...",
+      "syncNow": "同步到 GitHub",
+      "syncing": "同步中...",
+      "restoreNow": "從 GitHub 還原",
+      "restoring": "還原中...",
+      "editConfig": "修改設定",
+      "openLocal": "開啟本地目錄"
+    },
+    "guide": {
+      "title": "設定指南",
+      "step1": {
+        "title": "建立一個 GitHub 儲存庫",
+        "description": "如果您還沒有專門存放技能的儲存庫，請在 GitHub 上建立一個新的私人或公開儲存庫。",
+        "link": "建立儲存庫"
+      },
+      "step2": {
+        "title": "產生存取權杖 (PAT)",
+        "description": "前往 GitHub 設定，產生一個細粒度權杖，確保勾選 repo 權限以便應用可以讀取和寫入內容。",
+        "link": "產生權杖",
+        "detail1": "Github 頭像 ➜ 點擊 Settings ➜ 進入 Developer Settings",
+        "detail2Link": "Personal access tokens",
+        "detail2": "➜ 點擊 Generate new token",
+        "detail3": "填寫基本資訊 ➜ Only select repositories 選中準備好的儲存庫 ➜ Add permissions ➜ ☑勾選[Contents] ➜ Access 切換為 Read and write"
+      },
+      "step3": {
+        "title": "填寫並儲存",
+        "description": "將儲存庫資訊和權杖填寫到上方表單中，點擊【測試連線】確認設定正確，最後點擊【儲存設定】。"
+      },
+      "step4": {
+        "title": "開始同步",
+        "description": "儲存後，應用會自動嘗試同步遠端技能庫到本地，你可以在【已安裝技能】頁面檢視同步狀態。"
+      },
+      "notice": "注意：同步過程會比對本地和遠端的差異。如果存在衝突，系統將以遠端儲存庫的版本為準。建議在修改前先進行手動備份。"
+    },
+    "otherUsage": {
+      "title": "其他用法",
+      "subtitle": "讓其他人安裝你的 Skills",
+      "step1": {
+        "title": "建立技能儲存庫",
+        "description": "在 GitHub 上建立一個公開儲存庫，在根目錄下建立 skills/ 資料夾，每個技能一個子目錄，包含 SKILL.md 檔案。"
+      },
+      "step2": {
+        "title": "編寫 SKILL.md",
+        "description": "每個技能目錄中建立 SKILL.md 檔案，使用 YAML frontmatter 定義元資訊："
+      },
+      "step3": {
+        "title": "分享儲存庫位址",
+        "description": "將你的儲存庫位址分享給其他人，他們只需在「技能市場」頁面的搜尋框中輸入你的 GitHub 儲存庫位址（格式：owner/repo），即可瀏覽並安裝你的技能。"
+      },
+      "step4": {
+        "title": "對方安裝技能",
+        "description": "對方在技能市場搜尋到你的儲存庫後，選擇需要的技能和對應的代理（如 Claude、Cursor 等），點擊安裝即可。技能將自動連結到他們本地的代理設定中。"
+      },
+      "example": "---\nname: my-skill\ndescription: 這是一個範例技能\n---\n\n技能的具體指令和內容寫在這裡...",
+      "tip": "提示：確保儲存庫是公開的，這樣其他人无需 Token 即可瀏覽並安裝你的技能。如果是私有儲存庫，對方需要配置具有讀取權限的 Token。"
+    },
+    "messages": {
+      "fillRequired": "請填寫所有必填欄位",
+      "connectionSuccess": "已連線",
+      "connectionFailed": "連線失敗，請檢查您的憑證。",
+      "saveSuccess": "設定儲存成功！",
+      "saveFailed": "儲存設定失敗。",
+      "syncSuccess": "同步成功！技能已推送到 GitHub。",
+      "syncFailed": "同步失敗，請檢查設定和網路。",
+      "restoreSuccess": "還原成功！已從 GitHub 還原 {count} 個技能。",
+      "restoreFailed": "還原失敗，請檢查設定和網路。",
+      "restoreEmpty": "遠端儲存庫中沒有可還原的技能。",
+      "saveFirst": "請先儲存設定後再同步。",
+      "testFirst": "請先測試連線成功後再同步",
+      "connectedHint": "已連線，如需修改請點擊「修改設定」按鈕進行重設"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "tabGeneral": "一般",
+    "tabAdvanced": "進階",
+    "tabAgents": "Agents",
+    "tabAbout": "關於",
+    "tabChangelog": "更新日誌",
+    "feedback": "回饋",
+    "agents": {
+      "title": "Agents",
+      "subtitle": "點擊 Agent 可開啟其設定目錄 · 右鍵可快速開啟根目錄",
+      "installed": "已安裝",
+      "notInstalled": "未安裝",
+      "skillsManager": "Skills Manager",
+      "appRoot": "軟體根目錄",
+      "scanPaths": "技能掃描目錄",
+      "scanPathsEmpty": "該 Agent 暫無專門的掃描目錄",
+      "expand": "展開掃描目錄",
+      "collapse": "收合掃描目錄",
+      "manageTitle": "管理 Agents",
+      "manageSubtitle": "選擇要在清單中顯示的 Agent",
+      "manageConfirm": "確認"
+    },
+    "skillFilter": {
+      "title": "按前綴隱藏技能",
+      "subtitle": "隱藏 ID 以指定前綴開頭的技能（例如飛書 CLI 注入的 lark-* 技能）。",
+      "placeholder": "輸入前綴，例如 lark-",
+      "add": "新增",
+      "empty": "尚未配置前綴，所有技能均會顯示。",
+      "remove": "移除 {{prefix}}",
+      "hint": "按 Enter 或逗號新增；輸入框為空時按 Backspace 可刪除最後一個標籤。比對不區分大小寫。",
+      "statusAll": "{{count}} 全部啟用",
+      "statusPartial": "{{count}} 啟用中"
+    },
+    "appearance": "外觀",
+    "appearanceDescription": "自訂應用的外觀和感覺",
+    "language": "語言",
+    "languageDescription": "選擇您偏好的語言",
+    "theme": "主題",
+    "themeLight": "淺色",
+    "themeDark": "深色",
+    "themeAuto": "跟隨系統",
+    "searchBar": {
+      "title": "搜尋欄元件",
+      "description": "自訂 Dashboard 頂部搜尋欄顯示哪些元件",
+      "showFilter": "前綴過濾按鈕",
+      "showFilterHint": "左側的漏斗按鈕，用於按前綴隱藏指定技能",
+      "showSearch": "搜尋輸入框",
+      "showSearchHint": "中間的關鍵字搜尋框",
+      "showActions": "說明 / 日誌按鈕",
+      "showActionsHint": "右側的「說明」和「日誌」按鈕組",
+      "reset": "恢復預設"
+    },
+    "about": "關於",
+    "aboutDescription": "一個用於管理 Claude Code 技能和外掛的桌面應用程式。支援從技能市場瀏覽、安裝和啟用技能，也可以從 GitHub 儲存庫同步自訂技能。",
+    "version": {
+      "current": "目前版本",
+      "latest": "最新版本",
+      "checking": "檢查中…",
+      "upToDate": "已是最新",
+      "updateAvailable": "發現新版本",
+      "checkFailed": "檢查失敗（將滑鼠游標懸停檢視詳情）",
+      "noRelease": "暫無發布版本",
+      "unknown": "未知",
+      "recheck": "重新檢查",
+      "goDownload": "前往更新",
+      "viewOnGithub": "在 GitHub 檢視"
+    },
+    "aboutHighlights": {
+      "unifiedScanTitle": "統一掃描",
+      "unifiedScanDescription": "聚合本地多個 Agent 的 skill 目錄，合併成一份可管理檢視",
+      "crossAgentDistTitle": "跨 Agent 分發",
+      "crossAgentDistDescription": "透過連結或複製，把同一個 skill 分發到不同 Agent",
+      "centralStorageTitle": "集中儲存",
+      "centralStorageDescription": "把可複用的 skills 放進中心目錄，便於維護與遷移",
+      "githubBackupTitle": "GitHub 備份與還原",
+      "githubBackupDescription": "將技能儲存庫推送到遠端，或在新機器上一鍵還原"
+    },
+    "builtWith": "基於",
+    "advanced": {
+      "title": "進階模式",
+      "description": "面向進階使用者的操作權限控制",
+      "modeLabel": "進階模式",
+      "disabledHint": "預設關閉，僅可刪除 Skills Manager 根目錄下的技能",
+      "enabledHint": "已開啟，可對所有來源的技能執行刪除操作",
+      "warning": "開啟進階模式後，詳情頁面將出現刪除按鈕，可刪除來自 Cursor、Claude 等 Agent 原生目錄的技能。"
+    },
+    "previewLocked": {
+      "agentsTitle": "Agent 管理僅桌面端可用",
+      "agentsDesc": "掃描 Claude / Cursor / Codex 等 Agent 的原生目錄、展示檢測狀態、開啟本地資料夾，都依賴桌面原生能力。",
+      "advancedTitle": "進階選項僅桌面端可用",
+      "advancedDesc": "技能前綴過濾、隱藏規則、符號連結策略等進階配置會真實修改你的本地檔案系統，只在桌面版裡開放。",
+      "downloadApp": "下載桌面版"
+    }
+  },
+  "common": {
+    "loading": "載入中...",
+    "error": "錯誤",
+    "success": "成功",
+    "cancel": "取消",
+    "save": "儲存",
+    "delete": "刪除",
+    "edit": "編輯",
+    "enable": "啟用",
+    "disable": "停用",
+    "enabled": "部分啟用",
+    "disabled": "未啟用",
+    "required": "必填",
+    "notInstalled": "未安裝",
+    "detected": "已檢測"
+  },
+  "installDialog": {
+    "title": "安裝技能: {{name}}",
+    "selectAgent": "選擇要啟用此技能的 Agent：",
+    "selectOne": "請至少選擇一個 Agent",
+    "confirmInstall": "確認安裝"
+  },
+  "githubSkillCard": {
+    "enabled": "已啟用 ({{count}})",
+    "downloaded": "已下載",
+    "installable": "可安裝",
+    "category": "分類",
+    "details": "詳情",
+    "installed": "已安裝",
+    "install": "安裝"
+  }
+}

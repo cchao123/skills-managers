@@ -64,6 +64,11 @@ code {
   transition-duration: 200ms;
 }
 
+/* Disable color transition for tab icons to avoid flicker */
+button svg {
+  transition-property: background-color, border-color;
+}
+
 /* Disable transition for theme icon itself to avoid flicker */
 .no-transition {
   transition: none !important;

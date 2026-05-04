@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { AgentConfig, SkillMetadata } from '@/types';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { getAgentDisplayName } from '@/constants';
@@ -25,6 +26,7 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
   currentAgentSkills,
   onImport,
 }) => {
+  const { t } = useTranslation();
   const [selectedSourceAgent, setSelectedSourceAgent] = useState<string>('');
   const [importList, setImportList] = useState<SkillMetadata[]>([]);
 
@@ -45,7 +47,13 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
 
   // 获取可用的源 agents（排除当前 agent）
   const availableAgents = useMemo(() => {
-    return agents.filter(a => a.name !== currentAgent);
+    const filtered = agents.filter(a => a.name !== currentAgent);
+    // 分离已安装和未安装的 agents
+    const detected = filtered.filter(a => a.detected);
+    const undetected = filtered.filter(a => !a.detected);
+    // 已安装的保持用户自定义排序，未安装的按 name 字母顺序固定
+    const sortedUndetected = [...undetected].sort((a, b) => a.name.localeCompare(b.name));
+    return [...detected, ...sortedUndetected];
   }, [agents, currentAgent]);
 
   // 获取选中源 Agent 的技能
@@ -99,7 +107,7 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
       width="90vw"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border flex-shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border flex-shrink-0" data-tauri-drag-region>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
             <img
@@ -110,11 +118,11 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">导入技能</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('dashboard.import.title')}</h2>
               <span className="text-sm font-medium text-[#b71422]">→</span>
               <span className="text-lg font-bold text-slate-900 dark:text-white">{getAgentDisplayName(currentAgent)}</span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">复制到目标 Agent 原生目录</p>
+            <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">{t('dashboard.import.hint')}</p>
           </div>
         </div>
         <button
@@ -130,7 +138,7 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
           {/* Column 1: Agent List */}
           <div className="w-48 flex-shrink-0 border-r border-gray-200 dark:border-dark-border flex flex-col bg-slate-50 dark:bg-dark-bg-tertiary">
             <div className="p-4 border-b border-gray-200 dark:border-dark-border">
-              <h3 className="text-sm font-bold text-slate-700 dark:text-gray-300">Agent 列表</h3>
+              <h3 className="text-sm font-bold text-slate-700 dark:text-gray-300">{t('dashboard.import.selectSource')}</h3>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {availableAgents.map(agent => {
@@ -164,7 +172,7 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
                         {getAgentDisplayName(agent.name)}
                       </span>
                       {!isInstalled && (
-                        <span className="text-xs text-slate-400 dark:text-gray-500">未安装</span>
+                        <span className="text-xs text-slate-400 dark:text-gray-500">{t('common.notInstalled')}</span>
                       )}
                     </div>
                   </button>
@@ -177,7 +185,7 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
           <div className="flex-1 flex flex-col border-r border-gray-200 dark:border-dark-border">
             <div className="p-4 border-b border-gray-200 dark:border-dark-border flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                {selectedSourceAgent ? getAgentDisplayName(selectedSourceAgent) : '技能列表'}
+                {selectedSourceAgent ? getAgentDisplayName(selectedSourceAgent) : t('dashboard.import.available')}
                 {selectedSourceAgent && (
                   <span className="text-xs text-slate-500 dark:text-gray-400">({sourceAgentSkills.length})</span>
                 )}
@@ -203,7 +211,7 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
                   {(() => {
                     const availableSkills = sourceAgentSkills.filter(s => !existingSkillIds.has(s.id));
                     const allSelected = availableSkills.length > 0 && availableSkills.every(s => importListSkillIds.has(s.id));
-                    return allSelected ? '取消全选' : '全选';
+                    return allSelected ? t('dashboard.import.deselectAll') : t('dashboard.import.selectAll');
                   })()}
                 </button>
               )}
@@ -212,12 +220,12 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
               {!selectedSourceAgent ? (
                 <div className="h-full flex items-center justify-center">
                   <p className="text-sm text-slate-400 dark:text-gray-500 text-center px-4">
-                    请先从左侧选择一个 Agent
+                    {t('dashboard.import.selectAgentHint')}
                   </p>
                 </div>
               ) : sourceAgentSkills.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
-                  <p className="text-sm text-slate-400 dark:text-gray-500">该 Agent 暂无技能</p>
+                  <p className="text-sm text-slate-400 dark:text-gray-500">{t('dashboard.import.noSkills')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -261,10 +269,10 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
                               {skill.name}
                             </p>
                             {isExisting && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 flex-shrink-0">已存在</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 flex-shrink-0">{t('dashboard.import.labelExists')}</span>
                             )}
                             {isInImportList && !isExisting && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-rose-200 dark:bg-rose-700 text-rose-800 dark:text-rose-100 flex-shrink-0">已添加</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-rose-200 dark:bg-rose-700 text-rose-800 dark:text-rose-100 flex-shrink-0">{t('dashboard.import.labelAdded')}</span>
                             )}
                           </div>
                           <p className="text-xs text-slate-500 dark:text-gray-400 line-clamp-2">{skill.description}</p>
@@ -281,14 +289,14 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
           <div className="flex-1 flex flex-col">
             <div className="p-4 border-b border-gray-200 dark:border-dark-border flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                待导入 ({importList.length})
+                {t('dashboard.import.current')} ({importList.length})
               </h3>
               {importList.length > 0 && (
                 <button
                   onClick={() => setImportList([])}
                   className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
                 >
-                  清空
+                  {t('dashboard.import.deselectAll')}
                 </button>
               )}
             </div>
@@ -296,8 +304,8 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
               {importList.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-gray-500">
                   <Icon name="inbox" className="text-4xl mb-2 opacity-50" />
-                  <p className="text-sm">未选择技能</p>
-                  <p className="text-xs mt-1">点击技能卡片添加到待导入列表</p>
+                  <p className="text-sm">{t('dashboard.import.noImported')}</p>
+                  <p className="text-xs mt-1">{t('dashboard.import.selectAgentHint')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -325,19 +333,19 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
         </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-end p-4 border-t border-gray-200 dark:border-dark-border gap-3 flex-shrink-0">
+      <div className="flex items-center justify-end p-4 border-t border-gray-200 dark:border-dark-border gap-3 flex-shrink-0" data-tauri-drag-region>
         <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-dark-bg-tertiary transition-colors"
           >
-            取消
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleImport}
             disabled={importList.length === 0}
             className="px-4 py-2 rounded-lg text-sm font-bold bg-[#b71422] text-white hover:bg-[#a01220] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            导入 ({importList.length})
+            {t('dashboard.import.import')} ({importList.length})
         </button>
       </div>
     </Drawer>

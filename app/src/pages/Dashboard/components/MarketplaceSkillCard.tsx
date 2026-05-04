@@ -99,7 +99,7 @@ function MarketplaceSkillCard({
               <>
                 <Icon name="check_circle" className="text-xs text-amber-600 dark:text-amber-400 flex-shrink-0" />
                 <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 px-1.5 py-[1px] rounded-full whitespace-nowrap">
-                  全部原生
+                  {t('dashboard.mainToggle.allNative')}
                 </span>
               </>
             ) : (
@@ -185,7 +185,7 @@ function MarketplaceSkillCard({
                 <>
                   <Icon name="check_circle" className="text-xs text-amber-600 dark:text-amber-400 flex-shrink-0" />
                   <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 px-1.5 py-[1px] rounded-full whitespace-nowrap">
-                    全部原生
+                    {t('dashboard.mainToggle.allNative')}
                   </span>
                 </>
               ) : (

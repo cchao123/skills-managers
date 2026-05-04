@@ -7,8 +7,10 @@ export const GITHUB_URLS = {
 
 // Languages configuration
 export const LANGUAGES = [
-  { code: 'zh', name: '中文', abbr: '中' },
+  { code: 'zh', name: '中文简体', abbr: '中' },
+  { code: 'zh-TW', name: '中文繁体', abbr: '繁' },
   { code: 'en', name: 'English', abbr: 'EN' },
+  { code: 'ja', name: '日本語', abbr: '日' },
 ] as const;
 
 // Theme options: 重用 @/constants/theme 中的 THEME / Theme

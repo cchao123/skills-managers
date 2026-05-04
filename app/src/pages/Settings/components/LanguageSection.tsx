@@ -25,7 +25,7 @@ export const LanguageSection: React.FC<LanguageSectionProps> = ({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         {LANGUAGES.map((lang) => (
           <button
             key={lang.code}

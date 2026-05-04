@@ -321,19 +321,10 @@ const FilterDropdownContent: React.FC<FilterDropdownContentProps> = ({
           ))}
         </div>
       )}
-
       <div className="flex items-center justify-between">
         <p className="text-[11px] text-slate-400 dark:text-gray-500 leading-relaxed">
           {t('settings.skillFilter.hint')}
         </p>
-        <div className="flex items-center gap-1.5 shrink-0 ml-3">
-          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPartial ? 'bg-amber-400' : 'bg-green-400'}`} />
-          <span className="text-[11px] font-medium text-slate-500 dark:text-gray-400 whitespace-nowrap">
-            {isPartial
-              ? t('settings.skillFilter.statusPartial', { count: visibleCount })
-              : t('settings.skillFilter.statusAll', { count: visibleCount })}
-          </span>
-        </div>
       </div>
     </div>
   );

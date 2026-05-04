@@ -1,0 +1,452 @@
+{
+  "app": {
+    "name": "スキルマネージャー",
+    "version": "v1.0.0"
+  },
+  "nav": {
+    "marketplace": "スキルマーケットプレイス",
+    "dashboard": "インストール済みスキル",
+    "githubBackup": "GitHubバックアップ",
+    "settings": "設定",
+    "expand": "展開",
+    "collapse": "折りたたみ"
+  },
+  "header": {
+    "marketplace": "スキルマーケットプレイス",
+    "dashboard": "インストール済みスキル",
+    "githubBackup": "GitHubバックアップ",
+    "settings": "設定",
+    "notifications": "通知",
+    "profile": "プロフィール"
+  },
+  "marketplace": {
+    "title": "スキルマーケットプレイス",
+    "search": "スキルを検索...",
+    "searchFull": "スキル名、説明、またはカテゴリを検索...",
+    "filterAll": "すべて",
+    "filterEnabled": "有効",
+    "filterDisabled": "無効",
+    "enable": "有効にする",
+    "disable": "無効にする",
+    "install": "インストール",
+    "uninstall": "アンインストール"
+  },
+  "dashboard": {
+    "title": "インストール済みスキル",
+    "search": {
+      "placeholder": "インストール済みスキルを検索...",
+      "noResults": "一致するスキルが見つかりませんでした"
+    },
+    "filter": {
+      "all": "すべて",
+      "enabled": "一部有効",
+      "disabled": "無効",
+      "noResults": "現在のフィルターに一致するスキルがありません"
+    },
+    "total": "総スキル数",
+    "enabled": "一部有効",
+    "disabled": "無効",
+    "mainToggle": {
+      "allOn": "すべて有効",
+      "allOff": "すべて無効",
+      "nativeOnly": "ネイティブのみ有効：{{agents}}。クリックして他を有効にする",
+      "allNative": "すべてネイティブ：すべてのAgentディレクトリに物理ファイルが存在します"
+    },
+    "toast": {
+      "nativeAgentWarning": "{{agent}}のネイティブディレクトリに属しているため、無効にできません",
+      "skillDeleted": "スキル「{{name}}」を削除しました",
+      "skillDeleteFailed": "スキルの削除に失敗しました",
+      "skillDeletedFrom": "スキル「{{name}}」を{{sources}}から削除しました",
+      "skillDeleteFromFailed": "スキル「{{name}}」を{{sources}}から削除できませんでした",
+      "skillCopiedToRoot": "スキル「{{name}}」をルートディレクトリにコピーしました",
+      "cannotGetSkillPath": "スキルのパスを取得できません",
+      "importSkillsSuccess": "{{count}}個のスキルをインポートしました",
+      "loadDetailFailed": "スキル詳細の読み込みに失敗しました",
+      "readFileFailed": "ファイルの読み込みに失敗しました"
+    },
+    "stats": {
+      "total": "合計",
+      "enabled": "一部有効",
+      "disabled": "無効",
+      "dedupeFooter": "{{count}}件の重複行をフィルタリングしました"
+    },
+    "agentsEnabled": "Agentで有効",
+    "notInstalled": "未インストール",
+    "agentEnabled": "有効",
+    "agentDisabled": "無効",
+    "nativeSource": "ネイティブ",
+    "alwaysEnabled": "常に有効",
+    "contextMenu": {
+      "pinCard": "トップに固定",
+      "unpinCard": "固定を解除",
+      "openRoot": "ルートディレクトリを開く"
+    },
+    "agentFilter": {
+      "title": "Agentでフィルター",
+      "activeTitle": "フィルター中：{{name}}（クリックして変更）",
+      "all": "すべて",
+      "clear": "クリア"
+    },
+    "nativeSourceTip": "ネイティブソースは共有解除できません。不要な場合は、詳細モードを有効にして削除してください",
+    "openFolder": "スキルフォルダを開く",
+    "dragDrop": {
+      "release": "ドロップしてインストール",
+      "hint": "フォルダにはSKILL.mdが含まれている必要があります"
+    },
+    "importing": "スキルをインポート中...",
+    "delete": {
+      "title": "削除の確認",
+      "message": "スキル「{{name}}」を削除してもよろしいですか？",
+      "fromRootTitle": "ルートディレクトリから削除",
+      "fromRootMessage": "スキル「{{name}}」をルートディレクトリから削除してもよろしいですか？",
+      "selectSources": "このスキルは複数のソースに存在します。削除するソースを選択してください：",
+      "description": "この操作により、上記のディレクトリとそのすべてのファイルが削除され、関連するシンボリックリンクが削除されます。この操作は取り消せません。",
+      "confirm": "削除を確認",
+      "advancedRequired": "ルート以外のソーススキルを削除するには、設定で「詳細モード」を有効にする必要があります"
+    },
+    "detail": {
+      "fileDirectory": "ファイルディレクトリ：",
+      "clickToView": "ファイルをクリックして内容を表示",
+      "loadingFiles": "ファイルリストを読み込み中...",
+      "noFiles": "ファイルなし",
+      "noFilesHint": "このスキルディレクトリにはファイルが見つかりませんでした",
+      "agentStatus": "Agentと共有：",
+      "dragResize": "ドラッグしてサイズ変更",
+      "deleteSkill": "スキルを削除"
+    },
+    "source": {
+      "global": "ルート",
+      "removeFromRoot": "ルートから削除",
+      "existsInRoot": "ルートに既に存在",
+      "copyToRoot": "ルートにコピー",
+      "collected": "収集済み",
+      "collect": "収集",
+      "agentEnabled": "Agentで有効"
+    },
+    "noSkillsFound": "スキルが見つかりませんでした",
+    "noSkillsHint": "検索またはフィルターを調整してください",
+    "retry": "再試行",
+    "errorMessage": "アプリケーションがブラウザではなくTauri環境で実行されていることを確認してください。",
+    "operationLog": {
+      "title": "ログ",
+      "panelTitle": "「ルートにコピー」をトリガーしたアクション",
+      "empty": "コピー/インポート/有効化の記録がまだありません",
+      "clear": "クリア",
+      "close": "閉じる",
+      "copyFromSource": "{{source}}から「{{skill}}」をルートにコピーしました",
+      "dragImport": "ドラッグで「{{skill}}」をルートにインポートしました",
+      "enableAgent": "{{target}}で「{{skill}}」を有効にしました（ソース：{{source}}）"
+    },
+    "import": {
+      "fromOther": "Agentからネイティブディレクトリにインポート",
+      "fromOtherRepo": "他のリポジトリからインポート",
+      "hint": "スキルをネイティブディレクトリにコピー",
+      "title": "スキルをインポート",
+      "subtitle": "他のAgentからスキルを選択して現在のAgentにインポート",
+      "selectSource": "ソースAgentを選択",
+      "selectAgentHint": "最初にソースAgentを選択してください",
+      "available": "利用可能なスキル",
+      "noSkills": "このAgentからインポート可能なスキルがありません",
+      "current": "現在のAgentのスキル",
+      "noImported": "まだスキルをインポートしていません",
+      "selectAll": "すべて選択",
+      "deselectAll": "すべて選択解除",
+      "defaultEnabled": "インポート後にデフォルトで有効にする",
+      "import": "インポート",
+      "labelExists": "存在",
+      "labelAdded": "追加済み"
+    },
+    "viewFlat": "フラットビュー",
+    "viewBySource": "ソース別",
+    "viewSwitch": "ビューを切り替え",
+    "viewHelp": "ヘルプ",
+    "viewHelpFlat": "複数のローカルAgentのスキルディレクトリを集約して、統一された管理可能なビューにします",
+    "viewHelpBySource": "Agentソース別にスキルをグループ化し、各Agentがどのスキルを持っているかを明確に把握できます",
+    "mainToggleHelp": {
+      "title": "メイントグルーの状態",
+      "off": "無効",
+      "nativeOnly": "ネイティブのみ有効",
+      "on": "一部またはすべて有効",
+      "allNative": "すべてネイティブ：すべてのAgentディレクトリに物理ファイルが存在します"
+    },
+    "pinHelp": {
+      "title": "カード固定マーク",
+      "desc": "カードを右クリックして固定/固定解除します。固定されたカードは左上に折り返しマークが表示され、最上部に表示されます。"
+    },
+    "rootPathLabel": "スキャンパス：",
+    "githubTipMid": " — このパス以下のスキルは",
+    "githubTipLink": "GitHubバックアップ",
+    "githubTipAfter": "を通じてリモートリポジトリと同期できます",
+    "dismiss": "了解",
+    "agentSourcePath": "スキャンパス：",
+    "noSkillsInSource": "このソースにはスキルがありません",
+    "noSkillsInSourceSearch": "「{{keyword}}」の結果が見つかりませんでした"
+  },
+  "githubBackup": {
+    "title": "GitHubバックアップ",
+    "description": "GitHubスキルリポジトリを管理",
+    "openFolder": "ローカルフォルダを開く",
+    "openRemote": "リモートリポジトリを開く",
+    "config": {
+      "title": "GitHubリポジトリ設定",
+      "owner": "リポジトリ所有者",
+      "ownerPlaceholder": "例: cchao123",
+      "ownerHelper": "GitHubユーザー名または組織名",
+      "repo": "リポジトリ名",
+      "repoPlaceholder": "例: my-skills-repo",
+      "repoHelper": "スキルファイルを保存するリポジトリ名",
+      "createRepoLink": "お持ちでないですか？作成する ➜",
+      "branch": "ブランチ",
+      "branchPlaceholder": "main",
+      "branchHelper": "デフォルトでmainまたはmaster",
+      "path": "スキル保存パス",
+      "pathPlaceholder": "/skills",
+      "pathHelper": "リポジトリ内のスキル定義のルートディレクトリ",
+      "token": "パーソナルアクセストークン",
+      "tokenPlaceholder": "ghp_xxxxxxxxxxxxxx",
+      "tokenHelperBefore": "GitHub ➜ Settings ➜ Developer settings ➜ ",
+      "tokenHelperAfter": " で生成（repo権限が必要）"
+    },
+    "syncMenu": {
+      "openTitle": "同期オプション",
+      "overwriteRemote": "ローカル版でリモートを上書き",
+      "overwriteRemoteHint": "チェック時：作業ツリーをそのまま（削除を含む）ステージングし、強制プッシュして、リモートのスキルツリーをローカルと一致させます。保護されたブランチでは強制プッシュが拒否される場合があります。"
+    },
+    "restoreMenu": {
+      "overwriteLocal": "リモート版でローカルを上書き",
+      "overwriteLocalHint": "チェック時、ローカルフォルダはリモートと完全一致するようにリセットされます（ローカルのみおよび未追跡のファイルも削除されます）"
+    },
+    "confirm": {
+      "forceSyncTitle": "強制同期の確認",
+      "forceSyncMessage": "「ローカル版でリモートを上書き」がチェックされています。同期後、ローカルコンテンツがリモートに強制プッシュされ、リモートの他の変更は上書きされます。この操作は取り消せません。",
+      "confirmContinue": "続行してもよろしいですか？",
+      "confirmSync": "同期を確認",
+      "overwriteRestoreTitle": "上書き復元の確認",
+      "overwriteRestoreMessage": "「リモート版でローカルを上書き」がチェックされています。復元後、ローカルのみのファイルは削除され、ローカルコンテンツはリモートと完全に一致します。この操作は取り消せません。",
+      "confirmRestore": "復元を確認"
+    },
+    "form": {
+      "connectedTitle": "接続済み。編集をクリックして変更してください"
+    },
+    "shared": {
+      "title": "他の人と共有",
+      "subtitle": "Claude Code Plugin Marketplaceを通じて他の人にスキルをインストールしてもらう",
+      "claudeCode": "Claude Code",
+      "viaMarketplace": "Plugin Marketplace経由",
+      "step1Title": "Marketplaceを登録",
+      "step1Desc": "Claude Codeで次のコマンドを実行してmarketplaceを登録します：",
+      "step2Title": "プラグインをインストール",
+      "step2Desc": "marketplaceからプラグインをインストールします：",
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "notice": "リポジトリが公開されていることを確認してください",
+      "cursor": "Cursor",
+      "viaRemoteRule": "Remote Rule経由",
+      "cursorStep1Title": "設定を開いてルールを追加",
+      "cursorStep1Desc": "Cursor Settings ➜ Rulesを開き、Project RulesセクションでAdd Ruleをクリックし、Remote Rule (Github)を選択します",
+      "cursorStep2Title": "リポジトリURLを入力",
+      "cursorStep2Desc": "以下のGitHubリポジトリURLを入力します"
+    },
+    "buttons": {
+      "testConnection": "接続をテスト",
+      "testing": "テスト中...",
+      "saveSettings": "設定を保存",
+      "saving": "保存中...",
+      "syncNow": "GitHubにプッシュ",
+      "syncing": "同期中...",
+      "restoreNow": "GitHubから復元",
+      "restoring": "復元中...",
+      "editConfig": "設定を編集",
+      "openLocal": "ローカルディレクトリを開く"
+    },
+    "guide": {
+      "title": "設定ガイド",
+      "step1": {
+        "title": "GitHubリポジトリを作成",
+        "description": "スキルを保存するリポジトリがない場合は、GitHubで新しいプライベートまたはパブリックリポジトリを作成してください。",
+        "link": "リポジトリを作成"
+      },
+      "step2": {
+        "title": "アクセストークン（PAT）を生成",
+        "description": "GitHub設定に移動し、ファイングレイントークンを生成します。アプリがコンテンツを読み書きできるように、repo権限を確認してください。",
+        "link": "トークンを生成",
+        "detail1": "GitHubアバター ➜ Settingsをクリック ➜ Developer Settingsに移動",
+        "detail2Link": "Personal access tokens",
+        "detail2": "➜ Generate new tokenをクリック",
+        "detail3": "基本情報を入力 ➜ Only select repositoriesで準備したリポジトリを選択 ➜ Add permissions ➜ ☑[Contents]にチェック ➜ AccessをRead and writeに切り替え"
+      },
+      "step3": {
+        "title": "入力して保存",
+        "description": "上記のフォームにリポジトリ情報とトークンを入力し、「接続をテスト」をクリックして設定が正しいことを確認してから、「設定を保存」をクリックしてください。"
+      },
+      "step4": {
+        "title": "同期を開始",
+        "description": "保存後、アプリは自動的にリモートスキルライブラリをローカルに同期しようとします。「インストール済みスキル」ページで同期ステータスを確認できます。"
+      },
+      "notice": "注意：同期プロセスはローカルとリモートの差異を比較します。競合がある場合、システムはリモートリポジトリのバージョンを使用します。変更を加える前に手動バックアップすることをお勧めします。"
+    },
+    "otherUsage": {
+      "title": "その他の使用法",
+      "subtitle": "他の人にスキルをインストールしてもらう",
+      "step1": {
+        "title": "スキルリポジトリを作成",
+        "description": "GitHubでパブリックリポジトリを作成します。ルートにskills/フォルダを作成し、各スキルをサブディレクトリに入れ、SKILL.mdファイルを含めます。"
+      },
+      "step2": {
+        "title": "SKILL.mdを書く",
+        "description": "各スキルディレクトリにSKILL.mdファイルを作成し、YAML frontmatterを使用してメタデータを定義します："
+      },
+      "step3": {
+        "title": "リポジトリURLを共有",
+        "description": "リポジトリURLを他の人と共有します。彼らはマーケットプレイスの検索バーでGitHubリポジトリアドレス（形式：owner/repo）を入力して、スキルを参照してインストールできます。"
+      },
+      "step4": {
+        "title": "相手がスキルをインストール",
+        "description": "マーケットプレイスでリポジトリを見つけた後、必要なスキルとターゲットエージェント（Claude、Cursorなど）を選択し、インストールをクリックします。スキルは自動的にローカルエージェント設定にリンクされます。"
+      },
+      "example": "---\nname: my-skill\ndescription: これはサンプルスキルです\n---\n\nスキルの具体的な指示と内容をここに書きます...",
+      "tip": "ヒント：リポジトリが公開されていることを確認してください。そうすれば、他の人はトークンなしでスキルを参照してインストールできます。プライベートリポジトリの場合、相手は読み取り権限を持つトークンを設定する必要があります。"
+    },
+    "messages": {
+      "fillRequired": "すべての必須フィールドを入力してください",
+      "connectionSuccess": "接続しました",
+      "connectionFailed": "接続に失敗しました。認証情報を確認してください。",
+      "saveSuccess": "設定を保存しました！",
+      "saveFailed": "設定の保存に失敗しました。",
+      "syncSuccess": "同期成功！スキルをGitHubにプッシュしました。",
+      "syncFailed": "同期に失敗しました。設定とネットワークを確認してください。",
+      "restoreSuccess": "復元成功！GitHubから{count}個のスキルを復元しました。",
+      "restoreFailed": "復元に失敗しました。設定とネットワークを確認してください。",
+      "restoreEmpty": "リモートリポジトリに復元可能なスキルがありません。",
+      "saveFirst": "同期する前に設定を保存してください。",
+      "testFirst": "同期前に接続テストを行ってください",
+      "connectedHint": "接続済み。変更するには「設定を編集」をクリックしてください"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "tabGeneral": "一般",
+    "tabAdvanced": "詳細",
+    "tabAgents": "Agents",
+    "tabAbout": "について",
+    "tabChangelog": "変更履歴",
+    "feedback": "フィードバック",
+    "agents": {
+      "title": "Agents",
+      "subtitle": "Agentをクリックしてディレクトリを開く · 右クリックでクイックオープン",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "skillsManager": "Skills Manager",
+      "appRoot": "アプリルート",
+      "scanPaths": "スキルスキャンパス",
+      "scanPathsEmpty": "このAgentには専用のスキャンパスがありません",
+      "expand": "スキャンパスを展開",
+      "collapse": "スキャンパスを折りたたむ",
+      "manageTitle": "Agentsを管理",
+      "manageSubtitle": "リストに表示するAgentを選択",
+      "manageConfirm": "確認"
+    },
+    "skillFilter": {
+      "title": "プレフィックスでスキルを非表示",
+      "subtitle": "指定されたプレフィックスで始まるIDのスキルを非表示にします（例：Lark CLIによって注入されるスキル）。",
+      "placeholder": "プレフィックスを入力してください（例：lark-）",
+      "add": "追加",
+      "empty": "プレフィックスが設定されていません。すべてのスキルが表示されます。",
+      "remove": "{{prefix}}を削除",
+      "hint": "Enterまたはコンマで追加；空の入力でBackspaceを押して最後のタグを削除します。マッチングは大文字と小文字を区別しません。",
+      "statusAll": "{{count}} 有効",
+      "statusPartial": "{{count}} アクティブ"
+    },
+    "appearance": "外観",
+    "appearanceDescription": "アプリケーションの外観と感触をカスタマイズ",
+    "language": "言語",
+    "languageDescription": "希望の言語を選択してください",
+    "theme": "テーマ",
+    "themeLight": "ライト",
+    "themeDark": "ダーク",
+    "themeAuto": "システム",
+    "searchBar": {
+      "title": "検索バーコンポーネント",
+      "description": "ダッシュボードの上部検索バーに表示するコンポーネントをカスタマイズ",
+      "showFilter": "プレフィックスフィルターボタン",
+      "showFilterHint": "プレフィックスでスキルを非表示にするための左側の漏斗ボタン",
+      "showSearch": "検索入力",
+      "showSearchHint": "中央のキーワード検索入力",
+      "showActions": "ヘルプ / ログボタン",
+      "showActionsHint": "右側のヘルプとログボタングループ",
+      "reset": "デフォルトにリセット"
+    },
+    "about": "について",
+    "aboutDescription": "Claude Codeスキルとプラグインを管理するためのデスクトップアプリケーション。マーケットプレイスからスキルを参照、インストール、有効化したり、GitHubリポジトリからカスタムスキルを同期したりできます。",
+    "version": {
+      "current": "現在",
+      "latest": "最新",
+      "checking": "確認中…",
+      "upToDate": "最新版です",
+      "updateAvailable": "更新が利用可能",
+      "checkFailed": "チェック失敗（詳細はホバー）",
+      "noRelease": "リリースがまだありません",
+      "unknown": "不明",
+      "recheck": "再確認",
+      "goDownload": "更新をダウンロード",
+      "viewOnGithub": "GitHubで見る"
+    },
+    "aboutHighlights": {
+      "unifiedScanTitle": "統合スキャン",
+      "unifiedScanDescription": "複数のローカルAgentのスキルディレクトリを1つの管理可能なビューに集約",
+      "crossAgentDistTitle": "クロスAgent配布",
+      "crossAgentDistDescription": "リンクまたはコピーを介して、同じスキルを異なるAgentに配布",
+      "centralStorageTitle": "集中ストレージ",
+      "centralStorageDescription": "再利用可能なスキルを中央ディレクトリに保存し、保守と移行を容易に",
+      "githubBackupTitle": "GitHubバックアップと復元",
+      "githubBackupDescription": "スキルリポジトリをリモートにプッシュするか、新しいマシンでワンクリックで復元"
+    },
+    "builtWith": "構築技術",
+    "advanced": {
+      "title": "詳細モード",
+      "description": "高度な操作のためのアクセス制御",
+      "modeLabel": "詳細モード",
+      "disabledHint": "デフォルトでオフ。Skills Managerルートディレクトリのスキルのみを削除できます。",
+      "enabledHint": "有効。すべてのソースのスキルを削除できます。",
+      "warning": "詳細モードをオンにすると、詳細ページに削除ボタンが表示され、Cursor、Claude、その他のAgentのネイティブディレクトリからのスキルを含むすべてのスキルを削除できます。"
+    },
+    "previewLocked": {
+      "agentsTitle": "Agent管理はデスクトップのみ",
+      "agentsDesc": "Claude / Cursor / Codexなどのネイティブフォルダーのスキャン、検出ステータスの表示、ローカルパスの開始にはデスクトップネイティブ機能が必要です。",
+      "advancedTitle": "詳細オプションはデスクトップのみ",
+      "advancedDesc": "スキルプレフィックスフィルター、非表示ルール、シンボリックリンク戦略はローカルファイルシステムを変更します — 設計上デスクライトのみです。",
+      "downloadApp": "デスクトップアプリをダウンロード"
+    }
+  },
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "success": "成功",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "delete": "削除",
+    "edit": "編集",
+    "enable": "有効にする",
+    "disable": "無効にする",
+    "enabled": "一部有効",
+    "disabled": "無効",
+    "required": "必須",
+    "notInstalled": "未インストール",
+    "detected": "検出済み"
+  },
+  "installDialog": {
+    "title": "スキルをインストール: {{name}}",
+    "selectAgent": "このスキルを有効にするAgentを選択してください：",
+    "selectOne": "少なくとも1つのAgentを選択してください",
+    "confirmInstall": "インストールを確認"
+  },
+  "githubSkillCard": {
+    "enabled": "有効 ({{count}})",
+    "downloaded": "ダウンロード済み",
+    "installable": "利用可能",
+    "category": "カテゴリ",
+    "details": "詳細",
+    "installed": "インストール済み",
+    "install": "インストール"
+  }
+}
