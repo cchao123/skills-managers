@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { StatsBar } from '@/pages/Dashboard/components/StatsBar';
 import { SourceTabs } from '@/pages/Dashboard/components/SourceTabs';
 import { AgentFilterButton } from '@/pages/Dashboard/components/AgentFilterButton';
-import { VIEW_MODE, type ViewMode } from '@/pages/Dashboard/constants/viewMode';
+import { VIEW_MODE, VIEW_MODE_SHORTCUT_KEY, type ViewMode } from '@/pages/Dashboard/constants/viewMode';
 import type { FilterType } from '@/pages/Dashboard/constants/filterType';
 import type { SkillMetadata, AgentConfig } from '@/types';
 import { useSkillHidePrefixes, matchesAnyPrefix } from '@/hooks/useSkillHidePrefixes';
@@ -96,38 +96,40 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
     <div className="flex items-center gap-3 h-11" data-tauri-drag-region>
       <div className="relative">
         {/* 滑块式视图切换 */}
-        <div className="relative flex items-center rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-slate-100 dark:bg-dark-bg-tertiary p-0.5 h-9">
+        <div className="relative grid grid-cols-2 items-center rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-slate-100 dark:bg-dark-bg-tertiary p-0.5 h-9">
           {/* 滑动高亮块 */}
           <div
-            className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-white dark:bg-dark-bg-card shadow-sm transition-transform duration-200 ease-in-out ${
-              isFlatView ? 'translate-x-0.5' : 'translate-x-[calc(100%+2px)]'
+            className={`absolute top-0.5 bottom-0.5 rounded-md bg-white dark:bg-dark-bg-card shadow-sm transition-all duration-200 ease-in-out ${
+              isFlatView ? 'left-0.5 right-1/2' : 'left-1/2 right-0.5'
             }`}
           />
           <div className="relative z-50 group">
             <button
               onClick={() => switchView(VIEW_MODE.Flat)}
-              className="flex items-center justify-center w-8 h-full rounded-md transition-colors"
+              className="flex items-center justify-center w-full h-full gap-1.5 px-3 rounded-md transition-colors"
               aria-pressed={isFlatView}
             >
               <Icon name="grid_view" className={`text-xl transition-colors ${isFlatView ? 'text-slate-700 dark:text-white' : 'text-slate-400 dark:text-gray-500'}`} />
+              <span className={`text-xs font-medium whitespace-nowrap transition-colors ${isFlatView ? 'text-slate-700 dark:text-white' : 'text-slate-400 dark:text-gray-500'}`}>{t('dashboard.viewFlat')}</span>
             </button>
             <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[9999] pointer-events-none hidden group-hover:block">
               <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
-                {t('dashboard.viewFlat')} {shortcutKey}1
+                {t('dashboard.viewFlat')} {shortcutKey}{VIEW_MODE_SHORTCUT_KEY[VIEW_MODE.Flat]}
               </div>
             </div>
           </div>
           <div className="relative z-50 group">
             <button
               onClick={() => switchView(VIEW_MODE.Agent)}
-              className="flex items-center justify-center w-8 h-full rounded-md transition-colors"
+              className="flex items-center justify-center w-full h-full gap-1.5 px-3 rounded-md transition-colors"
               aria-pressed={!isFlatView}
             >
               <Icon name="smart_toy" className={`text-xl transition-colors ${!isFlatView ? 'text-slate-700 dark:text-white' : 'text-slate-400 dark:text-gray-500'}`} />
+              <span className={`text-xs font-medium whitespace-nowrap transition-colors ${!isFlatView ? 'text-slate-700 dark:text-white' : 'text-slate-400 dark:text-gray-500'}`}>{t('dashboard.viewBySource')}</span>
             </button>
             <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[9999] pointer-events-none hidden group-hover:block">
               <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
-                {t('dashboard.viewBySource')} {shortcutKey}2
+                {t('dashboard.viewBySource')} {shortcutKey}{VIEW_MODE_SHORTCUT_KEY[VIEW_MODE.Agent]}
               </div>
             </div>
           </div>
@@ -141,7 +143,7 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
             {searchBarPrefs.showFilter && (
               <button
                 onClick={() => setIsFilterDropdownOpen((v) => !v)}
-                className={`relative flex-shrink-0 self-stretch px-2.5 flex items-center border-r border-[#e1e3e4] dark:border-dark-border transition-colors ${
+                className={`relative flex-shrink-0 self-stretch px-2 flex items-center border-r border-[#e1e3e4] dark:border-dark-border transition-colors ${
                   isFilterDropdownOpen
                     ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 dark:text-rose-400'
                     : 'bg-slate-50 dark:bg-dark-bg-tertiary hover:bg-slate-100 dark:hover:bg-dark-bg-secondary text-slate-400 hover:text-slate-600 dark:hover:text-gray-200'

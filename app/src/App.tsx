@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import RootLayout from './RootLayout';
 import GitHubBackup from './pages/GitHubBackup';
 import Settings from './pages/Settings';
+import SkillDownload from './pages/SkillDownload';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './components/Toast';
 import { invoke } from '@tauri-apps/api/core';
@@ -26,10 +27,11 @@ function App() {
         <HashRouter>
           <Routes>
             <Route element={<RootLayout />}>
-              {/* Dashboard 由 RootLayout 直接渲染（始终挂载），此处 index 只用于匹配根路径。 */}
-              <Route index element={null} />
+              {/* 默认跳转到下载页；Dashboard 由 RootLayout 始终挂载，始终可访问。 */}
+              <Route index element={<Navigate to={ROUTE_PATH.SkillDownload} replace />} />
               <Route path={ROUTE_PATH.GitHubBackup.replace(/^\//, '')} element={<GitHubBackup />} />
               <Route path={ROUTE_PATH.Settings.replace(/^\//, '')} element={<Settings />} />
+              <Route path={ROUTE_PATH.SkillDownload.replace(/^\//, '')} element={<SkillDownload />} />
             </Route>
           </Routes>
         </HashRouter>

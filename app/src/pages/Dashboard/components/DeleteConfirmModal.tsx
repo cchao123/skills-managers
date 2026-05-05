@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useSet } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import type { SkillMetadata, SkillDeletionRow } from '@/types';
 import { badgeClass, sourceLabel, SOURCE } from '@/pages/Dashboard/utils/source';
@@ -37,29 +38,26 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   const isMulti = items.length > 1;
   const isRootOnly = purpose === 'root-only';
 
-  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [checked, { add: checkItem, remove: uncheckItem, reset: resetChecked }] = useSet<string>();
+  const isChecked = (key: string) => checked.has(key);
 
   useEffect(() => {
-    const initial = items
+    resetChecked();
+    items
       .filter(r => r.source === SOURCE.Global || advancedMode)
-      .map(r => `${r.source}:${r.skill.id}`);
-    setChecked(new Set(initial));
+      .forEach(r => checkItem(`${r.source}:${r.skill.id}`));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, rows, advancedMode]);
 
   if (!target) return null;
 
   const toggleCheck = (key: string) => {
-    setChecked(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    if (isChecked(key)) uncheckItem(key);
+    else checkItem(key);
   };
 
   const handleConfirm = () => {
-    const selected = items.filter(r => checked.has(`${r.source}:${r.skill.id}`));
+    const selected = items.filter(r => isChecked(`${r.source}:${r.skill.id}`));
     if (selected.length > 0) onConfirm(selected);
   };
 
@@ -87,7 +85,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           )}
           {items.map(row => {
             const key = `${row.source}:${row.skill.id}`;
-            const isChecked = checked.has(key);
+            const rowChecked = isChecked(key);
             const isLocked = row.source !== SOURCE.Global && !advancedMode;
             const isClickDisabled = isLocked || isRootOnly;
             return (
@@ -96,14 +94,14 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                   className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all ${
                     isClickDisabled
                       ? 'cursor-default border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-bg-secondary'
-                      : isChecked
+                      : rowChecked
                         ? 'cursor-pointer border-red-300 dark:border-red-500/40 bg-red-50/60 dark:bg-red-900/15'
                         : 'cursor-pointer border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg-secondary hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   <input
                     type="checkbox"
-                    checked={isChecked}
+                    checked={rowChecked}
                     disabled={isLocked}
                     onChange={() => !isClickDisabled && toggleCheck(key)}
                     className={`w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500 focus:ring-red-500/30 focus:ring-offset-0 accent-red-600 flex-shrink-0 disabled:opacity-40 ${isRootOnly ? 'hidden' : ''}`}

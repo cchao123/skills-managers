@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useEventListener } from 'ahooks';
 import { LOCAL_STORAGE_KEYS } from '@/constants';
 
 export interface SearchBarPrefs {
@@ -55,14 +56,10 @@ function writePrefs(prefs: SearchBarPrefs): void {
 export function useSearchBarPrefs() {
   const [prefs, setPrefsState] = useState<SearchBarPrefs>(readPrefs);
 
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key && e.key !== LOCAL_STORAGE_KEYS.searchBarPrefs) return;
-      setPrefsState(readPrefs());
-    };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
+  useEventListener('storage', (e: StorageEvent) => {
+    if (e.key && e.key !== LOCAL_STORAGE_KEYS.searchBarPrefs) return;
+    setPrefsState(readPrefs());
+  }, { target: window });
 
   const setPref = useCallback(<K extends keyof SearchBarPrefs>(key: K, value: SearchBarPrefs[K]) => {
     setPrefsState((prev) => {

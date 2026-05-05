@@ -34,6 +34,7 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
     }`;
 
   const navItems: Array<{ id: Page; icon: string; label: string }> = [
+    { id: PAGE.SkillDownload, icon: 'home', label: t('nav.skillDownload') },
     { id: PAGE.Dashboard, icon: 'extension', label: t('nav.dashboard') },
     { id: PAGE.GitHubBackup, icon: 'backup', label: t('nav.githubBackup') },
   ];

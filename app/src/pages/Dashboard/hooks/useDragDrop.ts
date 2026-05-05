@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
+import { useBoolean } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import { skillsApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
@@ -8,14 +9,14 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [importing, setImporting] = useState(false);
+  const [isDragOver, { setTrue: setDragOverTrue, setFalse: setDragOverFalse }] = useBoolean(false);
+  const [importing, { setTrue: setImportingTrue, setFalse: setImportingFalse }] = useBoolean(false);
   const importingRef = useRef(false);
 
   const handleDrop = useCallback(async (paths: string[]) => {
     if (importingRef.current) return;
     importingRef.current = true;
-    setImporting(true);
+    setImportingTrue();
 
     const importedNames: string[] = [];
     // 与后端 `import_skill_folder` 的错误文案保持一致：`根目录中已存在技能 'xxx'...`
@@ -50,7 +51,7 @@ export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void
       onImportComplete?.(resolvedNames);
     }
     importingRef.current = false;
-    setImporting(false);
+    setImportingFalse();
   }, [showToast, onImportComplete]);
 
   useEffect(() => {
@@ -73,11 +74,11 @@ export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void
       }
 
       if (type === 'enter') {
-        setIsDragOver(true);
+        setDragOverTrue();
       } else if (type === 'leave') {
-        setIsDragOver(false);
+        setDragOverFalse();
       } else if (type === 'drop') {
-        setIsDragOver(false);
+        setDragOverFalse();
         handleDrop(payload.paths);
       }
     }).then(fn => {

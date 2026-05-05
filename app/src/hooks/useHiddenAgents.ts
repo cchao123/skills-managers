@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useEventListener } from 'ahooks';
 import { LOCAL_STORAGE_KEYS } from '@/constants';
 
 const DEFAULT_HIDDEN_AGENTS = new Set(['opencode', 'trae', 'qoder', 'antigravity', 'kiro']);
@@ -19,14 +20,10 @@ export function readHiddenAgents(): Set<string> {
 export function useHiddenAgents(): Set<string> {
   const [hidden, setHidden] = useState<Set<string>>(readHiddenAgents);
 
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key && e.key !== LOCAL_STORAGE_KEYS.hiddenAgents) return;
-      setHidden(readHiddenAgents());
-    };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
+  useEventListener('storage', (e: StorageEvent) => {
+    if (e.key && e.key !== LOCAL_STORAGE_KEYS.hiddenAgents) return;
+    setHidden(readHiddenAgents());
+  }, { target: window });
 
   return hidden;
 }

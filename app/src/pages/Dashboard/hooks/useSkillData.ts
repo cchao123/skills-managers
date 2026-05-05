@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useDebounceFn, useEventListener } from 'ahooks';
 import { skillsApi, agentsApi } from '@/api/tauri';
 import type { SkillMetadata, AgentConfig } from '@/types';
 import { isTauri } from '@/lib/tauri-env';
@@ -65,32 +66,18 @@ export const useSkillData = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 窗口重新获得焦点时静默同步列表（托盘唤起、Alt+Tab、拖动标题栏时 Windows 可能多次触发 focus）
-  const focusRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    const scheduleRefresh = () => {
-      if (focusRefreshTimerRef.current) {
-        clearTimeout(focusRefreshTimerRef.current);
-      }
-      focusRefreshTimerRef.current = setTimeout(() => {
-        focusRefreshTimerRef.current = null;
-        void refreshSkills();
-        void loadAgents();
-      }, 250);
-    };
+  // 窗口重新获得焦点时静默同步列表，防抖 250ms 避免 Windows 多次触发
+  const { run: scheduleRefresh } = useDebounceFn(
+    () => {
+      void refreshSkills();
+      void loadAgents();
+    },
+    { wait: 250 },
+  );
 
-    window.addEventListener('focus', scheduleRefresh);
-    // 其它页面（如 GitHub 同步/恢复）显式通知刷新
-    window.addEventListener(WINDOW_EVENTS.skillsRefresh, scheduleRefresh);
-    return () => {
-      window.removeEventListener('focus', scheduleRefresh);
-      window.removeEventListener(WINDOW_EVENTS.skillsRefresh, scheduleRefresh);
-      if (focusRefreshTimerRef.current) {
-        clearTimeout(focusRefreshTimerRef.current);
-        focusRefreshTimerRef.current = null;
-      }
-    };
-  }, [refreshSkills, loadAgents]);
+  useEventListener('focus', scheduleRefresh, { target: window });
+  // 其它页面（如 GitHub 同步/恢复）显式通知刷新
+  useEventListener(WINDOW_EVENTS.skillsRefresh as keyof WindowEventMap, scheduleRefresh, { target: window });
 
   return {
     skills,

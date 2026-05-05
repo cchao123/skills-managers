@@ -10,6 +10,7 @@ export const PAGE = {
   Dashboard: 'dashboard',
   GitHubBackup: 'githubBackup',
   Settings: 'settings',
+  SkillDownload: 'skillDownload',
 } as const;
 
 export type Page = typeof PAGE[keyof typeof PAGE];
@@ -22,6 +23,7 @@ export const ROUTE_PATH = {
   Dashboard: '/',
   GitHubBackup: '/github',
   Settings: '/settings',
+  SkillDownload: '/download',
 } as const;
 
 export const pageToPath = (page: Page): string => {
@@ -30,6 +32,8 @@ export const pageToPath = (page: Page): string => {
       return ROUTE_PATH.GitHubBackup;
     case PAGE.Settings:
       return ROUTE_PATH.Settings;
+    case PAGE.SkillDownload:
+      return ROUTE_PATH.SkillDownload;
     case PAGE.Dashboard:
     default:
       return ROUTE_PATH.Dashboard;
@@ -39,5 +43,6 @@ export const pageToPath = (page: Page): string => {
 export const pathToPage = (pathname: string): Page => {
   if (pathname.startsWith(ROUTE_PATH.GitHubBackup)) return PAGE.GitHubBackup;
   if (pathname.startsWith(ROUTE_PATH.Settings)) return PAGE.Settings;
+  if (pathname.startsWith(ROUTE_PATH.SkillDownload)) return PAGE.SkillDownload;
   return PAGE.Dashboard;
 };

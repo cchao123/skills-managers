@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useRequest } from 'ahooks';
 import { GITHUB_URLS } from '../constants/config';
 
 const REPO_API_BASE = GITHUB_URLS.REPO.replace(
@@ -82,61 +82,48 @@ const fetchLatestTag = async (): Promise<string | null> => {
 export const useVersionCheck = (autoCheck = true) => {
   const current = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
 
-  const [latest, setLatest] = useState<string | null>(null);
-  const [releaseUrl, setReleaseUrl] = useState<string | null>(null);
-  const [status, setStatus] = useState<VersionStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
-
-  const checkNow = useCallback(async () => {
-    setStatus('checking');
-    setError(null);
-    try {
+  const { data, loading, error: reqError, run: checkNow } = useRequest(
+    async () => {
       const release = await fetchLatestRelease();
-
       let tag: string | null = null;
-      let url: string = GITHUB_URLS.RELEASES;
+      let url = GITHUB_URLS.RELEASES;
       if (release) {
         tag = release.tag;
         url = release.url;
       } else {
-        // 没有 release 时尝试回退查 tag
         tag = await fetchLatestTag();
       }
+      return {
+        latest: tag,
+        releaseUrl: url,
+        lastCheckedAt: Date.now(),
+        resolvedStatus: !tag
+          ? ('no-release' as const)
+          : compareSemver(tag, current) > 0
+            ? ('update-available' as const)
+            : ('up-to-date' as const),
+      };
+    },
+    {
+      manual: !autoCheck,
+      onError: (e) => console.error('[useVersionCheck] failed:', e),
+    },
+  );
 
-      setReleaseUrl(url);
-      setLastCheckedAt(Date.now());
+  const status: VersionStatus = loading
+    ? 'checking'
+    : reqError
+      ? 'error'
+      : (data?.resolvedStatus ?? 'idle');
 
-      if (!tag) {
-        setLatest(null);
-        setStatus('no-release');
-        return;
-      }
-
-      setLatest(tag);
-      setStatus(compareSemver(tag, current) > 0 ? 'update-available' : 'up-to-date');
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error';
-      console.error('[useVersionCheck] failed:', e);
-      setError(msg);
-      setStatus('error');
-    }
-  }, [current]);
-
-  useEffect(() => {
-    if (autoCheck) {
-      void checkNow();
-    }
-  }, [autoCheck, checkNow]);
-
-  const info: VersionInfo & { checkNow: () => Promise<void> } = {
+  const info: VersionInfo & { checkNow: () => void } = {
     current,
-    latest,
+    latest: data?.latest ?? null,
     hasUpdate: status === 'update-available',
     status,
-    error,
-    releaseUrl,
-    lastCheckedAt,
+    error: reqError instanceof Error ? reqError.message : reqError ? String(reqError) : null,
+    releaseUrl: data?.releaseUrl ?? null,
+    lastCheckedAt: data?.lastCheckedAt ?? null,
     checkNow,
   };
   return info;

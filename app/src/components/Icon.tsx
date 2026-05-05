@@ -57,6 +57,7 @@ import IconLock from '~icons/material-symbols/lock-outline';
 import IconMemory from '~icons/material-symbols/memory-outline';
 import IconOpenInNew from '~icons/material-symbols/open-in-new';
 import IconPalette from '~icons/material-symbols/palette-outline';
+import IconPerson from '~icons/material-symbols/person-outline';
 import IconPsychology from '~icons/material-symbols/psychology-outline';
 import IconRadioButtonUnchecked from '~icons/material-symbols/radio-button-unchecked';
 import IconRefresh from '~icons/material-symbols/refresh';
@@ -151,6 +152,7 @@ const ICONS: Record<string, IconComponent> = {
   memory: IconMemory,
   open_in_new: IconOpenInNew,
   palette: IconPalette,
+  person: IconPerson,
   psychology: IconPsychology,
   radio_button_unchecked: IconRadioButtonUnchecked,
   refresh: IconRefresh,

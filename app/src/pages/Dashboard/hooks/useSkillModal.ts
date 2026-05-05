@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useBoolean } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import { skillsApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
@@ -8,16 +9,16 @@ export const useSkillModal = () => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [detailSkill, setDetailSkill] = useState<SkillMetadata | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showDetailModal, { setTrue: openDetailModal, setFalse: closeDetailModalFlag }] = useBoolean(false);
   const [skillFiles, setSkillFiles] = useState<SkillFileEntry[]>([]);
-  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [loadingFiles, { setTrue: startLoadingFiles, setFalse: stopLoadingFiles }] = useBoolean(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [currentFile, setCurrentFile] = useState<{ path: string; content: string } | null>(null);
-  const [loadingFile, setLoadingFile] = useState(false);
+  const [loadingFile, { setTrue: startLoadingFile, setFalse: stopLoadingFile }] = useBoolean(false);
 
   const loadSkillFiles = useCallback(async (skillId: string, source?: string) => {
     try {
-      setLoadingFiles(true);
+      startLoadingFiles();
       const files = await skillsApi.getFiles(skillId, source);
       setSkillFiles(files);
 
@@ -55,17 +56,17 @@ export const useSkillModal = () => {
         console.log('SKILL.md not found in files:', files);
       }
 
-      setLoadingFiles(false);
+      stopLoadingFiles();
     } catch (error) {
       console.error('Failed to load skill files:', error);
-      setLoadingFiles(false);
+      stopLoadingFiles();
     }
-  }, []);
+  }, [startLoadingFiles, stopLoadingFiles]);
 
   const handleShowSkillDetail = useCallback(async (skill: SkillMetadata) => {
     try {
       setDetailSkill(skill);
-      setShowDetailModal(true);
+      openDetailModal();
       setCurrentFile(null);
       loadSkillFiles(skill.id, skill.primary);
     } catch (error) {
@@ -75,7 +76,7 @@ export const useSkillModal = () => {
   }, [loadSkillFiles, showToast, t]);
 
   const handleCloseDetailModal = useCallback(() => {
-    setShowDetailModal(false);
+    closeDetailModalFlag();
     setDetailSkill(null);
     setSkillFiles([]);
     setCurrentFile(null);
@@ -98,22 +99,16 @@ export const useSkillModal = () => {
     if (!detailSkill) return;
 
     try {
-      if (showLoading) {
-        setLoadingFile(true);
-      }
+      if (showLoading) startLoadingFile();
       const content = await skillsApi.readFile(detailSkill.id, filePath, detailSkill.primary);
       setCurrentFile({ path: filePath, content });
-      if (showLoading) {
-        setLoadingFile(false);
-      }
+      if (showLoading) stopLoadingFile();
     } catch (error) {
       console.error('Failed to read file:', error);
-      if (showLoading) {
-        setLoadingFile(false);
-      }
+      if (showLoading) stopLoadingFile();
       showToast('error', t('dashboard.toast.readFileFailed'));
     }
-  }, [detailSkill, showToast, t]);
+  }, [detailSkill, startLoadingFile, stopLoadingFile, showToast, t]);
 
   return {
     detailSkill,

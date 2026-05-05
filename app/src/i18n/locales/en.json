@@ -6,6 +6,7 @@
   "nav": {
     "marketplace": "Marketplace",
     "dashboard": "Installed Skills",
+    "skillDownload": "Download Skills",
     "githubBackup": "GitHub Backup",
     "settings": "Settings",
     "expand": "Expand",

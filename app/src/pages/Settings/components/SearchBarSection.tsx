@@ -4,7 +4,7 @@ import { useSearchBarPrefs, type SearchBarPrefs } from '@/hooks/useSearchBarPref
 
 const DEFAULT_ITEMS: Array<{ key: keyof SearchBarPrefs; icon: string; labelKey: string; hintKey: string }> = [
   { key: 'showFilter', icon: 'filter_alt_off', labelKey: 'settings.searchBar.showFilter', hintKey: 'settings.searchBar.showFilterHint' },
-  { key: 'showActions', icon: 'help', labelKey: 'settings.searchBar.showActions', hintKey: 'settings.searchBar.showActionsHint' },
+  // { key: 'showActions', icon: 'help', labelKey: 'settings.searchBar.showActions', hintKey: 'settings.searchBar.showActionsHint' },
 ];
 
 export const SearchBarSection: React.FC = () => {

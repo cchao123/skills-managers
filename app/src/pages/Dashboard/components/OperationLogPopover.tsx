@@ -18,6 +18,8 @@ interface Props {
   onPanelMouseLeave?: () => void;
   /** hover 触发时禁用 backdrop（避免占用整屏阻挡其他交互） */
   hideBackdrop?: boolean;
+  /** 弹窗向上展开（锚点在底部时使用） */
+  openAbove?: boolean;
 }
 
 const ICON_BY_TYPE: Record<OperationLogEntry['type'], string> = {
@@ -44,6 +46,7 @@ export const OperationLogPopover: React.FC<Props> = ({
   onPanelMouseEnter,
   onPanelMouseLeave,
   hideBackdrop = false,
+  openAbove = false,
 }) => {
   const { t } = useTranslation();
   const entries = useOperationLog();
@@ -85,10 +88,11 @@ export const OperationLogPopover: React.FC<Props> = ({
       <div
         style={{
           position: 'fixed',
-          top: anchorRect.bottom - bridge,
+          ...(openAbove
+            ? { bottom: window.innerHeight - anchorRect.top + bridge, paddingBottom: bridge }
+            : { top: anchorRect.bottom - bridge, paddingTop: bridge }),
           left,
           width,
-          paddingTop: bridge,
           zIndex: 9998,
         }}
         className="pointer-events-auto"

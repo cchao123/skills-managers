@@ -90,7 +90,7 @@ pub fn run() {
                 .icon_as_template(true)
                 .tooltip("Skills Manager")
                 .show_menu_on_left_click(cfg!(not(target_os = "windows")))
-                .on_tray_icon_event(|tray, event| {
+                .on_tray_icon_event(|_tray, _event| {
                     // Only handle click on Windows to show window
                     #[cfg(target_os = "windows")]
                     if let tauri::tray::TrayIconEvent::Click {
@@ -156,6 +156,10 @@ pub fn run() {
             commands::skills::delete_skill,
             commands::skills::import_skill_folder,
             commands::skills::copy_skill_to_agent,
+            // Marketplace commands
+            commands::marketplace::fetch_marketplace_skills,
+            commands::marketplace::fetch_skill_detail,
+            commands::marketplace::download_skill_from_marketplace,
             // Settings commands
             commands::settings::get_agents,
             commands::settings::add_agent,

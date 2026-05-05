@@ -305,7 +305,7 @@ function Dashboard({
     };
   };
 
-  // 按来源过滤：Schema v2 中一条 skill 可能分布在多个源里，
+  // 按来源展示过滤：Schema v2 中一条 skill 可能分布在多个源里，
   // 只要 `sources` 包含当前选中源就展示。下游组件按 `selectedSource` 定位当前 tab。
   // 排序：pinned 优先（保持其它过滤后的相对顺序）。
   const filteredBySource = useMemo(() => {
@@ -512,39 +512,6 @@ function Dashboard({
             onSourceSelect={setSelectedSource}
             agentFilter={agentFilter}
             onAgentFilterChange={onAgentFilterChange}
-            rightActions={
-              <div className="flex items-stretch h-9 rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-white dark:bg-dark-bg-card overflow-visible">
-                <div className="relative group">
-                  <button
-                    ref={helpButtonRef}
-                    onClick={handleHelpClick}
-                    className="flex items-center justify-center px-3 h-full hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <Icon name="help" className="text-base text-slate-500 dark:text-gray-400" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 pointer-events-none hidden group-hover:block">
-                    <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
-                      {t('dashboard.viewHelp')}
-                    </div>
-                  </div>
-                </div>
-                <div className="w-px self-center h-5 bg-[#e1e3e4] dark:bg-dark-border" />
-                <div className="relative group">
-                  <button
-                    ref={logButtonRef}
-                    onClick={handleLogClick}
-                    className="flex items-center justify-center px-3 h-full hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <Icon name="history" className="text-base text-slate-500 dark:text-gray-400" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 pointer-events-none hidden group-hover:block">
-                    <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
-                      {t('dashboard.operationLog.title')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            }
           />
         </div>
       </div>
@@ -892,7 +859,7 @@ function Dashboard({
             <div
               style={{
                 position: 'fixed',
-                top: rect.bottom + 4,
+                bottom: window.innerHeight - rect.top + 4,
                 left,
                 width,
                 zIndex: 9998,
@@ -967,6 +934,7 @@ function Dashboard({
         <OperationLogPopover
           anchorRect={logPopoverAnchor}
           onClose={() => setLogPopoverAnchor(null)}
+          openAbove
         />
       )}
 
@@ -980,6 +948,38 @@ function Dashboard({
           if (cardContextMenu.skillId) handleTogglePin(cardContextMenu.skillId);
         }}
       />
+
+      {/* 右下角浮动操作按钮 */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-40">
+        <div className="relative group">
+          <button
+            ref={helpButtonRef}
+            onClick={handleHelpClick}
+            className="w-9 h-9 rounded-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border shadow-md flex items-center justify-center hover:bg-slate-50 dark:hover:bg-gray-700 hover:shadow-lg transition-all"
+          >
+            <Icon name="help" className="text-base text-slate-500 dark:text-gray-400" />
+          </button>
+          <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 pointer-events-none hidden group-hover:block">
+            <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
+              {t('dashboard.viewHelp')}
+            </div>
+          </div>
+        </div>
+        <div className="relative group">
+          <button
+            ref={logButtonRef}
+            onClick={handleLogClick}
+            className="w-9 h-9 rounded-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border shadow-md flex items-center justify-center hover:bg-slate-50 dark:hover:bg-gray-700 hover:shadow-lg transition-all"
+          >
+            <Icon name="history" className="text-base text-slate-500 dark:text-gray-400" />
+          </button>
+          <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 pointer-events-none hidden group-hover:block">
+            <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
+              {t('dashboard.operationLog.title')}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

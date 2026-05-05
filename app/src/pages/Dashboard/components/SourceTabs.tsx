@@ -69,7 +69,7 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({ agents, selectedSource, 
 
   return (
     <>
-      <div className="inline-flex items-center gap-3 px-2 py-1 bg-[#f5f5f5] dark:bg-dark-bg rounded-lg">
+      <div className="inline-flex items-center gap-2 px-1 py-1 bg-[#f5f5f5] dark:bg-dark-bg rounded-lg">
         {tabs.map((item, index) => (
           <React.Fragment key={item.id}>
             {index > 0 && (

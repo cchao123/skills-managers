@@ -6,6 +6,7 @@
   "nav": {
     "marketplace": "技能市场",
     "dashboard": "已安装技能",
+    "skillDownload": "下载技能",
     "githubBackup": "GitHub备份",
     "settings": "设置",
     "expand": "展开",

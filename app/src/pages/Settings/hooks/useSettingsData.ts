@@ -1,25 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useRequest } from 'ahooks';
 import { agentsApi } from '@/api/tauri';
 import type { AgentConfig } from '@/types';
 
 export const useSettingsData = () => {
-  const [agents, setAgents] = useState<AgentConfig[]>([]);
+  const { data: agents = [] as AgentConfig[], run: loadAgents } = useRequest(
+    () => agentsApi.detect(),
+    {
+      onError: (error) => console.error('Failed to detect agents:', error),
+    },
+  );
 
-  const loadAgents = async () => {
-    try {
-      const updatedAgents = await agentsApi.detect();
-      setAgents(updatedAgents);
-    } catch (error) {
-      console.error('Failed to detect agents:', error);
-    }
-  };
-
-  useEffect(() => {
-    loadAgents();
-  }, []);
-
-  return {
-    agents,
-    loadAgents,
-  };
+  return { agents, loadAgents };
 };

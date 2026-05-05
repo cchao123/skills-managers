@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEventListener } from 'ahooks';
 import { LOCAL_STORAGE_KEYS } from '@/constants';
 import { agentsApi } from '@/api/tauri';
 import { isTauri } from '@/lib/tauri-env';
@@ -67,14 +68,10 @@ export function useSkillHidePrefixes() {
   const [prefixes, setPrefixesState] = useState<string[]>(readHidePrefixes);
   const didInitialSync = useRef(false);
 
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key && e.key !== LOCAL_STORAGE_KEYS.skillHidePrefixes) return;
-      setPrefixesState(readHidePrefixes());
-    };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
+  useEventListener('storage', (e: StorageEvent) => {
+    if (e.key && e.key !== LOCAL_STORAGE_KEYS.skillHidePrefixes) return;
+    setPrefixesState(readHidePrefixes());
+  }, { target: window });
 
   // 应用启动时把 localStorage 中的规则推一次给后端，
   // 兼容"升级前已有规则但后端 config.json 还没这个字段"的老用户。
