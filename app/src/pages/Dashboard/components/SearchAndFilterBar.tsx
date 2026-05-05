@@ -6,7 +6,7 @@ import { AgentFilterButton } from '@/pages/Dashboard/components/AgentFilterButto
 import { VIEW_MODE, VIEW_MODE_SHORTCUT_KEY, type ViewMode } from '@/pages/Dashboard/constants/viewMode';
 import type { FilterType } from '@/pages/Dashboard/constants/filterType';
 import type { SkillMetadata, AgentConfig } from '@/types';
-import { useSkillHidePrefixes, matchesAnyPrefix } from '@/hooks/useSkillHidePrefixes';
+import { useSkillHidePrefixes } from '@/hooks/useSkillHidePrefixes';
 import { useSearchBarPrefs } from '@/hooks/useSearchBarPrefs';
 import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
 
@@ -196,7 +196,6 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
                 prefixes={prefixes}
                 addPrefix={addPrefix}
                 removePrefix={removePrefix}
-                skills={skills}
               />
             </div>
           )}
@@ -239,14 +238,12 @@ interface FilterDropdownContentProps {
   prefixes: string[];
   addPrefix: (prefix: string) => void;
   removePrefix: (prefix: string) => void;
-  skills: SkillMetadata[];
 }
 
 const FilterDropdownContent: React.FC<FilterDropdownContentProps> = ({
   prefixes,
   addPrefix,
   removePrefix,
-  skills,
 }) => {
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
