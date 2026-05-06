@@ -272,6 +272,7 @@
       /* ---- HERO PREVIEW ---- */
       .hero-preview {
         margin-top: 64px;
+        scroll-margin-top: 80px;
         border-radius: 16px;
         background: var(--bg-card);
         border: 1px solid var(--panel-border);
@@ -412,10 +413,13 @@
       /* ---- FEATURE CARDS ---- */
       .cards-grid {
         margin-top: 56px;
-        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;
-        max-width: 960px;
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;
+        max-width: 1200px;
         margin-left: auto;
         margin-right: auto;
+      }
+      @media (max-width: 1024px) {
+        .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
       .card {
         background: var(--bg-card);
@@ -513,9 +517,8 @@
           <span>Skills Manager</span>
         </a>
         <div class="nav-links">
+          <a href="#preview">{{nav.preview}}</a>
           <a href="#features">{{nav.features}}</a>
-          <a href="#views">{{nav.views}}</a>
-          <a href="#github">{{nav.backup}}</a>
           <a href="#faq">{{nav.faq}}</a>
           <a href="{{altUrl}}" class="lang-switch" aria-label="{{nav.switchAria}}" hreflang="{{altHreflang}}">{{nav.switchLabel}}</a>
         </div>
@@ -556,7 +559,7 @@
           <span>{{platforms.arch}}</span>
         </div>
 
-        <div class="hero-preview">
+        <div class="hero-preview" id="preview">
           <div class="preview-frame-wrap" data-preview-embed>
             <span class="preview-badge">{{hero.previewBadge}}</span>
             <div class="preview-skeleton" data-preview-skeleton>{{hero.previewSkeleton}}</div>
@@ -605,126 +608,15 @@
             <h3>{{features.cards.3.title}}</h3>
             <p>{{features.cards.3.body}}</p>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- VIEW MODES -->
-    <section id="views" style="background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);">
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">{{views1.eyebrow}}</p>
-            <h2>{{views1.title}}</h2>
-            <p class="lead">{{views1.lead}}</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">{{views1.bullets.0.dot}}</span><span>{{views1.bullets.0.html}}</span></div>
-              <div class="bullet"><span class="dot">{{views1.bullets.1.dot}}</span><span>{{views1.bullets.1.html}}</span></div>
-              <div class="bullet"><span class="dot">{{views1.bullets.2.dot}}</span><span>{{views1.bullets.2.html}}</span></div>
-            </div>
+          <div class="card">
+            <div class="ico">{{features.cards.4.icon}}</div>
+            <h3>{{features.cards.4.title}}</h3>
+            <p>{{features.cards.4.body}}</p>
           </div>
-          <div class="shot">
-            <img src="{{assetPrefix}}screen-shot/{{locale}}-skills-home.png" alt="{{views1.imgAlt}}" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">{{views2.eyebrow}}</p>
-            <h2>{{views2.title}}</h2>
-            <p class="lead">{{views2.lead}}</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">{{views2.bullets.0.dot}}</span><span>{{views2.bullets.0.html}}</span></div>
-              <div class="bullet"><span class="dot">{{views2.bullets.1.dot}}</span><span>{{views2.bullets.1.html}}</span></div>
-              <div class="bullet"><span class="dot">{{views2.bullets.2.dot}}</span><span>{{views2.bullets.2.html}}</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="{{assetPrefix}}screen-shot/{{locale}}-skills-source.png" alt="{{views2.imgAlt}}" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">{{detail.eyebrow}}</p>
-            <h2>{{detail.title}}</h2>
-            <p class="lead">{{detail.lead}}</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">{{detail.bullets.0.dot}}</span><span>{{detail.bullets.0.html}}</span></div>
-              <div class="bullet"><span class="dot">{{detail.bullets.1.dot}}</span><span>{{detail.bullets.1.html}}</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="{{assetPrefix}}screen-shot/{{locale}}-skills-detail.png" alt="{{detail.imgAlt}}" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- GITHUB BACKUP -->
-    <section id="github" style="background: linear-gradient(180deg, rgba(183, 20, 34, 0.05), transparent);">
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">{{github.eyebrow}}</p>
-            <h2>{{github.title}}</h2>
-            <p class="lead">{{github.lead}}</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">{{github.bullets.0.dot}}</span><span>{{github.bullets.0.html}}</span></div>
-              <div class="bullet"><span class="dot">{{github.bullets.1.dot}}</span><span>{{github.bullets.1.html}}</span></div>
-              <div class="bullet"><span class="dot">{{github.bullets.2.dot}}</span><span>{{github.bullets.2.html}}</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="{{assetPrefix}}screen-shot/{{locale}}-github.png" alt="{{github.imgAlt}}" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- DRAG IMPORT + SETTINGS COMBO -->
-    <section>
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">{{dragdrop.eyebrow}}</p>
-            <h2>{{dragdrop.title}}</h2>
-            <p class="lead">{{dragdrop.lead}}</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">{{dragdrop.bullets.0.dot}}</span><span>{{dragdrop.bullets.0.html}}</span></div>
-              <div class="bullet"><span class="dot">{{dragdrop.bullets.1.dot}}</span><span>{{dragdrop.bullets.1.html}}</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="{{assetPrefix}}screen-shot/{{locale}}-skills-drop.png" alt="{{dragdrop.imgAlt}}" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">{{settings.eyebrow}}</p>
-            <h2>{{settings.title}}</h2>
-            <p class="lead">{{settings.lead}}</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">{{settings.bullets.0.dot}}</span><span>{{settings.bullets.0.html}}</span></div>
-              <div class="bullet"><span class="dot">{{settings.bullets.1.dot}}</span><span>{{settings.bullets.1.html}}</span></div>
-              <div class="bullet"><span class="dot">{{settings.bullets.2.dot}}</span><span>{{settings.bullets.2.html}}</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="{{assetPrefix}}screen-shot/{{locale}}-setting.png" alt="{{settings.imgAlt}}" loading="lazy" />
+          <div class="card">
+            <div class="ico">{{features.cards.5.icon}}</div>
+            <h3>{{features.cards.5.title}}</h3>
+            <p>{{features.cards.5.body}}</p>
           </div>
         </div>
       </div>
@@ -773,10 +665,6 @@
           <details class="faq">
             <summary>{{faq.items.4.q}}</summary>
             <p>{{faq.items.4.a}}</p>
-          </details>
-          <details class="faq">
-            <summary>{{faq.items.5.q}}</summary>
-            <p>{{faq.items.5.a}}</p>
           </details>
         </div>
       </div>

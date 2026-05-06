@@ -2,22 +2,21 @@
   "htmlLang": "en",
   "meta": {
     "title": "Skills Manager · Desktop app for managing multi-Agent Skills",
-    "description": "Skills Manager — a desktop app for managing, distributing, and restoring skills across Claude, Cursor, Codex, OpenClaw, OpenCode, and other AI agents.",
+    "description": "Skills Manager — a desktop app for managing, distributing, and restoring skills across nine AI agents: Claude Code, Cursor, Codex, OpenClaw, OpenCode, Trae, Qoder, Antigravity, and Kiro.",
     "ogTitle": "Skills Manager · Your multi-Agent Skills HQ",
     "ogDescription": "Manage local Skills in one place, distribute them across agents, and back them up with GitHub."
   },
   "nav": {
+    "preview": "Sandbox",
     "features": "Features",
-    "views": "Views",
-    "backup": "Backup",
     "faq": "FAQ",
     "switchLabel": "中文",
     "switchAria": "切换到中文",
     "download": "Download"
   },
   "hero": {
-    "rotatingTexts": ["Manager", "Hub", "Share", "Switch", "Sync", "Backup", "Repo"],
-    "rotatingAriaLabel": "Skills Manager, Hub, Share, Switch, Sync, Backup, Repo",
+    "rotatingTexts": ["Manager", "Hub", "Share", "Switch", "Sync", "Backup", "Repo", "Download"],
+    "rotatingAriaLabel": "Skills Manager, Hub, Share, Switch, Sync, Backup, Repo, Download",
     "titleBefore": "Skills",
     "tagline": "Your <span class=\"accent\">multi-Agent Skills HQ</span>",
     "sub": "Scan local Skills in one place, distribute them across agents, and back them up with GitHub.<br />Turn scattered skill folders into a reusable, portable library.",
@@ -57,72 +56,18 @@
         "icon": "⇆",
         "title": "Flat & by-source dual views",
         "body": "Flat view answers \"what Skills do I have\"; by-source view answers \"what's inside each Agent\". Switch perspective without losing context."
+      },
+      {
+        "icon": "⊞",
+        "title": "Marketplace · one-click community Skills",
+        "body": "Browse skills.sh right inside the app — All / Trending / Hot tabs plus keyword search — and clone any community Skill to global or a specific Agent. No more manual git clone."
+      },
+      {
+        "icon": "◎",
+        "title": "Skill detail · inline preview & delete protection",
+        "body": "Click any Skill to inspect its full file tree and <code>SKILL.md</code>. Agent folders are read-only by default; flip Advanced Mode for precise, intentional deletes."
       }
     ]
-  },
-  "views1": {
-    "eyebrow": "View · Flat",
-    "title": "Scan every local Agent<br />and aggregate Skills into one list",
-    "lead": "Aggregated by Skill, not by source. See what's already collected and what's still scattered across agents at a glance.",
-    "bullets": [
-      { "dot": "1", "html": "<strong>Search & filter</strong> instant keyword search, filter by enabled state" },
-      { "dot": "2", "html": "<strong>See every Agent at a glance</strong> each card shows the enabled state across all currently supported agents" },
-      { "dot": "3", "html": "<strong>Tri-state master switch</strong> gray / yellow / red clearly mark disabled / native-only / partially-or-fully enabled" }
-    ],
-    "imgAlt": "Flat view"
-  },
-  "views2": {
-    "eyebrow": "View · By source",
-    "title": "Curious what's really<br />inside each Agent? One click away",
-    "lead": "Grouped by source so you can instantly see where a Skill lives and decide what belongs in the central repo versus what should stay local.",
-    "bullets": [
-      { "dot": "✓", "html": "<strong>Copy to central repo</strong> into a unified library that every Agent can reuse" },
-      { "dot": "✓", "html": "<strong>Native Skill indicator</strong> a yellow dot signals \"this one ships with the Agent\"" },
-      { "dot": "✓", "html": "<strong>Action log</strong> every \"copy to central\" action is recorded and traceable" }
-    ],
-    "imgAlt": "By-source view"
-  },
-  "detail": {
-    "eyebrow": "Skill Detail",
-    "title": "Skill detail · file tree +<br />per-Agent state",
-    "lead": "Click any Skill to view its full file tree, <code>SKILL.md</code> contents, and how it's shared across Agents. The side panel is drag-resizable to fit any screen.",
-    "bullets": [
-      { "dot": "◎", "html": "<strong>Inline file preview</strong> click a file to read its content, no external editor needed" },
-      { "dot": "◎", "html": "<strong>Delete protection</strong> Agent folders are read-only by default; flip Advanced Mode to enable precise deletes" }
-    ],
-    "imgAlt": "Skill detail"
-  },
-  "github": {
-    "eyebrow": "GitHub · Backup / Restore / Distribution",
-    "title": "Turn your Skills<br />into a shareable repository",
-    "lead": "Connect your GitHub repo for <strong style=\"color:var(--text)\">one-click sync · one-click restore</strong>. The same repo can act as both your personal backup and a shared source for a team.",
-    "bullets": [
-      { "dot": "↑", "html": "<strong>Sync to GitHub</strong> push every central Skill to the remote with incremental commits" },
-      { "dot": "↓", "html": "<strong>Restore from GitHub</strong> pull all your Skills back on a fresh machine" },
-      { "dot": "★", "html": "<strong>Shared distribution</strong> keep personal and team Skills aligned around one repository" }
-    ],
-    "imgAlt": "GitHub backup UI"
-  },
-  "dragdrop": {
-    "eyebrow": "Drag & Drop · zero friction",
-    "title": "Drop it in. Done.",
-    "lead": "No CLI required. Drag any folder containing a <code>SKILL.md</code> from your file manager onto the window and it's imported and ready to share with other Agents.",
-    "bullets": [
-      { "dot": "⇣", "html": "<strong>Instant feedback</strong> the list silently refreshes after import, no loading flicker" },
-      { "dot": "⇣", "html": "<strong>Batch drop</strong> drop multiple folders at once; failures are reported individually" }
-    ],
-    "imgAlt": "Drag and drop import"
-  },
-  "settings": {
-    "eyebrow": "Settings · safe & controllable",
-    "title": "Memory filters · delete protection ·<br />Advanced Mode all included",
-    "lead": "Skills Manager joins your agent setup in read-only mode by default. Turn on Advanced Mode only when you need to write or delete.",
-    "bullets": [
-      { "dot": "✦", "html": "<strong>Memory filters</strong> hide temporary Skills injected by CLIs or workflows" },
-      { "dot": "✦", "html": "<strong>中/EN toggle · dark mode</strong> follow the system or switch manually" },
-      { "dot": "✦", "html": "<strong>Zero setup</strong> no account required, configure and go" }
-    ],
-    "imgAlt": "Settings page"
   },
   "ctaBanner": {
     "eyebrow": "Free · Open Source · MIT",
@@ -136,28 +81,24 @@
     "title": "Frequently Asked Questions",
     "items": [
       {
-        "q": "Is Skills Manager paid software?",
-        "a": "No — it's fully free and open-source under MIT License, with the repo public on GitHub. Use, modify and redistribute as you like. Issues and PRs are welcome."
-      },
-      {
-        "q": "Will it modify my existing local Skills?",
-        "a": "By default, no. The app scans Agent folders in observer mode and only creates symlinks or copies when you explicitly opt in (flip a switch, drag to import, copy to central). Delete protection is on by default; writes require flipping Advanced Mode under Settings."
+        "q": "Will it touch my existing local Skills?",
+        "a": "Read-only by default. Symlinks or copies are only created when you opt in — flipping a switch, dragging to import, or clicking \"copy to central\". Delete and other high-risk operations require Advanced Mode under Settings, so accidental damage is prevented."
       },
       {
         "q": "Which Agents are supported?",
-        "a": "Claude, Cursor, Codex, OpenClaw, and OpenCode are supported today. Any Agent whose Skill folder follows the <code>SKILL.md</code> convention should work in principle — PRs for new Agents are welcome."
+        "a": "Nine today: Claude Code, Cursor, Codex, OpenClaw, OpenCode, Trae, Qoder, Antigravity, and Kiro. Any Agent whose Skill folder follows the <code>SKILL.md</code> convention can be scanned and managed — PRs for new Agents are welcome."
       },
       {
-        "q": "Does GitHub backup require a paid account?",
-        "a": "No. Any personal GitHub account works, whether the repo is public or private. If you want to use the repo as a shared source for others, a public repo is usually more convenient."
+        "q": "Where do Marketplace Skills come from?",
+        "a": "Data is sourced from <a href=\"https://skills.sh\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent)\">skills.sh</a>. Each install is just a local <code>git clone --depth 1</code> of the corresponding repo, written to either the global library or a specific Agent. No private data ever leaves your machine."
+      },
+      {
+        "q": "Is the GitHub backup token safe?",
+        "a": "Your Personal Access Token lives only in the OS keychain / credential manager — never sent to any third-party server. Backup and restore call local <code>git</code> directly, and the repo URL plus public / private choice stay in your control."
       },
       {
         "q": "Which platforms are supported?",
-        "a": "Installers ship for macOS (Apple Silicon + Intel) and Windows 10+. Linux users can clone the repo and run <code>npm run tauri:build</code> to build locally."
-      },
-      {
-        "q": "How is it different from a CLI script or another Skill manager?",
-        "a": "The key difference is \"cross-Agent perspective + desktop-grade interaction\". Most CLIs handle one Agent at a time; Skills Manager brings every Agent's Skills into a single UI, with tri-state master switches, per-Agent toggles and drag-and-drop — no more folder hunting or command typing."
+        "a": "Installers ship for macOS (Apple Silicon + Intel) and Windows 10+. Linux users can clone the repo and run <code>pnpm tauri:build</code> to build locally."
       }
     ]
   },

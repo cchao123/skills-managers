@@ -85,6 +85,33 @@ export default function RootLayout() {
     }
   }, [currentPage]);
 
+  // 全局快捷键 Cmd/Ctrl + A/S/D 切页
+  // A=下载页, S=Dashboard, D=GitHub 备份
+  // 注意：Cmd+A=全选, Cmd+S=保存——在输入框/可编辑区域内不拦截，避免打断输入。
+  useEffect(() => {
+    const PAGE_SHORTCUTS: Record<string, Page> = {
+      a: PAGE.SkillDownload,
+      s: PAGE.Dashboard,
+      d: PAGE.GitHubBackup,
+    };
+    const isEditable = (el: EventTarget | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.shiftKey || e.altKey) return;
+      if (isEditable(e.target)) return;
+      const target = PAGE_SHORTCUTS[e.key.toLowerCase()];
+      if (!target) return;
+      e.preventDefault();
+      navigate(pageToPath(target));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [navigate]);
+
   return (
     <div className="h-screen bg-[#f8f9fa] dark:bg-dark-bg-secondary flex">
       <SideNavBar

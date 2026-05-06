@@ -3,6 +3,7 @@ import type { ComponentType, SVGProps } from 'react';
 import IconAccountTree from '~icons/material-symbols/account-tree-outline';
 import IconAdd from '~icons/material-symbols/add';
 import IconApi from '~icons/material-symbols/api';
+import IconApps from '~icons/material-symbols/apps';
 import IconArrowBack from '~icons/material-symbols/arrow-back';
 import IconAutorenew from '~icons/material-symbols/autorenew';
 import IconBackup from '~icons/material-symbols/backup-outline';
@@ -53,6 +54,7 @@ import IconKeepOff from '~icons/material-symbols/keep-off-outline';
 import IconLanguage from '~icons/material-symbols/language';
 import IconLightMode from '~icons/material-symbols/light-mode-outline';
 import IconLink from '~icons/material-symbols/link';
+import IconLocalFireDepartment from '~icons/material-symbols/local-fire-department-outline';
 import IconLock from '~icons/material-symbols/lock-outline';
 import IconMemory from '~icons/material-symbols/memory-outline';
 import IconOpenInNew from '~icons/material-symbols/open-in-new';
@@ -75,6 +77,7 @@ import IconSubdirectoryArrowRight from '~icons/material-symbols/subdirectory-arr
 import IconTerminal from '~icons/material-symbols/terminal';
 import IconToken from '~icons/material-symbols/token-outline';
 import IconTransform from '~icons/material-symbols/transform';
+import IconTrendingUp from '~icons/material-symbols/trending-up';
 import IconTune from '~icons/material-symbols/tune';
 import IconUpdate from '~icons/material-symbols/update';
 import IconVisibility from '~icons/material-symbols/visibility-outline';
@@ -97,6 +100,7 @@ const ICONS: Record<string, IconComponent> = {
   account_tree: IconAccountTree,
   add: IconAdd,
   api: IconApi,
+  apps: IconApps,
   arrow_back: IconArrowBack,
   autorenew: IconAutorenew,
   backup: IconBackup,
@@ -148,6 +152,7 @@ const ICONS: Record<string, IconComponent> = {
   language: IconLanguage,
   light_mode: IconLightMode,
   link: IconLink,
+  local_fire_department: IconLocalFireDepartment,
   lock: IconLock,
   memory: IconMemory,
   open_in_new: IconOpenInNew,
@@ -170,6 +175,7 @@ const ICONS: Record<string, IconComponent> = {
   terminal: IconTerminal,
   token: IconToken,
   transform: IconTransform,
+  trending_up: IconTrendingUp,
   tune: IconTune,
   update: IconUpdate,
   visibility: IconVisibility,

@@ -9,7 +9,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Skills Manager —— 为 Claude、Cursor、Codex、OpenClaw、OpenCode 等 AI Agent 提供统一技能管理、跨 Agent 分发与 GitHub 备份/恢复的桌面应用。" />
+    <meta name="description" content="Skills Manager —— 为 Claude Code、Cursor、Codex、OpenClaw、OpenCode、Trae、Qoder、Antigravity、Kiro 等 9 种 AI Agent 提供统一技能管理、跨 Agent 分发与 GitHub 备份/恢复的桌面应用。" />
     <meta property="og:title" content="Skills Manager · 你的多 Agent 技能总部" />
     <meta property="og:description" content="统一管理本地 Skills，跨 Agent 分发，并通过 GitHub 完成备份与恢复。" />
     <meta property="og:image" content="./assets/logo.png" />
@@ -272,6 +272,7 @@
       /* ---- HERO PREVIEW ---- */
       .hero-preview {
         margin-top: 64px;
+        scroll-margin-top: 80px;
         border-radius: 16px;
         background: var(--bg-card);
         border: 1px solid var(--panel-border);
@@ -412,10 +413,13 @@
       /* ---- FEATURE CARDS ---- */
       .cards-grid {
         margin-top: 56px;
-        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;
-        max-width: 960px;
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;
+        max-width: 1200px;
         margin-left: auto;
         margin-right: auto;
+      }
+      @media (max-width: 1024px) {
+        .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
       .card {
         background: var(--bg-card);
@@ -513,9 +517,8 @@
           <span>Skills Manager</span>
         </a>
         <div class="nav-links">
+          <a href="#preview">沙盒演示</a>
           <a href="#features">功能</a>
-          <a href="#views">界面</a>
-          <a href="#github">备份同步</a>
           <a href="#faq">FAQ</a>
           <a href="./en/" class="lang-switch" aria-label="Switch to English" hreflang="en">EN</a>
         </div>
@@ -534,8 +537,8 @@
           <span
             class="rotate-pill"
             id="rotating-text"
-            data-texts="Manager|Hub|Share|Switch|Sync|Backup|Repo"
-            aria-label="Skills Manager, Hub, Share, Switch, Sync, Backup, Repo"
+            data-texts="Manager|Hub|Share|Switch|Sync|Backup|Repo|Download"
+            aria-label="Skills Manager, Hub, Share, Switch, Sync, Backup, Repo, Download"
           ></span>
         </h1>
         <p class="hero-tagline">你的 <span class="accent">多 Agent 技能总部</span></p>
@@ -556,7 +559,7 @@
           <span>● Apple Silicon / Intel</span>
         </div>
 
-        <div class="hero-preview">
+        <div class="hero-preview" id="preview">
           <div class="preview-frame-wrap" data-preview-embed>
             <span class="preview-badge">Live 预览</span>
             <div class="preview-skeleton" data-preview-skeleton>正在加载 Skills Manager 演示…</div>
@@ -605,126 +608,15 @@
             <h3>平铺 / 按来源展示双视图</h3>
             <p>平铺视图看"有哪些 Skill"；按来源展示视图看"每个 Agent 里有啥"。不同任务切不同视角，不丢信息。</p>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- VIEW MODES -->
-    <section id="views" style="background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);">
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">View · 平铺展示</p>
-            <h2>扫描本地所有 Agent，<br />把 Skill 聚合成一张清单</h2>
-            <p class="lead">不区分来源，按 Skill 维度聚合。哪些技能已经收录、哪些还散落在各个 Agent 里，一眼就能看清。</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">1</span><span><strong>搜索 & 分类筛选</strong> 关键词秒筛、按启用状态快速过滤</span></div>
-              <div class="bullet"><span class="dot">2</span><span><strong>一屏看全 Agent 状态</strong> 每张卡片显示当前已支持 Agent 的启用情况</span></div>
-              <div class="bullet"><span class="dot">3</span><span><strong>主开关三态视觉</strong> 灰 / 黄 / 红 清晰区分未启用 / 仅 native / 部分或全部启用</span></div>
-            </div>
+          <div class="card">
+            <div class="ico">⊞</div>
+            <h3>技能市场 · 一键克隆社区技能</h3>
+            <p>内置 skills.sh 浏览器，支持 All / Trending / Hot 分类与关键词搜索，一键把社区技能克隆到全局或指定 Agent，告别手动 git clone。</p>
           </div>
-          <div class="shot">
-            <img src="./screen-shot/zh-skills-home.png" alt="平铺视图" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">View · 按来源展示</p>
-            <h2>想看每个 Agent 里<br />到底装了啥？切一下</h2>
-            <p class="lead">按来源展示分组展示，同一 Skill 在不同 Agent 里的状态一目了然，方便你决定哪些收录到中心仓库、哪些保留本地。</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">✓</span><span><strong>一键拷贝到根目录</strong> 纳入统一仓库，可被其它 Agent 复用</span></div>
-              <div class="bullet"><span class="dot">✓</span><span><strong>原生 Skill 特殊标识</strong> 黄色圆点直观提示"这是属于 Agent 自带的"</span></div>
-              <div class="bullet"><span class="dot">✓</span><span><strong>操作日志</strong> 记录哪些行为触发了"复制到根目录"，可回溯</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="./screen-shot/zh-skills-source.png" alt="按来源展示视图" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">Skill Detail</p>
-            <h2>技能详情 · 文件树 +<br />Agent 启用状态</h2>
-            <p class="lead">点击任意 Skill 即可查看完整文件结构、<code>SKILL.md</code> 内容，以及该 Skill 在各 Agent 的共享状态。可在面板里直接拖拽调整宽度，照顾不同屏幕。</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">◎</span><span><strong>内联文件预览</strong> 点文件查看内容，无需外部编辑器</span></div>
-              <div class="bullet"><span class="dot">◎</span><span><strong>删除保护</strong> 默认不允许编辑 Agent 目录，开启高阶模式后才能精准删除</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="./screen-shot/zh-skills-detail.png" alt="Skill 详情" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- GITHUB BACKUP -->
-    <section id="github" style="background: linear-gradient(180deg, rgba(183, 20, 34, 0.05), transparent);">
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">GitHub · 备份 / 恢复 / 分发</p>
-            <h2>把你的技能<br />变成一个可共享仓库</h2>
-            <p class="lead">接入个人 GitHub 仓库后，就能完成 <strong style="color:var(--text)">一键同步 · 一键恢复</strong>。同一份仓库既能做个人备份，也能作为团队共享来源。</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">↑</span><span><strong>同步到 GitHub</strong> 全部中央仓库 Skills 推到远端，增量 commit</span></div>
-              <div class="bullet"><span class="dot">↓</span><span><strong>从 GitHub 恢复</strong> 新机器安装即可拉回你的全部技能</span></div>
-              <div class="bullet"><span class="dot">★</span><span><strong>统一分发</strong> 让个人或团队围绕同一份仓库共享和复用 Skills</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="./screen-shot/zh-github.png" alt="GitHub 备份界面" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- DRAG IMPORT + SETTINGS COMBO -->
-    <section>
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">Drag & Drop · 零门槛</p>
-            <h2>拖进来，就完成了</h2>
-            <p class="lead">不会用命令行也没关系。直接把包含 <code>SKILL.md</code> 的文件夹从文件管理器拖进窗口，立刻入库、立刻可共享到其它 Agent。</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">⇣</span><span><strong>秒级反馈</strong> 入库后自动静默刷新列表，无闪烁 loading</span></div>
-              <div class="bullet"><span class="dot">⇣</span><span><strong>批量拖拽</strong> 支持多文件夹同时导入，失败的文件夹会分别提示</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="./screen-shot/zh-skills-drop.png" alt="拖拽导入" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">Settings · 可控可靠</p>
-            <h2>记忆过滤 · 删除保护 ·<br />高阶模式一应俱全</h2>
-            <p class="lead">默认以只读方式接入你的 Agent 环境。需要写入或删除时再开启高阶模式，避免误伤原有技能。</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">✦</span><span><strong>记忆过滤</strong> 把 CLI / workflow 注入的临时 Skill 从视图里屏蔽</span></div>
-              <div class="bullet"><span class="dot">✦</span><span><strong>中英文切换 · 暗色模式</strong> 跟随系统或手动切换</span></div>
-              <div class="bullet"><span class="dot">✦</span><span><strong>开箱即用</strong> 无需账号注册，配置即走</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="./screen-shot/zh-setting.png" alt="设置页" loading="lazy" />
+          <div class="card">
+            <div class="ico">◎</div>
+            <h3>技能详情 · 内联预览 & 误删保护</h3>
+            <p>点击任意 Skill 即可查看完整文件树和 <code>SKILL.md</code> 内容；默认 Agent 目录只读，开启高阶模式才能精准删除，避免误伤。</p>
           </div>
         </div>
       </div>
@@ -755,28 +647,24 @@
         <h2>常见问题</h2>
         <div class="faq-list">
           <details class="faq">
-            <summary>Skills Manager 要收费吗？</summary>
-            <p>完全免费、开源，基于 MIT License 发布，仓库在 GitHub 上公开。你可以自由使用、修改、分发，也欢迎提 Issue 或 PR。</p>
-          </details>
-          <details class="faq">
-            <summary>它会修改我本地已有的 Skills 吗？</summary>
-            <p>默认不会。应用以观察者模式扫描各 Agent 目录，并在你授权（启用开关 / 拖拽导入 / 拷贝到根目录）时才创建符号链接或拷贝文件。误删保护默认开启，高阶写操作需要在"设置 → 高阶模式"里显式打开。</p>
+            <summary>会动我本地已有的 Skills 吗？</summary>
+            <p>默认只读。只有你主动启用开关、拖拽导入或点击"复制到根目录"时，才会创建符号链接或拷贝文件。删除等高风险操作需要先在"设置 → 高阶模式"里手动打开，避免误伤。</p>
           </details>
           <details class="faq">
             <summary>支持哪些 Agent？</summary>
-            <p>当前已支持 Claude、Cursor、Codex、OpenClaw、OpenCode。只要 Agent 的 Skill 目录符合 <code>SKILL.md</code> 约定，理论上都能被扫描和管理。新增 Agent 的支持欢迎发起 PR。</p>
+            <p>当前内置 9 种：Claude Code、Cursor、Codex、OpenClaw、OpenCode、Trae、Qoder、Antigravity、Kiro。任何遵循 <code>SKILL.md</code> 约定的 Agent 都能被扫描和管理，新增 Agent 欢迎发起 PR。</p>
           </details>
           <details class="faq">
-            <summary>GitHub 备份需要付费账号吗？</summary>
-            <p>不需要。使用你自己的个人 GitHub 账号即可（Public / Private 仓库都支持）。如果你希望把仓库作为共享来源提供给他人，使用 Public 仓库会更方便。</p>
+            <summary>技能市场里的技能从哪里来？</summary>
+            <p>数据来自 <a href="https://skills.sh" target="_blank" rel="noopener" style="color:var(--accent)">skills.sh</a>。点击下载本质上是用本地 <code>git clone --depth 1</code> 拉对应仓库，可以直接装到全局或某个具体 Agent 下。全程不上传你的任何隐私数据。</p>
+          </details>
+          <details class="faq">
+            <summary>GitHub 备份的 token 安全吗？</summary>
+            <p>Personal Access Token 只保存在本地系统的钥匙串 / 凭证管理器里，不会上传到任何第三方服务。备份与恢复直接调用本地 <code>git</code>，仓库地址、Public / Private 选择都由你掌控。</p>
           </details>
           <details class="faq">
             <summary>支持哪些平台？</summary>
-            <p>目前提供 macOS (Apple Silicon + Intel) 与 Windows 10+ 的安装包。Linux 用户可 clone 仓库后执行 <code>npm run tauri:build</code> 自行构建。</p>
-          </details>
-          <details class="faq">
-            <summary>和 CLI 脚本 / 其它 Skill manager 相比有什么区别？</summary>
-            <p>核心差异是"跨 Agent 视角 + 桌面级交互"。大多数 CLI 只处理单个 Agent；Skills Manager 把所有 Agent 的 Skill 聚合到同一个界面，三态开关 + 主开关 + 拖拽让多 Agent 场景的日常管理不再切目录、不再手敲命令。</p>
+            <p>提供 macOS (Apple Silicon + Intel) 与 Windows 10+ 的安装包。Linux 用户可 clone 仓库后执行 <code>pnpm tauri:build</code> 自行构建。</p>
           </details>
         </div>
       </div>

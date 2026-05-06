@@ -3,10 +3,33 @@ use crate::settings::AppSettingsManager;
 use log::info;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tauri::{AppHandle, Emitter, State};
 use tokio::io::AsyncReadExt;
+
+/// 按 (repository, id) 联合去重：同仓库同 id 才视为重复，跨仓库同 id 视为不同技能
+/// 重复时保留 stars（installs）最高的一条；未知 stars 视为 0
+fn dedupe_by_id(skills: Vec<MarketplaceSkill>) -> Vec<MarketplaceSkill> {
+    let mut seen: HashMap<(String, String), usize> = HashMap::new();
+    let mut result: Vec<MarketplaceSkill> = Vec::with_capacity(skills.len());
+    for s in skills {
+        let key = (s.repository.clone(), s.id.clone());
+        match seen.get(&key) {
+            Some(&idx) => {
+                if s.stars.unwrap_or(0) > result[idx].stars.unwrap_or(0) {
+                    result[idx] = s;
+                }
+            }
+            None => {
+                seen.insert(key, result.len());
+                result.push(s);
+            }
+        }
+    }
+    result
+}
 
 /// 技能市场中的技能条目
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -211,6 +234,7 @@ pub async fn fetch_marketplace_skills(
         })
         .collect();
 
+    let skills = dedupe_by_id(skills);
     info!("Fetched {} skills from skills.sh ({})", skills.len(), page_url);
     Ok(skills)
 }
@@ -248,7 +272,7 @@ async fn fetch_by_search(query: &str) -> Result<Vec<MarketplaceSkill>, String> {
     let resp: SearchResponse =
         serde_json::from_str(&text).map_err(|e| format!("解析搜索结果失败: {}", e))?;
 
-    Ok(resp
+    let skills: Vec<MarketplaceSkill> = resp
         .skills
         .into_iter()
         .map(|s| {
@@ -264,7 +288,8 @@ async fn fetch_by_search(query: &str) -> Result<Vec<MarketplaceSkill>, String> {
                 updated_at: None,
             }
         })
-        .collect())
+        .collect();
+    Ok(dedupe_by_id(skills))
 }
 
 /// git stderr 进度行 → 整体进度百分比（0-100）
@@ -309,6 +334,9 @@ pub async fn download_skill_from_marketplace(
     state: State<'_, crate::state::AppState>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
+    // branch 当前未使用：git clone 走仓库默认分支；保留参数以兼容前端 API
+    let _ = branch;
+
     info!(
         "Downloading skill '{}' from '{}' to agent: {:?}",
         skill_id, repository, target_agent

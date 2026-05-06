@@ -9,7 +9,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Skills Manager — a desktop app for managing, distributing, and restoring skills across Claude, Cursor, Codex, OpenClaw, OpenCode, and other AI agents." />
+    <meta name="description" content="Skills Manager — a desktop app for managing, distributing, and restoring skills across nine AI agents: Claude Code, Cursor, Codex, OpenClaw, OpenCode, Trae, Qoder, Antigravity, and Kiro." />
     <meta property="og:title" content="Skills Manager · Your multi-Agent Skills HQ" />
     <meta property="og:description" content="Manage local Skills in one place, distribute them across agents, and back them up with GitHub." />
     <meta property="og:image" content="../assets/logo.png" />
@@ -272,6 +272,7 @@
       /* ---- HERO PREVIEW ---- */
       .hero-preview {
         margin-top: 64px;
+        scroll-margin-top: 80px;
         border-radius: 16px;
         background: var(--bg-card);
         border: 1px solid var(--panel-border);
@@ -412,10 +413,13 @@
       /* ---- FEATURE CARDS ---- */
       .cards-grid {
         margin-top: 56px;
-        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;
-        max-width: 960px;
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;
+        max-width: 1200px;
         margin-left: auto;
         margin-right: auto;
+      }
+      @media (max-width: 1024px) {
+        .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
       .card {
         background: var(--bg-card);
@@ -513,9 +517,8 @@
           <span>Skills Manager</span>
         </a>
         <div class="nav-links">
+          <a href="#preview">Sandbox</a>
           <a href="#features">Features</a>
-          <a href="#views">Views</a>
-          <a href="#github">Backup</a>
           <a href="#faq">FAQ</a>
           <a href="../" class="lang-switch" aria-label="切换到中文" hreflang="zh-CN">中文</a>
         </div>
@@ -534,8 +537,8 @@
           <span
             class="rotate-pill"
             id="rotating-text"
-            data-texts="Manager|Hub|Share|Switch|Sync|Backup|Repo"
-            aria-label="Skills Manager, Hub, Share, Switch, Sync, Backup, Repo"
+            data-texts="Manager|Hub|Share|Switch|Sync|Backup|Repo|Download"
+            aria-label="Skills Manager, Hub, Share, Switch, Sync, Backup, Repo, Download"
           ></span>
         </h1>
         <p class="hero-tagline">Your <span class="accent">multi-Agent Skills HQ</span></p>
@@ -556,7 +559,7 @@
           <span>● Apple Silicon / Intel</span>
         </div>
 
-        <div class="hero-preview">
+        <div class="hero-preview" id="preview">
           <div class="preview-frame-wrap" data-preview-embed>
             <span class="preview-badge">Live Preview</span>
             <div class="preview-skeleton" data-preview-skeleton>Loading the Skills Manager demo…</div>
@@ -605,126 +608,15 @@
             <h3>Flat & by-source dual views</h3>
             <p>Flat view answers "what Skills do I have"; by-source view answers "what's inside each Agent". Switch perspective without losing context.</p>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- VIEW MODES -->
-    <section id="views" style="background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);">
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">View · Flat</p>
-            <h2>Scan every local Agent<br />and aggregate Skills into one list</h2>
-            <p class="lead">Aggregated by Skill, not by source. See what's already collected and what's still scattered across agents at a glance.</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">1</span><span><strong>Search & filter</strong> instant keyword search, filter by enabled state</span></div>
-              <div class="bullet"><span class="dot">2</span><span><strong>See every Agent at a glance</strong> each card shows the enabled state across all currently supported agents</span></div>
-              <div class="bullet"><span class="dot">3</span><span><strong>Tri-state master switch</strong> gray / yellow / red clearly mark disabled / native-only / partially-or-fully enabled</span></div>
-            </div>
+          <div class="card">
+            <div class="ico">⊞</div>
+            <h3>Marketplace · one-click community Skills</h3>
+            <p>Browse skills.sh right inside the app — All / Trending / Hot tabs plus keyword search — and clone any community Skill to global or a specific Agent. No more manual git clone.</p>
           </div>
-          <div class="shot">
-            <img src="../screen-shot/en-skills-home.png" alt="Flat view" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">View · By source</p>
-            <h2>Curious what's really<br />inside each Agent? One click away</h2>
-            <p class="lead">Grouped by source so you can instantly see where a Skill lives and decide what belongs in the central repo versus what should stay local.</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">✓</span><span><strong>Copy to central repo</strong> into a unified library that every Agent can reuse</span></div>
-              <div class="bullet"><span class="dot">✓</span><span><strong>Native Skill indicator</strong> a yellow dot signals "this one ships with the Agent"</span></div>
-              <div class="bullet"><span class="dot">✓</span><span><strong>Action log</strong> every "copy to central" action is recorded and traceable</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="../screen-shot/en-skills-source.png" alt="By-source view" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">Skill Detail</p>
-            <h2>Skill detail · file tree +<br />per-Agent state</h2>
-            <p class="lead">Click any Skill to view its full file tree, <code>SKILL.md</code> contents, and how it's shared across Agents. The side panel is drag-resizable to fit any screen.</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">◎</span><span><strong>Inline file preview</strong> click a file to read its content, no external editor needed</span></div>
-              <div class="bullet"><span class="dot">◎</span><span><strong>Delete protection</strong> Agent folders are read-only by default; flip Advanced Mode to enable precise deletes</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="../screen-shot/en-skills-detail.png" alt="Skill detail" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- GITHUB BACKUP -->
-    <section id="github" style="background: linear-gradient(180deg, rgba(183, 20, 34, 0.05), transparent);">
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">GitHub · Backup / Restore / Distribution</p>
-            <h2>Turn your Skills<br />into a shareable repository</h2>
-            <p class="lead">Connect your GitHub repo for <strong style="color:var(--text)">one-click sync · one-click restore</strong>. The same repo can act as both your personal backup and a shared source for a team.</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">↑</span><span><strong>Sync to GitHub</strong> push every central Skill to the remote with incremental commits</span></div>
-              <div class="bullet"><span class="dot">↓</span><span><strong>Restore from GitHub</strong> pull all your Skills back on a fresh machine</span></div>
-              <div class="bullet"><span class="dot">★</span><span><strong>Shared distribution</strong> keep personal and team Skills aligned around one repository</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="../screen-shot/en-github.png" alt="GitHub backup UI" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- DRAG IMPORT + SETTINGS COMBO -->
-    <section>
-      <div class="container">
-        <div class="feature-row">
-          <div>
-            <p class="eyebrow">Drag & Drop · zero friction</p>
-            <h2>Drop it in. Done.</h2>
-            <p class="lead">No CLI required. Drag any folder containing a <code>SKILL.md</code> from your file manager onto the window and it's imported and ready to share with other Agents.</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">⇣</span><span><strong>Instant feedback</strong> the list silently refreshes after import, no loading flicker</span></div>
-              <div class="bullet"><span class="dot">⇣</span><span><strong>Batch drop</strong> drop multiple folders at once; failures are reported individually</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="../screen-shot/en-skills-drop.png" alt="Drag and drop import" loading="lazy" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="feature-row reverse">
-          <div>
-            <p class="eyebrow">Settings · safe & controllable</p>
-            <h2>Memory filters · delete protection ·<br />Advanced Mode all included</h2>
-            <p class="lead">Skills Manager joins your agent setup in read-only mode by default. Turn on Advanced Mode only when you need to write or delete.</p>
-            <div class="bullet-list">
-              <div class="bullet"><span class="dot">✦</span><span><strong>Memory filters</strong> hide temporary Skills injected by CLIs or workflows</span></div>
-              <div class="bullet"><span class="dot">✦</span><span><strong>中/EN toggle · dark mode</strong> follow the system or switch manually</span></div>
-              <div class="bullet"><span class="dot">✦</span><span><strong>Zero setup</strong> no account required, configure and go</span></div>
-            </div>
-          </div>
-          <div class="shot">
-            <img src="../screen-shot/en-setting.png" alt="Settings page" loading="lazy" />
+          <div class="card">
+            <div class="ico">◎</div>
+            <h3>Skill detail · inline preview & delete protection</h3>
+            <p>Click any Skill to inspect its full file tree and <code>SKILL.md</code>. Agent folders are read-only by default; flip Advanced Mode for precise, intentional deletes.</p>
           </div>
         </div>
       </div>
@@ -755,28 +647,24 @@
         <h2>Frequently Asked Questions</h2>
         <div class="faq-list">
           <details class="faq">
-            <summary>Is Skills Manager paid software?</summary>
-            <p>No — it's fully free and open-source under MIT License, with the repo public on GitHub. Use, modify and redistribute as you like. Issues and PRs are welcome.</p>
-          </details>
-          <details class="faq">
-            <summary>Will it modify my existing local Skills?</summary>
-            <p>By default, no. The app scans Agent folders in observer mode and only creates symlinks or copies when you explicitly opt in (flip a switch, drag to import, copy to central). Delete protection is on by default; writes require flipping Advanced Mode under Settings.</p>
+            <summary>Will it touch my existing local Skills?</summary>
+            <p>Read-only by default. Symlinks or copies are only created when you opt in — flipping a switch, dragging to import, or clicking "copy to central". Delete and other high-risk operations require Advanced Mode under Settings, so accidental damage is prevented.</p>
           </details>
           <details class="faq">
             <summary>Which Agents are supported?</summary>
-            <p>Claude, Cursor, Codex, OpenClaw, and OpenCode are supported today. Any Agent whose Skill folder follows the <code>SKILL.md</code> convention should work in principle — PRs for new Agents are welcome.</p>
+            <p>Nine today: Claude Code, Cursor, Codex, OpenClaw, OpenCode, Trae, Qoder, Antigravity, and Kiro. Any Agent whose Skill folder follows the <code>SKILL.md</code> convention can be scanned and managed — PRs for new Agents are welcome.</p>
           </details>
           <details class="faq">
-            <summary>Does GitHub backup require a paid account?</summary>
-            <p>No. Any personal GitHub account works, whether the repo is public or private. If you want to use the repo as a shared source for others, a public repo is usually more convenient.</p>
+            <summary>Where do Marketplace Skills come from?</summary>
+            <p>Data is sourced from <a href="https://skills.sh" target="_blank" rel="noopener" style="color:var(--accent)">skills.sh</a>. Each install is just a local <code>git clone --depth 1</code> of the corresponding repo, written to either the global library or a specific Agent. No private data ever leaves your machine.</p>
+          </details>
+          <details class="faq">
+            <summary>Is the GitHub backup token safe?</summary>
+            <p>Your Personal Access Token lives only in the OS keychain / credential manager — never sent to any third-party server. Backup and restore call local <code>git</code> directly, and the repo URL plus public / private choice stay in your control.</p>
           </details>
           <details class="faq">
             <summary>Which platforms are supported?</summary>
-            <p>Installers ship for macOS (Apple Silicon + Intel) and Windows 10+. Linux users can clone the repo and run <code>npm run tauri:build</code> to build locally.</p>
-          </details>
-          <details class="faq">
-            <summary>How is it different from a CLI script or another Skill manager?</summary>
-            <p>The key difference is "cross-Agent perspective + desktop-grade interaction". Most CLIs handle one Agent at a time; Skills Manager brings every Agent's Skills into a single UI, with tri-state master switches, per-Agent toggles and drag-and-drop — no more folder hunting or command typing.</p>
+            <p>Installers ship for macOS (Apple Silicon + Intel) and Windows 10+. Linux users can clone the repo and run <code>pnpm tauri:build</code> to build locally.</p>
           </details>
         </div>
       </div>

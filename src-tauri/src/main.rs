@@ -97,9 +97,9 @@ pub fn run() {
                         button: tauri::tray::MouseButton::Left,
                         button_state: tauri::tray::MouseButtonState::Up,
                         ..
-                    } = event
+                    } = _event
                     {
-                        let app = tray.app_handle();
+                        let app = _tray.app_handle();
                         if let Some(w) = app.get_webview_window("main") {
                             let _ = w.show();
                             let _ = w.unminimize();

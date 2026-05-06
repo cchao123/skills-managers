@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
+import { useHiddenAgents } from '@/hooks/useHiddenAgents';
 import { open as openUrl } from '@tauri-apps/plugin-shell';
 
 const ICON_COLORS = [
@@ -43,17 +44,14 @@ interface Agent {
 
 type SourceType = 'allTime' | 'trending' | 'hot';
 
-const TABS: Array<{ id: SourceType; label: string }> = [
-  { id: 'allTime', label: 'All' },
-  { id: 'trending', label: 'Trending' },
-  { id: 'hot', label: 'Hot' },
+const TABS: Array<{ id: SourceType; label: string; icon: string; shortcut: string }> = [
+  { id: 'allTime', label: 'All', icon: '', shortcut: '1' },
+  { id: 'trending', label: 'Trending', icon: 'trending_up', shortcut: '2' },
+  { id: 'hot', label: 'Hot', icon: 'local_fire_department', shortcut: '3' },
 ];
 
-const TITLE_MAP: Record<SourceType, string> = {
-  allTime: 'All Skills',
-  trending: 'Trending Skills',
-  hot: 'Hot Skills',
-};
+const IS_MAC = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+const SHORTCUT_MOD = IS_MAC ? '⌘' : 'Ctrl';
 
 // ─── 下载目标选择器 ───────────────────────────────────────────────────────────
 
@@ -458,10 +456,31 @@ export default function SkillDownload() {
     },
   );
 
-  const { data: agents = [] } = useRequest(async () => {
-    const result = await invoke<Agent[]>('get_agents');
-    return result.filter((a) => a.detected);
-  });
+  const { data: allAgents = [] } = useRequest(() => invoke<Agent[]>('get_agents'));
+  const hiddenAgents = useHiddenAgents();
+  const agents = useMemo(
+    () => allAgents.filter((a) => a.detected && !hiddenAgents.has(a.name)),
+    [allAgents, hiddenAgents],
+  );
+
+  useEffect(() => {
+    if (selectedAgent !== 'global' && !agents.some((a) => a.name === selectedAgent)) {
+      setSelectedAgent('global');
+    }
+  }, [agents, selectedAgent]);
+
+  // Cmd/Ctrl + 1/2/3 切换 All/Trending/Hot
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const tab = TABS.find((t) => t.shortcut === e.key);
+      if (!tab) return;
+      e.preventDefault();
+      setSourceType(tab.id);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const { data: installedIds = new Set<string>(), refresh: refreshInstalled } = useRequest(async () => {
     const list = await invoke<{ id: string }[]>('list_skills');
@@ -510,56 +529,70 @@ export default function SkillDownload() {
   return (
     <div className="h-full overflow-y-auto">
       {/* 吸顶头部：Tab + 搜索 */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-dark-bg-card border-b border-slate-200 dark:border-dark-border px-6 pt-4 pb-3 space-y-3">
+      <div className="sticky top-0 z-10 bg-white dark:bg-dark-bg-card border-b border-slate-200 dark:border-dark-border px-6 pt-4 pb-3 space-y-3" data-tauri-drag-region>
         <div className="max-w-7xl mx-auto space-y-3">
-        {/* 搜索和筛选栏 */}
-        <div className="space-y-3">
-          <div className="flex gap-2 border-b border-slate-200 dark:border-dark-border">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSourceType(tab.id)}
-                className={`px-4 py-2 font-medium transition-all border-b-2 ${
-                  sourceType === tab.id
-                    ? 'border-[#b71422] text-[#b71422] dark:text-[#ff4d4d]'
-                    : 'border-transparent text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {/* 搜索和筛选栏：滑块 + 搜索框 + 下载目标，单行布局（与 Dashboard 一致） */}
+        <div className="flex items-center gap-3 h-11">
+          <div className="relative grid grid-cols-3 items-center rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-slate-100 dark:bg-dark-bg-tertiary p-0.5 h-9 shrink-0">
+            {/* 滑动高亮块 */}
+            <div
+              className="absolute top-0.5 bottom-0.5 rounded-md bg-white dark:bg-dark-bg-card shadow-sm transition-all duration-200 ease-in-out"
+              style={{
+                left: `calc(${TABS.findIndex((t) => t.id === sourceType)} * (100% - 4px) / 3 + 2px)`,
+                width: 'calc((100% - 4px) / 3)',
+              }}
+            />
+            {TABS.map((tab) => {
+              const isActive = sourceType === tab.id;
+              return (
+                <div key={tab.id} className="relative z-10 group">
+                  <button
+                    onClick={() => setSourceType(tab.id)}
+                    aria-pressed={isActive}
+                    className="flex items-center justify-center w-full h-full gap-1.5 px-3 rounded-md transition-colors"
+                  >
+                    <Icon
+                      name={tab.icon}
+                      className={`text-lg transition-colors ${
+                        isActive
+                          ? 'text-slate-700 dark:text-white'
+                          : 'text-slate-400 dark:text-gray-500'
+                      }`}
+                    />
+                    <span className={`text-xs font-bold whitespace-nowrap transition-colors ${
+                      isActive
+                        ? 'text-slate-700 dark:text-white'
+                        : 'text-slate-400 dark:text-gray-500'
+                    }`}>{tab.label}</span>
+                  </button>
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[9999] pointer-events-none hidden group-hover:block">
+                    <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
+                      {tab.label} {SHORTCUT_MOD}{tab.shortcut}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="flex gap-4 items-center">
-            <div className="flex-1 relative">
-              <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
-              <input
-                type="text"
-                placeholder="搜索技能..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-dark-border bg-white dark:bg-dark-bg-card text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#b71422] focus:border-transparent"
-              />
-            </div>
-
-            <AgentPicker agents={agents} selected={selectedAgent} onSelect={setSelectedAgent} />
+          <div className="flex-1 relative">
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
+            <input
+              type="text"
+              placeholder="搜索技能..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-9 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-dark-border bg-white dark:bg-dark-bg-card text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#b71422] focus:border-transparent"
+            />
           </div>
+
+          <AgentPicker agents={agents} selected={selectedAgent} onSelect={setSelectedAgent} />
         </div>
         </div>
       </div>
 
       {/* 主内容区 */}
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        {/* 技能列表标题 */}
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-            {TITLE_MAP[sourceType]}
-            <span className="ml-2 text-sm font-normal text-slate-500 dark:text-gray-400">
-              共 {filteredSkills.length} 个技能
-            </span>
-          </h2>
-        </div>
-
+      <div className="max-w-7xl mx-auto px-5 py-4">
         {/* 技能列表 */}
         {loading ? (
           <div className="flex items-center justify-center py-24">
@@ -576,13 +609,13 @@ export default function SkillDownload() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             {filteredSkills.map((skill) => (
               <article
                 key={skill.id}
                 className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 flex flex-col group overflow-hidden"
               >
-                <div className="p-4">
+                <div className="p-3">
                   {/* Icon + GitHub author link */}
                   <div className="flex justify-between items-start mb-3">
                     <div className={`w-12 h-12 rounded-lg ${getIconColor(skill.id)} flex items-center justify-center`}>
@@ -590,17 +623,17 @@ export default function SkillDownload() {
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); openUrl(skill.repository); }}
-                      className="flex items-center gap-1 max-w-[55%] hover:text-[#b71422] dark:hover:text-[#fca5a5] transition-colors group"
+                      className="flex items-center gap-[1px] max-w-[55%] hover:text-[#b71422] dark:hover:text-[#fca5a5] transition-colors group"
                     >
                       <svg viewBox="0 0 24 24" className="w-3 h-3 flex-shrink-0 fill-current text-slate-400 dark:text-gray-500 group-hover:text-[#b71422] dark:group-hover:text-[#fca5a5]" aria-hidden="true">
                         <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
                       </svg>
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 truncate group-hover:text-[#b71422] dark:group-hover:text-[#fca5a5]">@{skill.author}</span>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 truncate group-hover:text-[#b71422] dark:group-hover:text-[#fca5a5]">{skill.author}</span>
                     </button>
                   </div>
 
                   <h4 className="text-base font-bold mb-1 truncate text-slate-900 dark:text-white">{skill.name}</h4>
-                  <p className="text-xs text-[#5e5e5e] dark:text-gray-300 mb-4 line-clamp-2 min-h-[2.5rem] leading-relaxed">
+                  <p className="text-xs text-[#5e5e5e] dark:text-gray-300 mb-4 line-clamp-2 min-h-[1rem] leading-relaxed">
                     {skill.description}
                   </p>
 
@@ -615,17 +648,17 @@ export default function SkillDownload() {
                   {/* Buttons */}
                   <div className="flex gap-2">
                     {installedIds.has(skill.id) && !succeeded.has(skill.id) ? (
-                      <div className="flex-1 py-2 rounded-lg font-bold text-xs bg-[#edeeef] dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed">
+                      <div className="flex-1 h-9 rounded-lg font-bold text-xs bg-[#edeeef] dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed">
                         <Icon name="check_circle" className="text-sm" />
                         已下载
                       </div>
                     ) : succeeded.has(skill.id) ? (
-                      <div className="flex-1 py-2 rounded-lg font-bold text-xs bg-green-500 text-white flex items-center justify-center gap-1">
+                      <div className="flex-1 h-9 rounded-lg font-bold text-xs bg-green-500 text-white flex items-center justify-center gap-1">
                         <Icon name="check" className="text-sm" />
                         下载成功
                       </div>
                     ) : downloading.has(skill.id) ? (
-                      <div className="relative overflow-hidden flex-1 py-2 rounded-lg font-bold text-xs bg-[#f3f4f5] dark:bg-dark-bg-tertiary border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed">
+                      <div className="relative overflow-hidden flex-1 h-9 rounded-lg font-bold text-xs bg-[#f3f4f5] dark:bg-dark-bg-tertiary border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed">
                         <div
                           className="absolute inset-0 bg-[#b71422] transition-[width] duration-300 ease-out"
                           style={{ width: `${progress[skill.id] ?? 0}%` }}
@@ -642,7 +675,7 @@ export default function SkillDownload() {
                     ) : (
                       <button
                         onClick={() => handleDownload(skill)}
-                        className="flex-1 py-2 rounded-lg font-bold text-xs bg-[#b71422] text-white hover:bg-[#8f0f1a] transition-colors"
+                        className="flex-1 h-9 rounded-lg font-bold text-xs bg-[#b71422] text-white hover:bg-[#8f0f1a] transition-colors"
                       >
                         下载到 {selectedAgent === 'global' ? '全局' : selectedAgent}
                       </button>
