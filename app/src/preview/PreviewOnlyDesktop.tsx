@@ -11,7 +11,7 @@ import { Icon } from '@/components/Icon';
  */
 interface PreviewOnlyDesktopProps {
   /** 当前被拦截的页面，用于标题和跳转按钮 */
-  feature: 'github' | 'settings';
+  feature: 'github' | 'settings' | 'marketplace';
 }
 
 const COPY: Record<PreviewOnlyDesktopProps['feature'], { titleZh: string; descZh: string; titleEn: string; descEn: string }> = {
@@ -26,6 +26,12 @@ const COPY: Record<PreviewOnlyDesktopProps['feature'], { titleZh: string; descZh
     descZh: 'Agent 发现、链接策略、托盘偏好等能力依赖本地文件系统和原生窗口 API，只在桌面版里可用。',
     titleEn: 'Settings are desktop-only',
     descEn: 'Agent discovery, link strategy and tray preferences rely on native file-system and window APIs, only available in the desktop app.',
+  },
+  marketplace: {
+    titleZh: '技能市场仅桌面端可用',
+    descZh: '技能市场需要通过本地 Git 克隆仓库并写入文件系统，浏览器环境无法完成此操作，请下载桌面版体验完整功能。',
+    titleEn: 'Marketplace is desktop-only',
+    descEn: 'The marketplace clones skill repos via Git and writes to your local file system — not possible in the browser. Download the desktop app to get the full experience.',
   },
 };
 

@@ -100,6 +100,10 @@ export default function PreviewApp() {
                 path={ROUTE_PATH.Settings.replace(/^\//, '')}
                 element={<Settings />}
               />
+              <Route
+                path={ROUTE_PATH.SkillDownload.replace(/^\//, '')}
+                element={<PreviewOnlyDesktop feature="marketplace" />}
+              />
             </Route>
           </Routes>
         </HashRouter>
