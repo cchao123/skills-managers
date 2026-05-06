@@ -23,20 +23,34 @@
 
 ## What It Is
 
-**Skills Manager** is a desktop app built with **Tauri 2 + React + Rust** for organizing local skills and moving them across different AI agents.
+**Skills Manager** is a desktop app built with **Tauri 2 + React + Rust** for managing skills for Claude Code and other AI agents with a unified platform.
 
 It is designed around a few core workflows:
 
+- **Marketplace**: browse, search, and install community skills with one click, featuring All Time, Trending, and Hot rankings
 - **Unified scanning**: collect skills from multiple agent directories into one manageable view
 - **Cross-agent distribution**: link or copy the same skill into different agents
 - **Central storage**: keep reusable skills in one place for easier maintenance and migration
 - **GitHub backup and restore**: push your skills repository to GitHub or restore it on a new machine
+- **CI/CD automation**: automated cross-platform builds and releases via GitHub Actions
 
 Supported agents currently include **Claude, Cursor, Codex, OpenClaw, and OpenCode**.
 
 ---
 
 ## Features
+
+### Marketplace
+
+- **Three rankings**: All Time, Trending, and Hot leaderboards
+- **Smart search**: quickly filter by skill name or description
+- **One-click install**: select target agent and download/enable skills instantly
+- **Details preview**: view skill's SKILL.md content, statistics, security audits, and more
+- **Progress tracking**: real-time download progress and installation status
+- **Agent selector**: choose to install to Root or specific agent directories
+
+![Marketplace](docs/screen-shot/en-marketplace-01.png)
+![Skill Details](docs/screen-shot/en-marketplace-02.png)
 
 ### Skill Overview and Management
 
@@ -46,9 +60,7 @@ Supported agents currently include **Claude, Cursor, Codex, OpenClaw, and OpenCo
 - **Drag-and-drop import**: import any folder that contains a `SKILL.md`
 
 ![Home](docs/screen-shot/en-skills-home.png)
-![Source View](docs/screen-shot/en-skills-source.png)
 ![Skill Details](docs/screen-shot/en-skills-detail.png)
-![Drag Import](docs/screen-shot/en-skills-drop.png)
 
 ### GitHub Backup and Distribution
 
@@ -58,15 +70,6 @@ Supported agents currently include **Claude, Cursor, Codex, OpenClaw, and OpenCo
 
 ![GitHub](docs/screen-shot/en-github.png)
 
-### Settings
-
-- **Agent detection**: inspect and manage supported local agents
-- **Link strategy**: choose whether skills are distributed via links or copies
-- **Filter rules**: hide skills injected by CLI or workflow tooling for a cleaner list
-- **Delete protection**: avoid editing agent-owned files unless you explicitly allow it
-
-![Settings](docs/screen-shot/en-setting.png)
-
 ---
 
 ## Tech stack
@@ -75,6 +78,7 @@ Supported agents currently include **Claude, Cursor, Codex, OpenClaw, and OpenCo
 |-------|--------|
 | Frontend | React 18, TypeScript, Vite 5, Tailwind CSS, react-i18next |
 | Desktop | Tauri 2 (Rust) |
+| CI/CD | GitHub Actions (multi-platform builds, automated releases) |
 | Typical deps | serde, git2, ureq, walkdir, etc. |
 
 Development and builds require **Node.js** and **Rust**; on macOS, **OpenSSL** may be needed for some native deps (see below).
@@ -154,6 +158,42 @@ Skill metadata comes from **`SKILL.md`** in each folder (YAML frontmatter recomm
 
 ---
 
+## CI/CD Automated Builds
+
+The project uses **GitHub Actions** for automated building and releasing:
+
+### Build Workflow (`.github/workflows/build.yml`)
+
+**Triggers:**
+- Tag push: `v*` (e.g., `v1.0.4`)
+- Manual workflow dispatch with optional tag specification
+
+**Supported platforms:**
+- macOS ARM64 (Apple Silicon)
+- macOS x64 (Intel)
+- Windows x64
+
+**Build artifacts:**
+- macOS: `.app`, `.app.tar.gz`, `.dmg`
+- Windows: `.exe` (NSIS installer), `.msi` (Windows Installer)
+
+**Automated releases:**
+- Automatically creates GitHub Release after successful build
+- Uploads artifacts as Release Assets
+- Supports environment variables for monitoring and analytics (Aptabase, Sentry)
+
+### Usage
+
+```bash
+# Create and push a tag to trigger automated build
+git tag v1.0.4
+git push origin v1.0.4
+
+# Or manually trigger the workflow from GitHub Actions page
+```
+
+---
+
 ## Troubleshooting
 
 | Symptom | What to try |
@@ -162,6 +202,9 @@ Skill metadata comes from **`SKILL.md`** in each folder (YAML frontmatter recomm
 | Port 5173 in use | Free the port or change Vite port |
 | macOS OpenSSL | Set `OPENSSL_DIR` / `PKG_CONFIG_PATH` as above |
 | Empty skill list | Install agents, ensure paths and `SKILL.md` exist, rescan in the UI |
+| Marketplace won't load | Check network connection, ensure access to skills.sh API |
+| GitHub backup fails | Verify GitHub Token has repo read/write permissions, check repo config |
+| Skill install fails | Ensure target agent directory exists with write permissions, check disk space |
 
 For more screenshots and static documentation, see **`docs/`**. If docs and code ever disagree, trust the current code.
 
@@ -171,8 +214,21 @@ For more screenshots and static documentation, see **`docs/`**. If docs and code
 
 ```
 skills-manager/
+├── .github/workflows/   # GitHub Actions CI/CD configurations
+│   ├── build.yml        # Multi-platform build workflow
+│   └── deploy-pages.yml # Pages deployment workflow
 ├── app/                 # React frontend (Vite)
+│   └── src/
+│       ├── pages/       # Page components
+│       │   ├── Dashboard/       # Skill management homepage
+│       │   ├── SkillDownload.tsx # Marketplace skills market
+│       │   ├── GitHubBackup/    # GitHub backup page
+│       │   └── Settings/        # Settings page
+│       └── api/         # Tauri API wrappers
 ├── src-tauri/           # Tauri + Rust backend
+│   ├── src/
+│   │   ├── commands/   # Tauri command handlers
+│   │   └── *.rs        # Core business logic
 ├── docs/                # Docs & assets (e.g. docs/assets/logo.png)
 ├── LICENSE
 ├── README.md            # Chinese readme

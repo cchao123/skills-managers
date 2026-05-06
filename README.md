@@ -26,20 +26,34 @@
 
 ## Skills Manager 是什么
 
-**Skills Manager** 是一个基于 **Tauri 2 + React + Rust** 的桌面应用，用来统一管理本地 Skills，并在不同 AI Agent 之间完成扫描、共享、同步和恢复。
+**Skills Manager** 是一个基于 **Tauri 2 + React + Rust** 的桌面应用，为 Claude Code 及其他 AI Agent 提供统一的技能管理与分发平台。
 
 它当前围绕以下工作流展开：
 
-- **统一扫描**：聚合本地多个 Agent 的 skill 目录，合并成一份可管理视图
+- **Marketplace 技能市场**：浏览、搜索并一键安装社区技能，支持 All Time、Trending、Hot 三种排序
+- **统一扫描与管理**：聚合本地多个 Agent 的 skill 目录，合并成一份可管理视图
 - **跨 Agent 分发**：通过链接或复制，把同一个 skill 分发到不同 Agent
 - **集中存储**：把可复用的 skills 放进中心目录，便于维护与迁移
 - **GitHub 备份与恢复**：将技能仓库推送到远端，或在新机器上一键恢复
+- **CI/CD 自动构建**：基于 GitHub Actions 实现跨平台自动构建与发布
 
 默认支持的 Agent 包括：**Claude、Cursor、Codex、OpenClaw、OpenCode**。
 
 ---
 
 ## 功能概览
+
+### Marketplace 技能市场
+
+- **三大榜单**：All Time（总榜）、Trending（趋势榜）、Hot（热门榜）
+- **智能搜索**：按技能名称、描述快速筛选
+- **一键安装**：选择目标 Agent，直接下载并启用技能
+- **详情预览**：查看技能的 SKILL.md 内容、统计数据、安全审计等
+- **进度追踪**：实时显示下载进度与安装状态
+- **Agent 选择器**：可选择安装到 Root 或特定 Agent 目录
+
+![技能市场](docs/screen-shot/zh-marketplace-01.png)
+![技能详情](docs/screen-shot/zh-marketplace-02.png)
 
 ### Skills 总览与管理
 
@@ -49,26 +63,16 @@
 - **拖拽导入**：支持将包含 `SKILL.md` 的文件夹直接拖入导入
 
 ![主页](docs/screen-shot/zh-skills-home.png)
-![主页](docs/screen-shot/zh-skills-source.png)
 ![技能详情](docs/screen-shot/zh-skills-detail.png)
-![拖拽导入](docs/screen-shot/zh-skills-drop.png)
 
 ### GitHub 备份与分发
 
 - **同步到 GitHub**：将本地 skills 仓库推送到远端
 - **从 GitHub 恢复**：在新机器上拉取远端仓库并恢复本地 skills
 - **分发技能仓库**：把整理好的 skills 作为共享仓库提供给自己或团队使用
+- **配置向导**：可视化配置 GitHub 仓库信息
 
 ![GitHub](docs/screen-shot/zh-github.png)
-
-### 设置
-
-- **扫描与检测**：查看和管理本地已检测到的 Agent
-- **链接策略**：按需选择以链接或复制的方式分发 skill
-- **过滤规则**：过滤由 CLI / workflow 注入的 skill，保持列表清爽
-- **删除保护**：默认避免直接改动 Agent 目录下的文件，需要手动开启相关操作
-
-![设置](docs/screen-shot/zh-setting.png)
 
 
 ---
@@ -79,6 +83,7 @@
 |------|------|
 | 前端 | React 18、TypeScript、Vite 5、Tailwind CSS、react-i18next |
 | 桌面 | Tauri 2（Rust） |
+| CI/CD | GitHub Actions（多平台构建、自动发布） |
 | 典型依赖 | serde、git2、ureq、walkdir 等 |
 
 开发与构建需安装 **Node.js**、**Rust**；在 macOS 上编译部分原生依赖时可能需要 **OpenSSL**（见下文）。
@@ -158,6 +163,42 @@ cargo build --manifest-path=src-tauri/Cargo.toml
 
 ---
 
+## CI/CD 自动构建
+
+项目使用 **GitHub Actions** 实现自动化构建与发布：
+
+### 构建工作流 (`.github/workflows/build.yml`)
+
+**触发条件：**
+- 推送标签：`v*`（如 `v1.0.4`）
+- 手动触发：可选择指定标签
+
+**支持平台：**
+- macOS ARM64（Apple Silicon）
+- macOS x64（Intel）
+- Windows x64
+
+**构建产物：**
+- macOS：`.app`、`.app.tar.gz`、`.dmg`
+- Windows：`.exe`（NSIS 安装包）、`.msi`（Windows Installer）
+
+**自动发布：**
+- 构建成功后自动创建 GitHub Release
+- 产物上传为 Release Assets
+- 支持环境变量配置监控与统计（Aptabase、Sentry）
+
+### 使用方式
+
+```bash
+# 创建并推送标签触发自动构建
+git tag v1.0.4
+git push origin v1.0.4
+
+# 或在 GitHub Actions 页面手动触发工作流
+```
+
+---
+
 ## 常见问题
 
 | 现象 | 处理方向 |
@@ -166,6 +207,9 @@ cargo build --manifest-path=src-tauri/Cargo.toml
 | 5173 端口占用 | 结束占用进程或修改 Vite 端口配置 |
 | macOS OpenSSL | 设置上文 `OPENSSL_DIR` / `PKG_CONFIG_PATH` |
 | 列表里没有技能 | 确认本机已安装对应 Agent、技能路径存在且含 `SKILL.md`，在界面中执行重新扫描 |
+| Marketplace 无法加载 | 检查网络连接，确保能访问 skills.sh API |
+| GitHub 备份失败 | 确认 GitHub Token 有仓库读写权限，检查仓库配置是否正确 |
+| 技能安装失败 | 确认目标 Agent 目录存在且有写入权限，检查磁盘空间 |
 
 更多截图、说明和静态文档可参考 **`docs/`** 目录；若文档与代码不一致，以当前代码实现为准。
 
@@ -175,8 +219,21 @@ cargo build --manifest-path=src-tauri/Cargo.toml
 
 ```
 skills-manager/
+├── .github/workflows/   # GitHub Actions CI/CD 配置
+│   ├── build.yml        # 多平台构建工作流
+│   └── deploy-pages.yml # 页面部署工作流
 ├── app/                 # React 前端（Vite）
+│   └── src/
+│       ├── pages/       # 页面组件
+│       │   ├── Dashboard/       # 技能管理主页
+│       │   ├── SkillDownload.tsx # Marketplace 技能市场
+│       │   ├── GitHubBackup/    # GitHub 备份页
+│       │   └── Settings/        # 设置页
+│       └── api/         # Tauri API 封装
 ├── src-tauri/           # Tauri + Rust 后端
+│   ├── src/
+│   │   ├── commands/   # Tauri 命令处理
+│   │   └── *.rs        # 核心业务逻辑
 ├── docs/                # 文档与资源（如 docs/assets/logo.png）
 ├── LICENSE
 ├── README.md
