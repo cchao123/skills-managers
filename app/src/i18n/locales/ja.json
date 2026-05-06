@@ -31,6 +31,56 @@
     "install": "インストール",
     "uninstall": "アンインストール"
   },
+  "skillDownload": {
+    "storagePath": "保存先",
+    "downloadByAgent": "Agent ごとにダウンロード",
+    "recommended": "推奨",
+    "copy": "コピー",
+    "description": "説明",
+    "loadingSkillMd": "SKILL.md を読み込み中...",
+    "skillMdError": "SKILL.md プレビューの取得に失敗({{error}})",
+    "previewMd": "Preview",
+    "previewText": "Text",
+    "stats": "統計",
+    "weeklyInstalls": "週インストール",
+    "firstSeen": "初回登録",
+    "securityAudits": "セキュリティ監査",
+    "repository": "リポジトリ",
+    "installCommand": "インストールコマンド",
+    "uninstall": "スキルをアンインストール",
+    "downloadSuccess": "ダウンロード成功",
+    "download": "ダウンロード",
+    "downloadTo": "{{target}} にダウンロード",
+    "searchPlaceholder": "スキルを検索...",
+    "clear": "クリア",
+    "loading": "読み込み中...",
+    "notFound": "一致するスキルが見つかりません",
+    "marketplaceEmpty": "マーケットプレイスは空です",
+    "noDescription": "説明なし",
+    "installed": "インストール済",
+    "viewDetail": "詳細を見る",
+    "preview": "プレビュー",
+    "tabs": {
+      "allTime": "全て",
+      "trending": "トレンド",
+      "hot": "人気"
+    },
+    "column": {
+      "skill": "スキル",
+      "author": "作者",
+      "installs": "ダウンロード数",
+      "installs1hChange": "1H / Change",
+      "action": "操作"
+    },
+    "toast": {
+      "fetchListFailed": "マーケットプレイス一覧の取得に失敗: {{error}}",
+      "toggleFailed": "{{agent}} の切り替えに失敗: {{error}}",
+      "uninstalled": "スキルをアンインストール: {{name}}",
+      "uninstallFailed": "アンインストール失敗: {{error}}",
+      "downloadSuccess": "スキルをダウンロードしました: {{name}}",
+      "downloadFailed": "ダウンロード失敗: {{error}}"
+    }
+  },
   "dashboard": {
     "title": "インストール済みスキル",
     "search": {
@@ -66,7 +116,7 @@
     },
     "stats": {
       "total": "合計",
-      "enabled": "一部有効",
+      "enabled": "有効",
       "disabled": "無効",
       "dedupeFooter": "{{count}}件の重複行をフィルタリングしました"
     },

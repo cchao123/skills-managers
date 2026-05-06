@@ -42,6 +42,8 @@ pub struct MarketplaceSkill {
     pub branch: Option<String>,
     pub stars: Option<u32>,
     pub updated_at: Option<String>,
+    /// Hot 页面专用：相对上一时段的安装数变化（带符号）。其它页签为 None。
+    pub change: Option<i32>,
 }
 
 /// 技能详情（从详情页 RSC 解析）
@@ -108,6 +110,69 @@ pub async fn fetch_skill_detail(source: String, skill_id: String) -> Result<Mark
         first_seen: extract_after_label(&rsc_text, "First Seen"),
         security_audits: parse_security_audits(&rsc_text),
     })
+}
+
+/// 从 skills.sh 详情页 HTML 中抠出 `<div class="prose ...">…</div>` 的内联 HTML。
+/// 简单的栈式扫描，匹配同级 `<div>` 标签深度，遇到对应的 `</div>` 时停止。
+fn extract_prose_html(html: &str) -> Option<String> {
+    let marker = "class=\"prose ";
+    let class_pos = html.find(marker)?;
+    let tag_open = html[..class_pos].rfind("<div")?;
+    let after_open = tag_open + html[tag_open..].find('>')? + 1;
+
+    let bytes = html.as_bytes();
+    let mut depth: i32 = 1;
+    let mut i = after_open;
+    while i < bytes.len() {
+        if html[i..].starts_with("<div") {
+            // 排除形如 <divider 这种以 div 开头的非 div 标签
+            let next = bytes.get(i + 4).copied();
+            if matches!(next, Some(b' ') | Some(b'>') | Some(b'\t') | Some(b'\n') | Some(b'/')) {
+                depth += 1;
+                i += 4;
+                continue;
+            }
+        }
+        if html[i..].starts_with("</div>") {
+            depth -= 1;
+            if depth == 0 {
+                return Some(html[after_open..i].to_string());
+            }
+            i += 6;
+            continue;
+        }
+        i += 1;
+    }
+    None
+}
+
+/// 拉取 skills.sh 详情页中已渲染好的 SKILL.md 内容（HTML 形式）。
+/// 直接抓 `https://skills.sh/{source}/{skill_id}` 页面 HTML，
+/// 提取 `<div class="prose ...">` 容器的内部 HTML 返回，
+/// 前端用 dangerouslySetInnerHTML 展示，可同步切换到纯文本模式。
+#[tauri::command]
+pub async fn fetch_marketplace_skill_content(
+    source: String,
+    skill_id: String,
+) -> Result<String, String> {
+    let url = format!("https://skills.sh/{}/{}", source, skill_id);
+    info!("Fetching skill content from: {}", url);
+
+    let response = ureq::get(&url)
+        .set("User-Agent", "Mozilla/5.0 (compatible; skills-manager)")
+        .call()
+        .map_err(|e| format!("请求 skills.sh 详情页失败: {}", e))?;
+
+    if response.status() != 200 {
+        return Err(format!("skills.sh 返回 {}", response.status()));
+    }
+
+    let html = response
+        .into_string()
+        .map_err(|e| format!("读取响应失败: {}", e))?;
+
+    extract_prose_html(&html)
+        .ok_or_else(|| "在 skills.sh 详情页中未找到 SKILL.md 内容(可能页面结构有变化)".to_string())
 }
 
 /// 技能市场分类
@@ -214,13 +279,7 @@ pub async fn fetch_marketplace_skills(
             let source_parts: Vec<&str> = s.source.splitn(2, '/').collect();
             let owner = source_parts.first().copied().unwrap_or("").to_string();
 
-            // hot 页面展示 24h 变化量而非总安装量
-            let display_installs = if source_type.as_deref() == Some("hot") {
-                s.change.map(|c| c.unsigned_abs())
-            } else {
-                s.installs
-            };
-
+            let is_hot = source_type.as_deref() == Some("hot");
             MarketplaceSkill {
                 id: s.skill_id.clone(),
                 name: s.name.clone(),
@@ -228,8 +287,11 @@ pub async fn fetch_marketplace_skills(
                 author: owner,
                 repository: format!("https://github.com/{}", s.source),
                 branch: Some("main".to_string()),
-                stars: display_installs,
+                // Hot 页 installs 为 1H 安装数；其它页签为总安装量/趋势安装量
+                stars: s.installs,
                 updated_at: None,
+                // 仅 Hot 页携带 change 字段，前端据此决定列展示方式
+                change: if is_hot { s.change } else { None },
             }
         })
         .collect();
@@ -286,6 +348,7 @@ async fn fetch_by_search(query: &str) -> Result<Vec<MarketplaceSkill>, String> {
                 branch: Some("main".to_string()),
                 stars: s.installs,
                 updated_at: None,
+                change: None,
             }
         })
         .collect();
@@ -485,11 +548,23 @@ pub async fn download_skill_from_marketplace(
     Ok(skill_id)
 }
 
+/// 生成 skill_id 的备选变体（用于 skills.sh 添加了 org 前缀但 repo 内未加的情况）。
+/// 例如 `vercel-react-best-practices` 实际目录是 `react-best-practices`,
+/// 这里依次返回 `["vercel-react-best-practices", "react-best-practices", "best-practices", "practices"]`。
+fn skill_id_variants(skill_id: &str) -> Vec<String> {
+    let mut out = vec![skill_id.to_string()];
+    let parts: Vec<&str> = skill_id.split('-').collect();
+    for i in 1..parts.len() {
+        out.push(parts[i..].join("-"));
+    }
+    out
+}
+
 /// 在仓库中查找技能目录
 /// 规则:
 /// 1. 如果根目录有 SKILL.md,则根目录就是技能目录
-/// 2. 如果 skills/<skill_id>/SKILL.md 存在,则使用该目录
-/// 3. 如果 <skill_id>/SKILL.md 存在,则使用该目录
+/// 2. 否则依次尝试 `skills/<variant>/` 和 `<variant>/`,
+///    `<variant>` 包含 skill_id 本身以及去掉前缀单词后的版本
 fn find_skill_directory(repo_path: &Path, skill_id: &str) -> Result<PathBuf, String> {
     // 检查根目录
     let root_skill = repo_path.join("SKILL.md");
@@ -497,16 +572,15 @@ fn find_skill_directory(repo_path: &Path, skill_id: &str) -> Result<PathBuf, Str
         return Ok(repo_path.to_path_buf());
     }
 
-    // 检查 skills/<skill_id>/
-    let skills_subdir = repo_path.join("skills").join(skill_id).join("SKILL.md");
-    if skills_subdir.exists() {
-        return Ok(skills_subdir.parent().unwrap().to_path_buf());
-    }
-
-    // 检查 <skill_id>/
-    let skill_subdir = repo_path.join(skill_id).join("SKILL.md");
-    if skill_subdir.exists() {
-        return Ok(skill_subdir.parent().unwrap().to_path_buf());
+    for variant in skill_id_variants(skill_id) {
+        let skills_subdir = repo_path.join("skills").join(&variant).join("SKILL.md");
+        if skills_subdir.exists() {
+            return Ok(skills_subdir.parent().unwrap().to_path_buf());
+        }
+        let skill_subdir = repo_path.join(&variant).join("SKILL.md");
+        if skill_subdir.exists() {
+            return Ok(skill_subdir.parent().unwrap().to_path_buf());
+        }
     }
 
     Err(format!("在仓库中找不到技能目录: {}", skill_id))

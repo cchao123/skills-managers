@@ -36,7 +36,7 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const mod = isMac ? '⌘' : 'Ctrl+';
   const navItems: Array<{ id: Page; icon: string; label: string; shortcut: string }> = [
-    { id: PAGE.SkillDownload, icon: 'home', label: t('nav.skillDownload'), shortcut: `${mod}A` },
+    { id: PAGE.SkillDownload, icon: 'storefront', label: t('nav.skillDownload'), shortcut: `${mod}A` },
     { id: PAGE.Dashboard, icon: 'extension', label: t('nav.dashboard'), shortcut: `${mod}S` },
     { id: PAGE.GitHubBackup, icon: 'backup', label: t('nav.githubBackup'), shortcut: `${mod}D` },
   ];

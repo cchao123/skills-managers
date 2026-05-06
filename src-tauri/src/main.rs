@@ -159,6 +159,7 @@ pub fn run() {
             // Marketplace commands
             commands::marketplace::fetch_marketplace_skills,
             commands::marketplace::fetch_skill_detail,
+            commands::marketplace::fetch_marketplace_skill_content,
             commands::marketplace::download_skill_from_marketplace,
             // Settings commands
             commands::settings::get_agents,

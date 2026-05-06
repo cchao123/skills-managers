@@ -32,6 +32,56 @@
     "install": "安装",
     "uninstall": "卸载"
   },
+  "skillDownload": {
+    "storagePath": "存放路径",
+    "downloadByAgent": "按 Agent 下载",
+    "recommended": "推荐",
+    "copy": "复制",
+    "description": "描述",
+    "loadingSkillMd": "正在加载 SKILL.md...",
+    "skillMdError": "无法获取 SKILL.md 预览({{error}})",
+    "previewMd": "Preview",
+    "previewText": "Text",
+    "stats": "统计",
+    "weeklyInstalls": "周安装",
+    "firstSeen": "首次收录",
+    "securityAudits": "安全审计",
+    "repository": "仓库",
+    "installCommand": "安装命令",
+    "uninstall": "卸载技能",
+    "downloadSuccess": "下载成功",
+    "download": "下载",
+    "downloadTo": "下载到 {{target}}",
+    "searchPlaceholder": "搜索技能...",
+    "clear": "清空",
+    "loading": "加载中...",
+    "notFound": "未找到匹配的技能",
+    "marketplaceEmpty": "技能市场暂时为空",
+    "noDescription": "暂无描述",
+    "installed": "已下载",
+    "viewDetail": "查看详情",
+    "preview": "预览",
+    "tabs": {
+      "allTime": "全部",
+      "trending": "趋势",
+      "hot": "热门"
+    },
+    "column": {
+      "skill": "技能",
+      "author": "作者",
+      "installs": "下载量",
+      "installs1hChange": "1H / Change",
+      "action": "操作"
+    },
+    "toast": {
+      "fetchListFailed": "获取技能市场列表失败: {{error}}",
+      "toggleFailed": "切换 {{agent}} 失败: {{error}}",
+      "uninstalled": "已卸载技能: {{name}}",
+      "uninstallFailed": "卸载失败: {{error}}",
+      "downloadSuccess": "成功下载技能: {{name}}",
+      "downloadFailed": "下载失败: {{error}}"
+    }
+  },
   "dashboard": {
     "title": "已安装技能",
     "search": {
@@ -67,8 +117,8 @@
     },
     "stats": {
       "total": "总计",
-      "enabled": "部分启用",
-      "disabled": "未启用",
+      "enabled": "已启用",
+      "disabled": "已停用",
       "dedupeFooter": "已过滤 {{count}} 条重复"
     },
     "agentsEnabled": "Agent 已启用",

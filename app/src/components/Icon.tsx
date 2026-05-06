@@ -73,6 +73,7 @@ import IconSmartToy from '~icons/material-symbols/smart-toy-outline';
 import IconSourceNotes from '~icons/material-symbols/source-notes-outline';
 import IconStar from '~icons/material-symbols/star-outline';
 import IconStorage from '~icons/material-symbols/storage';
+import IconStorefront from '~icons/material-symbols/storefront-outline';
 import IconSubdirectoryArrowRight from '~icons/material-symbols/subdirectory-arrow-right';
 import IconTerminal from '~icons/material-symbols/terminal';
 import IconToken from '~icons/material-symbols/token-outline';
@@ -171,6 +172,7 @@ const ICONS: Record<string, IconComponent> = {
   source: IconSourceNotes,
   star: IconStar,
   storage: IconStorage,
+  storefront: IconStorefront,
   subdirectory_arrow_right: IconSubdirectoryArrowRight,
   terminal: IconTerminal,
   token: IconToken,

@@ -31,6 +31,56 @@
     "install": "安裝",
     "uninstall": "解除安裝"
   },
+  "skillDownload": {
+    "storagePath": "存放路徑",
+    "downloadByAgent": "依 Agent 下載",
+    "recommended": "推薦",
+    "copy": "複製",
+    "description": "描述",
+    "loadingSkillMd": "正在載入 SKILL.md...",
+    "skillMdError": "無法取得 SKILL.md 預覽({{error}})",
+    "previewMd": "Preview",
+    "previewText": "Text",
+    "stats": "統計",
+    "weeklyInstalls": "週安裝",
+    "firstSeen": "首次收錄",
+    "securityAudits": "安全稽核",
+    "repository": "倉庫",
+    "installCommand": "安裝指令",
+    "uninstall": "解除安裝技能",
+    "downloadSuccess": "下載成功",
+    "download": "下載",
+    "downloadTo": "下載到 {{target}}",
+    "searchPlaceholder": "搜尋技能...",
+    "clear": "清空",
+    "loading": "載入中...",
+    "notFound": "未找到符合的技能",
+    "marketplaceEmpty": "技能市集暫時為空",
+    "noDescription": "暫無描述",
+    "installed": "已下載",
+    "viewDetail": "檢視詳情",
+    "preview": "預覽",
+    "tabs": {
+      "allTime": "全部",
+      "trending": "趨勢",
+      "hot": "熱門"
+    },
+    "column": {
+      "skill": "技能",
+      "author": "作者",
+      "installs": "下載量",
+      "installs1hChange": "1H / Change",
+      "action": "操作"
+    },
+    "toast": {
+      "fetchListFailed": "取得技能市集列表失敗: {{error}}",
+      "toggleFailed": "切換 {{agent}} 失敗: {{error}}",
+      "uninstalled": "已解除安裝技能: {{name}}",
+      "uninstallFailed": "解除安裝失敗: {{error}}",
+      "downloadSuccess": "成功下載技能: {{name}}",
+      "downloadFailed": "下載失敗: {{error}}"
+    }
+  },
   "dashboard": {
     "title": "已安裝技能",
     "search": {
@@ -66,8 +116,8 @@
     },
     "stats": {
       "total": "總計",
-      "enabled": "部分啟用",
-      "disabled": "未啟用",
+      "enabled": "已啟用",
+      "disabled": "已停用",
       "dedupeFooter": "已過濾 {{count}} 條重複"
     },
     "agentsEnabled": "Agent 已啟用",

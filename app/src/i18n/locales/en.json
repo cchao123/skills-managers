@@ -32,6 +32,56 @@
     "install": "Install",
     "uninstall": "Uninstall"
   },
+  "skillDownload": {
+    "storagePath": "Storage Path",
+    "downloadByAgent": "Download to Agent",
+    "recommended": "Recommended",
+    "copy": "Copy",
+    "description": "Description",
+    "loadingSkillMd": "Loading SKILL.md...",
+    "skillMdError": "Failed to load SKILL.md preview ({{error}})",
+    "previewMd": "Preview",
+    "previewText": "Text",
+    "stats": "Stats",
+    "weeklyInstalls": "Weekly Installs",
+    "firstSeen": "First Seen",
+    "securityAudits": "Security Audits",
+    "repository": "Repository",
+    "installCommand": "Install Command",
+    "uninstall": "Uninstall Skill",
+    "downloadSuccess": "Downloaded",
+    "download": "Download",
+    "downloadTo": "Download to {{target}}",
+    "searchPlaceholder": "Search skills...",
+    "clear": "Clear",
+    "loading": "Loading...",
+    "notFound": "No matching skills found",
+    "marketplaceEmpty": "Marketplace is empty",
+    "noDescription": "No description",
+    "installed": "Installed",
+    "viewDetail": "View Details",
+    "preview": "Preview",
+    "tabs": {
+      "allTime": "All",
+      "trending": "Trending",
+      "hot": "Hot"
+    },
+    "column": {
+      "skill": "Skill",
+      "author": "Author",
+      "installs": "Installs",
+      "installs1hChange": "1H / Change",
+      "action": "Action"
+    },
+    "toast": {
+      "fetchListFailed": "Failed to fetch marketplace skills: {{error}}",
+      "toggleFailed": "Failed to toggle {{agent}}: {{error}}",
+      "uninstalled": "Uninstalled skill: {{name}}",
+      "uninstallFailed": "Uninstall failed: {{error}}",
+      "downloadSuccess": "Successfully downloaded skill: {{name}}",
+      "downloadFailed": "Download failed: {{error}}"
+    }
+  },
   "dashboard": {
     "title": "Installed Skills",
     "search": {
@@ -67,8 +117,8 @@
     },
     "stats": {
       "total": "Total",
-      "enabled": "Partially Enabled",
-      "disabled": "Not Enabled",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
       "dedupeFooter": "{{count}} duplicate row(s) filtered"
     },
     "agentsEnabled": "Agent Enabled",
