@@ -5,15 +5,18 @@
   },
   "nav": {
     "marketplace": "スキルマーケットプレイス",
-    "dashboard": "インストール済みスキル",
-    "githubBackup": "GitHubバックアップ",
+    "installed": "インストール済み",
+    "backup": "バックアップ",
+    "dashboard": "インストール済み",
+    "skillDownload": "スキルマーケットプレイス",
+    "githubBackup": "バックアップ",
     "settings": "設定",
     "expand": "展開",
     "collapse": "折りたたみ"
   },
   "header": {
     "marketplace": "スキルマーケットプレイス",
-    "dashboard": "インストール済みスキル",
+    "dashboard": "インストール済み",
     "githubBackup": "GitHubバックアップ",
     "settings": "設定",
     "notifications": "通知",
@@ -82,9 +85,9 @@
     }
   },
   "dashboard": {
-    "title": "インストール済みスキル",
+    "title": "インストール済み",
     "search": {
-      "placeholder": "インストール済みスキルを検索...",
+      "placeholder": "インストール済みを検索...",
       "noResults": "一致するスキルが見つかりませんでした"
     },
     "filter": {

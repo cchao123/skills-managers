@@ -5,15 +5,18 @@
   },
   "nav": {
     "marketplace": "技能市場",
-    "dashboard": "已安裝技能",
-    "githubBackup": "GitHub備份",
+    "installed": "已安裝",
+    "backup": "備份",
+    "dashboard": "已安裝",
+    "skillDownload": "技能市場",
+    "githubBackup": "備份",
     "settings": "設定",
     "expand": "展開",
     "collapse": "收合"
   },
   "header": {
     "marketplace": "技能市場",
-    "dashboard": "已安裝技能",
+    "dashboard": "已安裝",
     "githubBackup": "GitHub備份",
     "settings": "設定",
     "notifications": "通知",
@@ -82,9 +85,9 @@
     }
   },
   "dashboard": {
-    "title": "已安裝技能",
+    "title": "已安裝",
     "search": {
-      "placeholder": "搜尋已安裝技能...",
+      "placeholder": "搜尋已安裝...",
       "noResults": "未找到符合的技能"
     },
     "filter": {

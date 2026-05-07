@@ -5,16 +5,18 @@
   },
   "nav": {
     "marketplace": "Marketplace",
-    "dashboard": "Installed Skills",
-    "skillDownload": "Download Skills",
-    "githubBackup": "GitHub Backup",
+    "installed": "Installed",
+    "backup": "Backup",
+    "dashboard": "Installed",
+    "skillDownload": "Marketplace",
+    "githubBackup": "Backup",
     "settings": "Settings",
     "expand": "Expand",
     "collapse": "Collapse"
   },
   "header": {
     "marketplace": "Skill Marketplace",
-    "dashboard": "Installed Skills",
+    "dashboard": "Installed",
     "githubBackup": "GitHub Backup",
     "settings": "Settings",
     "notifications": "Notifications",
@@ -83,9 +85,9 @@
     }
   },
   "dashboard": {
-    "title": "Installed Skills",
+    "title": "Installed",
     "search": {
-      "placeholder": "Search installed skills...",
+      "placeholder": "Search installed...",
       "noResults": "No matching skills found"
     },
     "filter": {
