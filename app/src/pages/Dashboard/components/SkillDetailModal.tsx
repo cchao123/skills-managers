@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { CodeProps } from 'react-markdown/lib/components';
 import type { SkillMetadata, AgentConfig, SkillFileEntry } from '@/types';
 import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
@@ -261,8 +260,7 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
-                                code: (props: CodeProps) => {
-                                  const { node, inline, className, children, ...rest } = props;
+                                code: ({ node, inline, className, children, ...rest }: any) => {
                                   return !inline ? (
                                     <code className={className} {...rest}>
                                       {children}
