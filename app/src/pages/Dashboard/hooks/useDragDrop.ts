@@ -58,17 +58,30 @@ export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void
     let unlisten: (() => void) | undefined;
     let mounted = true;
 
-    const dragRegion = document.querySelector('[data-tauri-drag-region]');
-
     getCurrentWebview().onDragDropEvent((event) => {
       if (!mounted) return;
 
       const payload = event.payload as any;
       const { type } = payload;
 
-      if (payload.position && dragRegion) {
-        const rect = dragRegion.getBoundingClientRect();
-        if (payload.position.y <= rect.bottom) {
+      // 检查拖拽位置是否在任何 drag region 内（如 SideNavBar、标题栏等）
+      // 如果是，则不处理拖拽事件，让 OS 窗口拖拽接管
+      if (payload.position) {
+        const dragRegions = document.querySelectorAll('[data-tauri-drag-region]');
+        let isInDragRegion = false;
+        for (const region of dragRegions) {
+          const rect = region.getBoundingClientRect();
+          if (
+            payload.position.x >= rect.left &&
+            payload.position.x <= rect.right &&
+            payload.position.y >= rect.top &&
+            payload.position.y <= rect.bottom
+          ) {
+            isInDragRegion = true;
+            break;
+          }
+        }
+        if (isInDragRegion) {
           return;
         }
       }
