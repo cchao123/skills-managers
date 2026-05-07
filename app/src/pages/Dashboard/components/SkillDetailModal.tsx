@@ -1,5 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import type { CodeProps } from 'react-markdown/lib/components';
 import type { SkillMetadata, AgentConfig, SkillFileEntry } from '@/types';
 import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
@@ -51,6 +54,9 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
   onDelete,
   onResizeStart,
 }) => {
+  // Markdown 视图模式状态
+  const [markdownView, setMarkdownView] = useState<'raw' | 'preview'>('raw');
+
   // 注入抽屉动画样式
   if (typeof document !== 'undefined' && !document.getElementById('drawer-animation')) {
     const style = document.createElement('style');
@@ -142,13 +148,41 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 py-3" data-tauri-drag-region>
+        <div className="flex-1 overflow-hidden p-6 py-3" data-tauri-drag-region>
           <div className="space-y-4">
             {/* File Tree with Content Preview - Split View */}
             {skillFiles.length > 0 ? (
               <div>
                 <div className="mb-2 space-y-1">
-                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">{t('dashboard.detail.fileDirectory')}</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex-shrink-0">{t('dashboard.detail.fileDirectory')}</h3>
+                    <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-dark-bg-secondary rounded-lg p-1">
+                      <button
+                        onClick={() => setMarkdownView('raw')}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
+                          markdownView === 'raw'
+                            ? 'bg-white dark:bg-dark-bg-tertiary shadow-sm text-gray-900 dark:text-white'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                        title="显示原始文本"
+                      >
+                        <Icon name="code" className="text-sm" />
+                        <span className="text-xs font-medium">源码</span>
+                      </button>
+                      <button
+                        onClick={() => setMarkdownView('preview')}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
+                          markdownView === 'preview'
+                            ? 'bg-white dark:bg-dark-bg-tertiary shadow-sm text-gray-900 dark:text-white'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                        title="显示渲染预览"
+                      >
+                        <Icon name="visibility" className="text-sm" />
+                        <span className="text-xs font-medium">预览</span>
+                      </button>
+                    </div>
+                  </div>
                   {allPaths.map(({ source, path }) => {
                     const display = normalizePath(path, isWindows);
                     const isAgentSource = source !== SOURCE.Global;
@@ -218,10 +252,37 @@ export const SkillDetailModal: React.FC<SkillDetailModalProps> = ({
                           <div className="flex items-center justify-center py-4">
                             <div className="inline-block animate-spin rounded-full h-5 w-5 border-4 border-gray-200 dark:border-dark-bg-secondary border-t-[#b71422]"></div>
                           </div>
-                        ) : (
+                        ) : markdownView === 'raw' ? (
                           <pre className="text-xs text-slate-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed">
                             {currentFile.content}
                           </pre>
+                        ) : (
+                          <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-xs prose-headings:text-xs prose-li:text-xs prose-code:text-xs">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code: (props: CodeProps) => {
+                                  const { node, inline, className, children, ...rest } = props;
+                                  return !inline ? (
+                                    <code className={className} {...rest}>
+                                      {children}
+                                    </code>
+                                  ) : (
+                                    <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs" {...rest}>
+                                      {children}
+                                    </code>
+                                  );
+                                },
+                                pre: ({ children }) => (
+                                  <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg overflow-x-auto text-xs">
+                                    {children}
+                                  </pre>
+                                ),
+                              }}
+                            >
+                              {currentFile.content}
+                            </ReactMarkdown>
+                          </div>
                         )}
                       </div>
                     ) : (
