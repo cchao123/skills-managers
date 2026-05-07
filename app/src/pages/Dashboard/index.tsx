@@ -517,7 +517,7 @@ function Dashboard({
       </div>
 
       {/* 内容区域 - 可滚动；底部加 pb-6 防止最后一行卡片贴到窗口底边 */}
-      <div className={`relative flex-1 overflow-y-auto bg-[#f8f9fa] dark:bg-dark-bg-secondary pb-6 ${isDragOver ? 'px-0 border-4 border-[#b71422] bg-white/90 dark:bg-dark-bg-primary rounded-xl mx-8' : 'px-5'}`}>
+      <div className={`relative flex-1 overflow-y-auto bg-[#f8f9fa] dark:bg-dark-bg-secondary pb-6 ${isDragOver ? 'px-0 border-4 border-[#b71422] bg-white/90 dark:bg-dark-bg-primary rounded-xl mx-5' : 'px-5'}`}>
         <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl mx-auto">
           {viewMode === VIEW_MODE.Flat && (
             <>

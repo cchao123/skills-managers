@@ -26,7 +26,7 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
 
   const navButtonClass = (active: boolean, collapsed: boolean) =>
     `flex items-center gap-3 py-3 rounded-lg font-bold transition-all active:scale-95 w-full ${
-      collapsed ? 'justify-center px-0' : 'px-4'
+      collapsed ? 'flex-col justify-center px-0 gap-1' : 'px-4'
     } ${
       active
         ? 'text-[#b71422] bg-white dark:bg-dark-bg-card shadow-sm dark:shadow-none'
@@ -35,16 +35,17 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
 
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const mod = isMac ? '⌘' : 'Ctrl+';
-  const navItems: Array<{ id: Page; icon: string; label: string; shortcut: string }> = [
-    { id: PAGE.SkillDownload, icon: 'storefront', label: t('nav.skillDownload'), shortcut: `${mod}A` },
-    { id: PAGE.Dashboard, icon: 'extension', label: t('nav.dashboard'), shortcut: `${mod}S` },
-    { id: PAGE.GitHubBackup, icon: 'backup', label: t('nav.githubBackup'), shortcut: `${mod}D` },
+  const navItems: Array<{ id: Page; icon: string; label: string; shortcut: string; shortLabel: string }> = [
+    { id: PAGE.SkillDownload, icon: 'storefront', label: t('nav.skillDownload'), shortcut: `${mod}A`, shortLabel: t('nav.marketplace') },
+    { id: PAGE.Dashboard, icon: 'extension', label: t('nav.dashboard'), shortcut: `${mod}S`, shortLabel: t('nav.installed') },
+    { id: PAGE.GitHubBackup, icon: 'backup', label: t('nav.githubBackup'), shortcut: `${mod}D`, shortLabel: t('nav.backup') },
   ];
 
-  const settingsItem: { id: Page; icon: string; label: string } = {
+  const settingsItem: { id: Page; icon: string; label: string; shortLabel: string } = {
     id: PAGE.Settings,
     icon: 'settings',
     label: t('nav.settings'),
+    shortLabel: t('nav.settings'),
   };
 
   return (
@@ -71,12 +72,12 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
             >
               <Icon name={item.icon} data-icon={item.icon} className="text-xl" />
               {!isCollapsed && (
-                <>
-                  <span className="font-['Manrope'] dark:text-gray-300 flex-1">{item.label}</span>
-                  <span className="text-[10px] font-mono text-slate-400 dark:text-gray-500 tracking-tight">
-                    {item.shortcut}
-                  </span>
-                </>
+                <span className="font-['Manrope'] dark:text-gray-300 flex-1">{item.label}</span>
+              )}
+              {isCollapsed && (
+                <span className="text-[9px] font-medium text-slate-500 dark:text-gray-500 leading-tight whitespace-nowrap overflow-hidden text-ellipsis w-full text-center">
+                  {item.shortLabel}
+                </span>
               )}
             </NavLink>
             <NavTooltip label={item.label} shortcut={item.shortcut} />
@@ -91,7 +92,9 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
           className={({ isActive }) => navButtonClass(isActive, isCollapsed)}
         >
           <Icon name={settingsItem.icon} data-icon={settingsItem.icon} className="text-xl" />
-          {!isCollapsed && <span className="font-['Manrope'] dark:text-gray-300">{settingsItem.label}</span>}
+          {!isCollapsed && (
+            <span className="font-['Manrope'] dark:text-gray-300">{settingsItem.label}</span>
+          )}
         </NavLink>
         <NavTooltip label={settingsItem.label} />
       </div>
