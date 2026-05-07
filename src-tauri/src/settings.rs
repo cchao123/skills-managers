@@ -104,11 +104,18 @@ impl AppSettingsManager {
 
         // 补全：把前端已知但 config 中缺失的 agent 追加进去；
         // 同时把现有 agent 的 extra_paths 与 preset 保持同步（字段新增时的升级兼容）。
+        // 同时同步 skills_path（修复 v1.0.3 之前 Claude 的 skills/plugins 错误配置）
         for preset in Self::known_agent_presets() {
             if let Some(existing) = config.agents.iter_mut().find(|a| a.name == preset.name) {
                 // 仅在用户未设置（空数组）且 preset 有值时才补充，避免覆盖用户的自定义路径
                 if existing.extra_paths.is_empty() && !preset.extra_paths.is_empty() {
                     existing.extra_paths = preset.extra_paths.clone();
+                    config_updated = true;
+                }
+                // 同步 skills_path（v1.0.3 之前的版本配置错误，需要自动修复）
+                if existing.skills_path != preset.skills_path {
+                    eprintln!("[settings] fixing skills_path for {}: {} -> {}", existing.name, existing.skills_path, preset.skills_path);
+                    existing.skills_path = preset.skills_path.clone();
                     config_updated = true;
                 }
             } else {
