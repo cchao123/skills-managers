@@ -3,6 +3,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 #[derive(Debug, Error)]
 pub enum LinkerError {
     #[error("IO error: {0}")]
@@ -136,6 +139,7 @@ fn create_junction(link: &Path, point_to: &Path) -> std::io::Result<()> {
         .args(["/C", "mklink", "/J",
             &link.to_string_lossy(),
             &point_to.to_string_lossy()])
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .output()?;
     if output.status.success() {
         Ok(())

@@ -4,6 +4,9 @@ use tauri::State;
 
 use crate::state::AppState;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 /// 获取所有 Agent 配置
 #[tauri::command]
 pub async fn get_agents(
@@ -95,6 +98,7 @@ pub async fn open_skills_manager_folder() -> Result<(), String> {
     {
         std::process::Command::new("explorer")
             .arg(&skills_dir)
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .spawn()
             .map_err(|e| format!("Failed to open folder: {}", e))?;
     }
@@ -146,6 +150,7 @@ pub async fn open_folder(path: String) -> Result<(), String> {
             .unwrap_or(expanded.clone());
         std::process::Command::new("explorer")
             .arg(final_path)
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .spawn()
             .map_err(|e| format!("Failed to open folder: {}", e))?;
     }
