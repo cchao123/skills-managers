@@ -4,10 +4,9 @@ use log::info;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::Read as StdRead;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use tauri::{AppHandle, Emitter, State};
-use tokio::io::AsyncReadExt;
 
 /// 按 (repository, id) 联合去重：同仓库同 id 才视为重复，跨仓库同 id 视为不同技能
 /// 重复时保留 stars（installs）最高的一条；未知 stars 视为 0
@@ -440,60 +439,77 @@ pub async fn download_skill_from_marketplace(
         percent: 0,
     }).ok();
 
-    // 启动 git clone，不指定分支（自动用仓库默认分支），强制输出进度到 stderr
-    let mut child = tokio::process::Command::new("git")
-        .args([
-            "clone",
-            "--depth", "1",
-            "--single-branch",
-            "--progress",
-            &repository,
-            &temp_dir_str,
-        ])
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("无法运行 git 命令: {}（请确认已安装 Git）", e))?;
+    // 在 spawn_blocking 中执行 git clone（防止 Windows 弹窗）
+    let _clone_result = tokio::task::spawn_blocking({
+        let repository = repository.clone();
+        let temp_dir_str = temp_dir_str.clone();
+        let skill_id = skill_id.clone();
+        let app_handle = app_handle.clone();
 
-    // 逐块读取 stderr，解析进度并 emit 事件
-    // git 用 \r 覆写同一行更新进度，不能用 read_line
-    let mut stderr_handle = child.stderr.take().unwrap();
-    let mut buf = [0u8; 512];
-    let mut current_line = String::new();
-    let mut all_stderr = String::new();
+        move || -> Result<(), String> {
+            #[cfg(windows)]
+            use std::os::windows::process::CommandExt;
 
-    loop {
-        let n = stderr_handle.read(&mut buf).await.unwrap_or(0);
-        if n == 0 {
-            break;
-        }
-        let chunk = String::from_utf8_lossy(&buf[..n]);
-        all_stderr.push_str(&chunk);
+            let mut cmd = std::process::Command::new("git");
+            cmd.args([
+                "clone",
+                "--depth", "1",
+                "--single-branch",
+                "--progress",
+                &repository,
+                &temp_dir_str,
+            ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped());
 
-        for ch in chunk.chars() {
-            if ch == '\r' || ch == '\n' {
-                let line = current_line.trim().to_string();
-                if !line.is_empty() {
-                    if let Some(pct) = parse_git_progress(&line) {
-                        app_handle.emit("download-progress", DownloadProgressPayload {
-                            skill_id: skill_id.clone(),
-                            percent: pct,
-                        }).ok();
+            #[cfg(windows)]
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+            let mut child = cmd.spawn()
+                .map_err(|e| format!("无法运行 git 命令: {}（请确认已安装 Git）", e))?;
+
+            // 读取 stderr 解析进度
+            let mut stderr_handle = child.stderr.take().unwrap();
+            let mut buf = [0u8; 512];
+            let mut current_line = String::new();
+
+            loop {
+                let n = stderr_handle.read(&mut buf).unwrap_or(0);
+                if n == 0 {
+                    break;
+                }
+                let chunk = String::from_utf8_lossy(&buf[..n]);
+
+                for ch in chunk.chars() {
+                    if ch == '\r' || ch == '\n' {
+                        let line = current_line.trim().to_string();
+                        if !line.is_empty() {
+                            if let Some(pct) = parse_git_progress(&line) {
+                                app_handle.emit("download-progress", DownloadProgressPayload {
+                                    skill_id: skill_id.clone(),
+                                    percent: pct,
+                                }).ok();
+                            }
+                        }
+                        current_line.clear();
+                    } else {
+                        current_line.push(ch);
                     }
                 }
-                current_line.clear();
-            } else {
-                current_line.push(ch);
             }
+
+            let status = child.wait()
+                .map_err(|e| format!("等待 git 完成失败: {}", e))?;
+
+            if !status.success() {
+                return Err("克隆仓库失败".to_string());
+            }
+
+            Ok(())
         }
-    }
-
-    let status = child.wait().await
-        .map_err(|e| format!("等待 git 完成失败: {}", e))?;
-
-    if !status.success() {
-        return Err(format!("克隆仓库失败: {}", all_stderr.trim()));
-    }
+    })
+    .await
+    .map_err(|e| format!("任务执行失败: {}", e))??;
 
     // 在克隆好的仓库中查找技能目录
     let skill_source_path = find_skill_directory(&temp_dir, &skill_id)?;

@@ -135,6 +135,8 @@ fn create_symlink_windows_api(link: &Path, point_to: &Path, flags: u32) -> std::
 /// Junction 无需任何特权，在 Windows 上可替代目录 symlink。
 #[cfg(windows)]
 fn create_junction(link: &Path, point_to: &Path) -> std::io::Result<()> {
+    use std::os::windows::process::CommandExt;
+
     let output = std::process::Command::new("cmd")
         .args(["/C", "mklink", "/J",
             &link.to_string_lossy(),
