@@ -92,7 +92,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
       <NativeSourceWatermark nativeAgents={detectedNativeAgents} inRoot={allSources.includes(SOURCE.Global)} />
 
       {/* Top section: Icon + Info on left, STATUS + Toggle + Expand on right */}
-      <div className="relative z-10 p-4 pb-0">
+      <div className="relative z-10 p-4 pb-0 cursor-pointer" onClick={() => onShowDetail(skill)}>
         <div className="flex justify-between items-start gap-3">
           {/* Left: Icon + Name + Source Badges + Description */}
           <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -110,7 +110,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
           </div>
 
           {/* Right: STATUS + Toggle + Expand */}
-          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-1.5">
               <MainToggleIndicator
                 state={mainToggleState}
@@ -119,7 +119,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
               />
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => onShowDetail(skill)} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded transition-colors">
+              <button onClick={(e) => { e.stopPropagation(); onShowDetail(skill); }} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded transition-colors" title={t('dashboard.viewDetail')}>
                 <Icon name="info" className="text-base text-slate-400 dark:text-gray-500" />
               </button>
             </div>
@@ -128,7 +128,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
       </div>
 
       {/* Bottom bar: agent summary + expand button (always visible) */}
-      <div className="relative z-10 px-4 py-2.5 flex items-center cursor-pointer" onClick={onToggleExpand} >
+      <div className="relative z-[100] px-4 py-2.5 flex items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-dark-hover transition-colors" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} >
         {/* 短分割线：避开右下角的来源水印（水印 size=110，露出约 90px，留 ~20px 缓冲） */}
         <span
           className="absolute left-4 right-[110px] top-0 h-px bg-[#f0f0f0] dark:bg-dark-border pointer-events-none"
@@ -153,10 +153,9 @@ export const SkillCard: React.FC<SkillCardProps> = ({
       </div>
       </div>
 
-      {/* Expandable: Agent toggles (accordion style)
-          顶部 inset 阴影：让水印在衔接处自然"被压在下面"，避免硬切感。 */}
+      {/* Expandable: Agent toggles (accordion style) */}
       {expanded && (
-        <div className="relative z-10 bg-[#fafafa] dark:bg-dark-bg-secondary px-3 py-3 pb-1 shadow-[inset_0_6px_8px_-6px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_6px_8px_-6px_rgba(0,0,0,0.5)]">
+        <div className="border-t border-[#f0f0f0] dark:border-dark-border bg-[#fafafa] dark:bg-dark-bg-secondary px-3 py-3 pb-1">
           {detectedAgents.map((agent, index) => {
             const isLast = index === detectedAgents.length - 1;
             const isNativeAgent = nativeAgents.has(agent.name);
@@ -214,7 +213,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
                   </div>
                 ) : (
                   <button
-                    onClick={(e) => handleAgentToggle(agent.name, e)}
+                    onClick={(e) => { e.stopPropagation(); handleAgentToggle(agent.name, e); }}
                     className={`relative w-8 h-[18px] rounded-full transition-colors flex-shrink-0 cursor-pointer ${
                       skill.agent_enabled[agent.name] ? 'bg-[#b71422]' : 'bg-gray-300 dark:bg-gray-600'
                     }`}

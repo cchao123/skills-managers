@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
 import { useToast } from '@/components/Toast';
-import type { SkillMetadata, Skill, SkillDeletionRow } from '@/types';
-import { SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS, PAGE, type Page, getAgentRootPath } from '@/constants';
-import { OCTOPUS_LOGO_URL } from '@/lib/assets';
+import type { SkillMetadata, SkillDeletionRow } from '@/types';
+import { SESSION_STORAGE_KEYS } from '@/constants';
+import { SourceTabs } from '@/pages/Dashboard/components/SourceTabs';
 
 // Hooks
 import { useSkillData } from '@/pages/Dashboard/hooks/useSkillData';
@@ -21,33 +21,39 @@ import { usePanelResize } from '@/pages/Dashboard/hooks/usePanelResize';
 import { SkillCard } from '@/pages/Dashboard/components/SkillCard';
 import { MainToggleIndicator, MAIN_TOGGLE_STATES } from '@/pages/Dashboard/components/MainToggleIndicator';
 import { OperationLogPopover } from '@/pages/Dashboard/components/OperationLogPopover';
-import { appendOperationLog } from '@/pages/Dashboard/hooks/useOperationLog';
 import { SearchAndFilterBar } from '@/pages/Dashboard/components/SearchAndFilterBar';
 import { DragDropOverlay } from '@/pages/Dashboard/components/DragDropOverlay';
 import { ImportingOverlay } from '@/pages/Dashboard/components/ImportingOverlay';
 import { DeleteConfirmModal } from '@/pages/Dashboard/components/DeleteConfirmModal';
 import { EmptyView } from '@/pages/Dashboard/components/EmptyView';
-import { SkillDetailModal } from '@/pages/Dashboard/components/SkillDetailModal';
 import { PlusCard } from '@/pages/Dashboard/components/PlusCard';
 import { SkillImportModal } from '@/pages/Dashboard/components/SkillImportModal';
-import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
-import { getSkillIcon, getSkillColor } from '@/pages/Dashboard/utils/skillHelpers';
-import MarketplaceSkillCard from '@/pages/Dashboard/components/MarketplaceSkillCard';
+import { SkillDetailInline } from '@/pages/Dashboard/components/SkillDetailInline';
 import { CardContextMenu } from '@/pages/Dashboard/components/CardContextMenu';
-import { skillsApi, agentsApi, pinApi } from '@/api/tauri';
+import { skillsApi, pinApi } from '@/api/tauri';
 import { SOURCE, sourceDisplayName, isSource } from '@/pages/Dashboard/utils/source';
-import { useVisibleAgents } from '@/pages/Dashboard/hooks/useVisibleAgents';
-import { VIEW_MODE, type ViewMode, isViewMode } from '@/pages/Dashboard/constants/viewMode';
-import { useColumnCount } from '@/hooks/useColumnCount';
 import { sortAgentsByStoredOrder } from '@/lib/agentOrder';
 
 import { Icon } from '@/components/Icon';
+
+// 添加抽屉动画样式
+if (typeof document !== 'undefined' && !document.getElementById('dashboard-drawer-animation')) {
+  const style = document.createElement('style');
+  style.id = 'dashboard-drawer-animation';
+  style.textContent = `
+    .drawer-width-transition {
+      transition: width 0.3s ease-out, flex 0.3s ease-out;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function readPersistedSelectedSource(): string {
   try {
     const src = sessionStorage.getItem(SESSION_STORAGE_KEYS.dashboardSelectedSourceV2);
-    return isSource(src) ? src : SOURCE.Global;
+    return isSource(src) ? src : SOURCE.All;
   } catch {
-    return SOURCE.Global;
+    return SOURCE.All;
   }
 }
 
@@ -66,24 +72,11 @@ function expandToSourceRows(skill: SkillMetadata | null): SkillDeletionRow[] {
 }
 
 function Dashboard({
-  onNavigate,
   isActive = true,
-  agentFilter = '',
-  onAgentFilterChange,
-  viewMode,
-  onViewModeChange,
 }: {
-  onNavigate: (page: Page) => void;
   /** 由 App 传入：当前是否在展示本页。false 时页面被 display:none 隐藏，
    *  切回（false→true）时做一次静默刷新，避免用户盯着过期数据。 */
   isActive?: boolean;
-  /** 「按 Agent 快筛」当前选中项：'' 表示不筛；仅在 Flat 视图下生效 */
-  agentFilter?: string;
-  /** 切换快筛选中项 */
-  onAgentFilterChange: (value: string) => void;
-  /** 由 RootLayout 受控：当前视图模式（Flat / Agent）；持久化也在 RootLayout 完成 */
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
 }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -94,21 +87,10 @@ function Dashboard({
   /** 跨 Agent 技能导入弹窗状态 */
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedSource, setSelectedSource] = useState<string>(() => readPersistedSelectedSource());
-  const [githubTipDismissed, setGithubTipDismissed] = useState(
-    () => sessionStorage.getItem(SESSION_STORAGE_KEYS.githubTipDismissed) === 'true'
-  );
-  const [advancedMode, setAdvancedMode] = useState(
-    () => localStorage.getItem(LOCAL_STORAGE_KEYS.advancedMode) === 'true'
-  );
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === LOCAL_STORAGE_KEYS.advancedMode) {
-        setAdvancedMode(e.newValue === 'true');
-      }
-    };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
+
+  // Agent 筛选状态
+  const [selectedAgentsFilter, setSelectedAgentsFilter] = useState<Set<string>>(new Set());
+
   /** 帮助气泡挂 Portal：与 Toast 一样在 body 层 fixed，backdrop-blur 才能作用到整窗，否则会透出下层 Tab 等 */
   const [helpPopover, setHelpPopover] = useState<{ open: boolean; anchor: DOMRect | null }>({
     open: false,
@@ -172,7 +154,6 @@ function Dashboard({
   }, [logPopoverAnchor]);
 
   // 离开再进入 Dashboard（如去 GitHub 备份页）时保留来源 Tab：写入 sessionStorage
-  // viewMode 已由 RootLayout 受控并持久化，无需在此处理
   useEffect(() => {
     try {
       sessionStorage.setItem(SESSION_STORAGE_KEYS.dashboardSelectedSourceV2, selectedSource);
@@ -180,32 +161,6 @@ function Dashboard({
       /* ignore quota / private mode */
     }
   }, [selectedSource]);
-
-  const handleViewModeChange = (mode: string) => {
-    onViewModeChange(isViewMode(mode) ? mode : VIEW_MODE.Flat);
-  };
-
-  // 键盘快捷键：Command/Ctrl + 1/2 切换视图
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // 检查是否按下了 Command (Mac) 或 Ctrl (Windows/Linux)
-      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
-
-      if (!isCmdOrCtrl) return;
-
-      // 检查是否按下了数字键
-      if (e.key === '1') {
-        e.preventDefault();
-        onViewModeChange(VIEW_MODE.Flat);
-      } else if (e.key === '2') {
-        e.preventDefault();
-        onViewModeChange(VIEW_MODE.Agent);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onViewModeChange]);
 
   // Custom hooks
   const { skills, setSkills, agents: rawAgents, loading, error, loadSkills, refreshSkills, loadAgents } = useSkillData();
@@ -252,63 +207,50 @@ function Dashboard({
   const filterTypeRef = useRef(filterType);
   filterTypeRef.current = filterType;
   const prefixFilteredSkills = usePrefixFilteredSkills(skills);
-  const { handleToggleSkillMerged, handleToggleAgentMerged, handleDeleteSkill, handleAddToRoot } = useSkillActions(skills, setSkills, agents);
-  const detectedAgents = useVisibleAgents(agents);
+  const { handleToggleSkillMerged, handleToggleAgentMerged, handleDeleteSkill } = useSkillActions(skills, setSkills, agents);
 
   /**
    * 平铺视图：后端已按 id 合并；
-   * 1) 若「按 Agent 快筛」指定了某个 source（含 Root），按 `sources` 二次过滤；
-   * 2) pinned 优先；
-   * 3) 按 id 稳定排序。
+   * 1) pinned 优先；
+   * 2) 按 id 稳定排序。
+   * 3) 根据 selectedAgentsFilter 过滤 Agent
    */
   const flatSkills = useMemo(() => {
-    const base = agentFilter
-      ? filteredSkills.filter((s) => (s.sources ?? []).includes(agentFilter))
-      : filteredSkills;
-    return [...base].sort((a, b) => {
+    let skills = [...filteredSkills];
+
+    // 根据 selectedAgentsFilter 过滤
+    if (selectedAgentsFilter.size > 0) {
+      skills = skills.filter(skill => {
+        // 如果技能有 sources 属性，检查是否包含任何选中的 Agent
+        if (skill.sources && skill.sources.length > 0) {
+          return skill.sources.some(source => selectedAgentsFilter.has(source));
+        }
+        // 如果没有 sources，检查是否在 Global 中（如果没有选中任何 Agent，则显示）
+        return selectedAgentsFilter.has(SOURCE.Global);
+      });
+    }
+
+    return skills.sort((a, b) => {
       const ap = pinnedIds.has(a.id) ? 0 : 1;
       const bp = pinnedIds.has(b.id) ? 0 : 1;
       if (ap !== bp) return ap - bp;
       return a.id.localeCompare(b.id);
     });
-  }, [filteredSkills, pinnedIds, agentFilter]);
-
-  /**
-   * 手动瀑布流分列：按响应式断点把列表按 round-robin 拆成 N 列，
-   * 每列成为独立 DOM，展开/折叠某张卡片只影响本列高度，不会把后续卡片挤到相邻列。
-   */
-  const columnCount = useColumnCount();
-  const flatColumns = useMemo<SkillMetadata[][]>(() => {
-    const cols: SkillMetadata[][] = Array.from({ length: columnCount }, () => []);
-    flatSkills.forEach((s, i) => {
-      cols[i % columnCount].push(s);
-    });
-    return cols;
-  }, [flatSkills, columnCount]);
-
-  // 将SkillMetadata转换为Marketplace的Skill格式
-  const convertToMarketplaceSkill = (skill: SkillMetadata): Skill => {
-    const enabledCount = Object.values(skill.agent_enabled || {}).filter(Boolean).length;
-    return {
-      id: skill.id,
-      name: skill.name,
-      description: skill.description,
-      version: skill.version || '1.0.0',
-      category: 'Skill',
-      icon: getSkillIcon(skill.id),
-      iconColor: getSkillColor(skill.id),
-      enabledAgentCount: enabledCount,
-      totalAgentCount: detectedAgents.length,
-      size: skill.size,
-      author: 'Skills Manager',
-      installed: skill.enabled,
-    };
-  };
+  }, [filteredSkills, pinnedIds, selectedAgentsFilter]);
 
   // 按来源展示过滤：Schema v2 中一条 skill 可能分布在多个源里，
   // 只要 `sources` 包含当前选中源就展示。下游组件按 `selectedSource` 定位当前 tab。
   // 排序：pinned 优先（保持其它过滤后的相对顺序）。
   const filteredBySource = useMemo(() => {
+    // All: 显示所有技能
+    if (selectedSource === SOURCE.All) {
+      return [...filteredSkills].sort((a, b) => {
+        const ap = pinnedIds.has(a.id) ? 0 : 1;
+        const bp = pinnedIds.has(b.id) ? 0 : 1;
+        return ap - bp;
+      });
+    }
+    // 其他来源：只显示包含该来源的技能
     const list = filteredSkills.filter(skill => (skill.sources ?? []).includes(selectedSource));
     return [...list].sort((a, b) => {
       const ap = pinnedIds.has(a.id) ? 0 : 1;
@@ -316,8 +258,6 @@ function Dashboard({
       return ap - bp;
     });
   }, [filteredSkills, selectedSource, pinnedIds]);
-
-  const marketplaceSkills = filteredBySource.map(convertToMarketplaceSkill);
   const {
     detailSkill,
     showDetailModal,
@@ -339,6 +279,7 @@ function Dashboard({
   }, [skills, detailSkill]);
 
 
+  // Esc：删除确认优先于技能详情关闭
   // Esc：删除确认优先于技能详情关闭
   useEffect(() => {
     if (!showDetailModal && !deleteTarget) return;
@@ -491,325 +432,113 @@ function Dashboard({
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* 搜索栏 - 固定；overflow-visible 供统计条 hover 气泡向上伸出
-          原 PageHeader 已移除，此处增加 data-tauri-drag-region 以保留窗口拖拽 */}
-      <div
-        className="overflow-visible bg-[#f8f9fa] dark:bg-dark-bg-secondary px-5 pt-5 pb-4"
-        data-tauri-drag-region
-      >
-        <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl mx-auto">
-          <SearchAndFilterBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filterType={filterType}
-            onFilterChange={setFilterType}
-            skills={prefixFilteredSkills}
-            agents={agents}
-            viewMode={viewMode}
-            onViewModeChange={handleViewModeChange}
-            selectedSource={selectedSource}
-            onSourceSelect={setSelectedSource}
-            agentFilter={agentFilter}
-            onAgentFilterChange={onAgentFilterChange}
-          />
-        </div>
-      </div>
+    <div className="h-full flex overflow-hidden">
+      <SourceTabs
+        agents={agents}
+        selectedSource={selectedSource}
+        onSelect={setSelectedSource}
+      />
+      <div className="flex-1 min-w-0 min-h-0 flex">
+          {/* 主内容区 */}
+          <div className="flex flex-col flex-1 min-w-0 min-h-0">
+              {/* 搜索栏 - 固定；overflow-visible 供统计条 hover 气泡向上伸出
+              原 PageHeader 已移除，此处增加 data-tauri-drag-region 以保留窗口拖拽 */}
+              <div
+                className="overflow-visible bg-[#f8f9fa] dark:bg-dark-bg-secondary pr-5 pt-5 pb-4"
+                data-tauri-drag-region
+              >
+                <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl">
+                  <SearchAndFilterBar
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    filterType={filterType}
+                    onFilterChange={setFilterType}
+                    skills={prefixFilteredSkills}
+                    agents={agents}
+                    selectedSource={selectedSource}
+                    onSourceSelect={setSelectedSource}
+                  />
+                </div>
+              </div>
 
-      {/* 内容区域 - 可滚动；底部加 pb-6 防止最后一行卡片贴到窗口底边 */}
-      <div className={`relative flex-1 overflow-y-auto bg-[#f8f9fa] dark:bg-dark-bg-secondary pb-6 ${isDragOver ? 'px-0 border-4 border-[#b71422] bg-white/90 dark:bg-dark-bg-primary rounded-xl mx-5' : 'px-5'}`}>
-        <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl mx-auto">
-          {viewMode === VIEW_MODE.Flat && (
-            <>
-              {flatSkills.length === 0 ? (
+              {/* 内容区域 - 可滚动；底部加 pb-6 防止最后一行卡片贴到窗口底边 */}
+              <div className={`relative flex-1 flex flex-col overflow-hidden bg-[#f8f9fa] dark:bg-dark-bg-secondary ${isDragOver ? 'px-0 border-4 border-[#b71422] bg-white/90 dark:bg-dark-bg-primary rounded-xl mx-5' : 'px-5 pl-0'}`}>
+                <div className="flex-1 overflow-y-auto pb-6">
+
+            <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl mx-auto">
+              {filteredBySource.length === 0 ? (
                 <EmptyView message={searchTerm ? t('dashboard.search.noResults') : t('dashboard.filter.noResults')} />
               ) : (
-                <div className="flex gap-4 items-start">
-                  {flatColumns.map((col, colIdx) => (
-                    <div key={colIdx} className="flex-1 min-w-0 space-y-4">
-                      {col.map((s) => (
-                        <SkillCard
-                          key={s.id}
-                          skill={s}
-                          agents={agents}
-                          expanded={expandedCards.has(s.id)}
-                          onToggleExpand={() => toggleExpand(s.id)}
-                          onToggleSkill={handleToggleSkillMerged}
-                          onToggleAgent={handleToggleAgentMerged}
-                          onShowDetail={handleShowSkillDetail}
-                          pinned={pinnedIds.has(s.id)}
-                          onContextMenu={(e) => handleCardContextMenu(s.id, e)}
-                        />
-                      ))}
-                    </div>
+                <div className={`grid gap-4 transition-all duration-300 ${
+                  showDetailModal && detailSkillLive
+                    ? 'grid-cols-1 xl:grid-cols-2'
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
+                }`}>
+                  {/* Plus Card - 放在最前面 */}
+                  <PlusCard
+                    agents={agents}
+                    currentAgent={selectedSource}
+                    onOpen={() => setShowImportModal(true)}
+                  />
+
+                  {/* Skills */}
+                  {filteredBySource.map((skill) => (
+                    <SkillCard
+                      key={skill.id}
+                      skill={skill}
+                      agents={agents}
+                      expanded={expandedCards.has(skill.id)}
+                      onToggleExpand={() => toggleExpand(skill.id)}
+                      onToggleSkill={handleToggleSkillMerged}
+                      onToggleAgent={handleToggleAgentMerged}
+                      onShowDetail={handleShowSkillDetail}
+                      pinned={pinnedIds.has(skill.id)}
+                      onContextMenu={(e) => handleCardContextMenu(skill.id, e)}
+                    />
                   ))}
                 </div>
               )}
-            </>
-          )}
-
-          {viewMode === VIEW_MODE.Agent && (
-            <div className="bg-[#f8f9fa] dark:bg-dark-bg-secondary">
-              <div className="space-y-6 pb-8">
-                {/* Skills Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                  {/* Plus Card - First in grid when not Global source and has skills */}
-                  {selectedSource !== SOURCE.Global && marketplaceSkills.length > 0 && (
-                    <PlusCard
-                      agents={agents}
-                      currentAgent={selectedSource}
-                      onOpen={() => setShowImportModal(true)}
-                    />
-                  )}
-                  {marketplaceSkills.map((skill, idx) => {
-                    const originalSkill = filteredBySource[idx];
-
-                    // 浮层需要的数据：每个 Agent 的开启情况，以及原生副本所在 Agent
-                    // 在 Agent 视图中，只显示当前选中的 agent 作为水印
-                    const nativeAgentSet = new Set(
-                      selectedSource === SOURCE.Global
-                        ? (originalSkill?.sources ?? []).filter(s => s !== SOURCE.Global)
-                        : (originalSkill?.sources ?? []).includes(selectedSource) ? [selectedSource] : []
-                    );
-
-                    // 基础props：始终存在
-                    const isInRootSource = (originalSkill?.sources ?? []).includes(SOURCE.Global);
-                    const baseProps = {
-                      key: `${skill.id}:${selectedSource}`,
-                      skill,
-                      onInfo: () => {
-                        if (originalSkill) handleShowSkillDetail(originalSkill);
-                      },
-                      agents,
-                      agentEnabled: originalSkill?.agent_enabled,
-                      nativeAgents: nativeAgentSet,
-                      isInRoot: isInRootSource,
-                      onToggleAgent: originalSkill
-                        ? (agentName: string) => handleToggleAgentMerged(originalSkill, agentName)
-                        : undefined,
-                      pinned: pinnedIds.has(skill.id),
-                      onContextMenu: (e: React.MouseEvent<HTMLElement>) =>
-                        handleCardContextMenu(skill.id, e),
-                    };
-
-                    // 根据不同情况添加按钮props
-                    if (selectedSource === SOURCE.Global) {
-                      // 情况1：根目录tab → 只提供删除功能
-                      return (
-                        <MarketplaceSkillCard
-                          {...baseProps}
-                          onDelete={() => {
-                            setDeleteTargetFromRoot(true);
-                            setDeleteTarget(originalSkill);
-                          }}
-                        />
-                      );
-                    }
-
-                    // 情况2：其他tab (Cursor/agent) → 提供添加功能
-                    // 是否已存在于根目录：看合并记录里的 `sources` 是否包含 Global
-                    const existsInRoot = skills.some(
-                      s => s.id === skill.id && (s.sources ?? []).includes(SOURCE.Global)
-                    );
-
-                    return (
-                      <MarketplaceSkillCard
-                        {...baseProps}
-                        onAddToRoot={(skillId) => {
-                          console.log(`[DEBUG] 点击拷贝到根目录: ${skill.name} (ID: ${skillId})`);
-                          // Schema v2：按 id 查合并后的单条记录，再从 source_paths 取当前 tab 对应的路径
-                          const targetSkill = skills.find(s => s.id === skillId);
-                          const sourcePath = targetSkill?.source_paths?.[selectedSource];
-                          if (targetSkill && sourcePath) {
-                            console.log(`[DEBUG] 找到技能:`, targetSkill, 'path:', sourcePath);
-                            handleAddToRoot(targetSkill, sourcePath).then(() => {
-                              appendOperationLog({
-                                type: 'copyFromSource',
-                                skillName: targetSkill.name,
-                                source: selectedSource,
-                              });
-                              console.log(`[DEBUG] 拷贝完成，刷新中...`);
-                              refreshSkills().then(() => {
-                                console.log(`[DEBUG] 刷新完成`);
-                              });
-                            });
-                          } else {
-                            console.error(`[DEBUG] 未找到技能或源路径: id=${skillId}, source=${selectedSource}`);
-                          }
-                        }}
-                        isInRoot={existsInRoot}
-                      />
-                    );
-                  })}
-                </div>
-
-                {marketplaceSkills.length === 0 && (
-                  <div className="max-w-6xl mx-auto flex flex-col items-center justify-center py-20 gap-4">
-                    <Icon name="search_off" className="text-6xl text-gray-300 dark:text-gray-600" />
-                    <div className="flex flex-col items-center gap-2">
-                      <p className="text-slate-500 dark:text-gray-400 font-medium">
-                        {searchTerm
-                          ? t('dashboard.noSkillsInSourceSearch', { keyword: searchTerm })
-                          : t('dashboard.noSkillsInSource')}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-slate-400 dark:text-gray-500">
-                        <span>可从其他 agent 导入</span>
-                        <button
-                          onClick={() => setShowImportModal(true)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-dark-bg-card border border-slate-200 dark:border-dark-border rounded-lg hover:border-[#b71422]/40 hover:bg-slate-50 dark:hover:bg-dark-bg-tertiary transition-all group"
-                        >
-                          <Icon name="add" className="text-base text-slate-400 dark:text-gray-500 group-hover:text-[#b71422] transition-colors" />
-                          <span className="text-slate-600 dark:text-gray-300 group-hover:text-[#b71422] font-medium transition-colors">
-                            导入技能
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                    {selectedSource === SOURCE.Global && (
-                      <div className="flex items-center gap-2">
-                        <img src={OCTOPUS_LOGO_URL} alt="Skills Manager" className="w-4 h-4 flex-shrink-0" />
-                        <p className="text-xs text-[#5e5e5e] dark:text-gray-400">
-                          {t('dashboard.rootPathLabel')}
-                          <span
-                            className="text-[#2563eb] dark:text-blue-400 cursor-pointer hover:underline font-mono"
-                            onClick={() => agentsApi.openFolderPath('~/.skills-manager').catch(() => { })}
-                          >~/.skills-manager </span>
-                          {!githubTipDismissed && (
-                            <>
-                              {t('dashboard.githubTipMid')}
-                              <span
-                                className="text-[#2563eb] dark:text-blue-400 cursor-pointer hover:underline"
-                                onClick={() => onNavigate(PAGE.GitHubBackup)}
-                              >{t('dashboard.githubTipLink')}</span>
-                              {t('dashboard.githubTipAfter')}
-                            </>
-                          )}
-                        </p>
-                        {!githubTipDismissed && (
-                          <button
-                            onClick={() => {
-                              setGithubTipDismissed(true);
-                              sessionStorage.setItem(SESSION_STORAGE_KEYS.githubTipDismissed, 'true');
-                            }}
-                            className="w-[14px] h-[14px] rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ml-1 flex items-center"
-                          >
-                            <Icon name="close" className="text-sm text-slate-400 dark:text-gray-500 hover:text-[#b71422]" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {selectedSource !== SOURCE.Global && (() => {
-                      const path = getAgentRootPath(selectedSource);
-                      const icon = getAgentIcon(selectedSource);
-                      return path ? (
-                        <div className="flex items-center gap-2">
-                          {icon ? (
-                            <img src={icon} alt="" className={`w-4 h-4 flex-shrink-0 ${needsInvertInDark(selectedSource) ? 'dark:invert' : ''}`} />
-                          ) : (
-                            <Icon name="folder_open" className="text-base text-gray-500 dark:text-gray-400" />
-                          )}
-                          <p className="text-xs text-[#5e5e5e] dark:text-gray-400">
-                            {t('dashboard.agentSourcePath')}
-                            <span
-                              className="text-[#2563eb] dark:text-blue-400 cursor-pointer hover:underline font-mono"
-                              onClick={() => agentsApi.openFolderPath(path).catch(() => { })}
-                            >{path}</span>
-                          </p>
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                )}
-              </div>
-
-              {marketplaceSkills.length > 0 && selectedSource === SOURCE.Global && (
-                <div className="mt-2 flex items-center gap-2">
-                  <img src={OCTOPUS_LOGO_URL} alt="Skills Manager" className="w-4 h-4 flex-shrink-0" />
-                  <p className="text-xs text-[#5e5e5e] dark:text-gray-400">
-                    {t('dashboard.rootPathLabel')}
-                    <span
-                      className="text-[#2563eb] dark:text-blue-400 cursor-pointer hover:underline font-mono"
-                      onClick={() => agentsApi.openFolderPath('~/.skills-manager').catch(() => { })}
-                    >~/.skills-manager </span>
-                    {!githubTipDismissed && (
-                      <>
-                        {t('dashboard.githubTipMid')}
-                        <span
-                          className="text-[#2563eb] dark:text-blue-400 cursor-pointer hover:underline"
-                          onClick={() => onNavigate(PAGE.GitHubBackup)}
-                        >{t('dashboard.githubTipLink')}</span>
-                        {t('dashboard.githubTipAfter')}
-                      </>
-                    )}
-                  </p>
-                  {!githubTipDismissed && (
-                    <button
-                      onClick={() => {
-                        setGithubTipDismissed(true);
-                        sessionStorage.setItem(SESSION_STORAGE_KEYS.githubTipDismissed, 'true');
-                      }}
-                      className="w-[14px] h-[14px] rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ml-1 flex items-center"
-                    >
-                      <Icon name="close" className="text-sm text-slate-400 dark:text-gray-500 hover:text-[#b71422]" />
-                    </button>
-                  )}
-                </div>
-              )}
-              {marketplaceSkills.length > 0 && selectedSource !== SOURCE.Global && (() => {
-                const path = getAgentRootPath(selectedSource);
-                return path ? (
-                  <p className="mt-3 text-[11px] text-slate-400 dark:text-gray-400 flex items-center gap-1.5">
-                    {getAgentIcon(selectedSource) ? (
-                      <img
-                        src={getAgentIcon(selectedSource)}
-                        alt={selectedSource}
-                        className={`w-3.5 h-3.5 object-contain ${needsInvertInDark(selectedSource) ? 'dark:invert' : ''}`}
-                      />
-                    ) : (
-                      <img src={OCTOPUS_LOGO_URL} alt="Skills Manager" className="w-3.5 h-3.5" />
-                    )}
-                    <span>{t('dashboard.agentSourcePath')}</span>
-                    <span
-                      className="cursor-pointer hover:underline font-mono hover:text-slate-500 dark:hover:text-gray-400"
-                      onClick={() => agentsApi.openFolderPath(path).catch(() => { })}
-                    >{path}</span>
-                  </p>
-                ) : null;
-              })()}
             </div>
-          )}
-        </div>
+            </div>
+            {/* Drag & Drop Overlay */}
+            {isDragOver && <DragDropOverlay />}
 
-        {/* Drag & Drop Overlay */}
-        {isDragOver && <DragDropOverlay />}
-
-        {/* Importing Overlay */}
-        {importing && <ImportingOverlay />}
+            {/* Importing Overlay */}
+            {importing && <ImportingOverlay />}
+          </div>
       </div>
 
-      {/* Skill Detail Modal */}
-      {showDetailModal && detailSkillLive && (
-        <SkillDetailModal
-          skill={detailSkillLive}
-          agents={agents}
-          skillFiles={skillFiles}
-          loadingFiles={loadingFiles}
-          expandedFolders={expandedFolders}
-          currentFile={currentFile}
-          loadingFile={loadingFile}
-          leftPanelWidth={leftPanelWidth}
-          isResizing={isResizing}
-          onClose={handleCloseDetailModal}
-          onToggleFolder={toggleFolder}
-          onReadFile={handleReadFile}
-          onToggleAgent={handleToggleAgentMerged}
-          onDelete={() => {
-            setDeleteTargetFromRoot(false);
-            setDeleteTarget(detailSkillLive);
-          }}
-          onResizeStart={handleMouseDown}
-        />
-      )}
+      {/* 右边：详情面板（内联显示） */}
+      <div className={`overflow-hidden flex-shrink-0 bg-white dark:bg-dark-bg-card border-l border-[#e1e3e4] dark:border-dark-border flex flex-col min-h-0 relative drawer-width-transition ${showDetailModal && detailSkillLive ? 'w-[500px]' : 'w-0 border-none'
+        }`}>
+        {showDetailModal && detailSkillLive && (
+          <>
+            <SkillDetailInline
+              skill={detailSkillLive}
+              agents={agents}
+              skillFiles={skillFiles}
+              loadingFiles={loadingFiles}
+              expandedFolders={expandedFolders}
+              currentFile={currentFile}
+              loadingFile={loadingFile}
+              leftPanelWidth={leftPanelWidth}
+              isResizing={isResizing}
+              onClose={() => {
+                handleCloseDetailModal();
+              }}
+              onToggleFolder={toggleFolder}
+              onReadFile={handleReadFile}
+              onToggleAgent={handleToggleAgentMerged}
+              onDelete={() => {
+                setDeleteTargetFromRoot(false);
+                setDeleteTarget(detailSkillLive);
+              }}
+              onResizeStart={handleMouseDown}
+            />
+          </>
+        )}
+      </div>
+      </div>
 
 
       {/* Delete Confirmation Modal */}
@@ -821,7 +550,6 @@ function Dashboard({
             : undefined  // 根目录 tab 卡片触发：Modal 内部兜底成单条 global 行
         }
         purpose={deleteTargetFromRoot ? 'root-only' : 'multi-source'}
-        advancedMode={advancedMode}
         onConfirm={handleDeleteConfirm}
         onCancel={() => {
           setDeleteTarget(null);
@@ -856,75 +584,75 @@ function Dashboard({
                 onMouseDown={() => setHelpPopover({ open: false, anchor: null })}
                 style={{ position: 'fixed', inset: 0, zIndex: 9997, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
               />
-            <div
-              style={{
-                position: 'fixed',
-                bottom: window.innerHeight - rect.top + 4,
-                left,
-                width,
-                zIndex: 9998,
-              }}
-              className="pointer-events-auto"
-            >
               <div
-                className={`${LIQUID_GLASS_TOAST_PANEL_CLASS} !flex-col max-h-[min(70vh,28rem)] overflow-hidden p-4 animate-toast-in`}
+                style={{
+                  position: 'fixed',
+                  bottom: window.innerHeight - rect.top + 4,
+                  left,
+                  width,
+                  zIndex: 9998,
+                }}
+                className="pointer-events-auto"
               >
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Icon name="info" className="text-base text-info" />
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">{t('dashboard.viewHelp')}</p>
-                </div>
-                <div className="min-h-0 overflow-y-auto overflow-x-hidden">
-                  <div className="space-y-3 text-xs leading-normal text-slate-500 dark:text-gray-400 text-left">
-                    <div>
-                      <p className="mb-1 flex items-center gap-1.5 font-bold text-slate-800 dark:text-gray-200">
-                        <Icon name="grid_view" className="text-base text-slate-500 dark:text-gray-400" />
-                        {t('dashboard.viewFlat')}
-                      </p>
-                      <p>{t('dashboard.viewHelpFlat')}</p>
-                    </div>
-                    <div>
-                      <p className="mb-1 flex items-center gap-1.5 font-bold text-slate-800 dark:text-gray-200">
-                        <Icon name="smart_toy" className="text-base text-slate-500 dark:text-gray-400" />
-                        {t('dashboard.viewBySource')}
-                      </p>
-                      <p>{t('dashboard.viewHelpBySource')}</p>
-                    </div>
-                    <div className="border-t border-slate-200/70 dark:border-dark-border/60 pt-2">
-                      <p className="mb-1.5 font-bold text-slate-800 dark:text-gray-200">{t('dashboard.mainToggleHelp.title')}</p>
-                      <div className="space-y-1.5">
-                        {MAIN_TOGGLE_STATES.map(state => (
-                          <div key={state} className="flex items-center gap-2.5">
-                            <MainToggleIndicator state={state} />
-                            <span className="flex-1 truncate">{t(`dashboard.mainToggleHelp.${state}`)}</span>
-                          </div>
-                        ))}
+                <div
+                  className={`${LIQUID_GLASS_TOAST_PANEL_CLASS} !flex-col max-h-[min(70vh,28rem)] overflow-hidden p-4 animate-toast-in`}
+                >
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Icon name="info" className="text-base text-info" />
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{t('dashboard.viewHelp')}</p>
+                  </div>
+                  <div className="min-h-0 overflow-y-auto overflow-x-hidden">
+                    <div className="space-y-3 text-xs leading-normal text-slate-500 dark:text-gray-400 text-left">
+                      <div>
+                        <p className="mb-1 flex items-center gap-1.5 font-bold text-slate-800 dark:text-gray-200">
+                          <Icon name="grid_view" className="text-base text-slate-500 dark:text-gray-400" />
+                          {t('dashboard.viewFlat')}
+                        </p>
+                        <p>{t('dashboard.viewHelpFlat')}</p>
                       </div>
-                    </div>
-                    <div className="border-t border-slate-200/70 dark:border-dark-border/60 pt-2">
-                      <p className="mb-1.5 font-bold text-slate-800 dark:text-gray-200">{t('dashboard.pinHelp.title')}</p>
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          aria-hidden="true"
-                          className="relative w-9 h-5 rounded-md overflow-hidden border border-slate-300 dark:border-dark-border bg-white dark:bg-dark-bg-card flex-shrink-0"
-                        >
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 30 30"
-                            className="absolute top-0 left-0"
+                      <div>
+                        <p className="mb-1 flex items-center gap-1.5 font-bold text-slate-800 dark:text-gray-200">
+                          <Icon name="smart_toy" className="text-base text-slate-500 dark:text-gray-400" />
+                          {t('dashboard.viewBySource')}
+                        </p>
+                        <p>{t('dashboard.viewHelpBySource')}</p>
+                      </div>
+                      <div className="border-t border-slate-200/70 dark:border-dark-border/60 pt-2">
+                        <p className="mb-1.5 font-bold text-slate-800 dark:text-gray-200">{t('dashboard.mainToggleHelp.title')}</p>
+                        <div className="space-y-1.5">
+                          {MAIN_TOGGLE_STATES.map(state => (
+                            <div key={state} className="flex items-center gap-2.5">
+                              <MainToggleIndicator state={state} />
+                              <span className="flex-1 truncate">{t(`dashboard.mainToggleHelp.${state}`)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="border-t border-slate-200/70 dark:border-dark-border/60 pt-2">
+                        <p className="mb-1.5 font-bold text-slate-800 dark:text-gray-200">{t('dashboard.pinHelp.title')}</p>
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            aria-hidden="true"
+                            className="relative w-9 h-5 rounded-md overflow-hidden border border-slate-300 dark:border-dark-border bg-white dark:bg-dark-bg-card flex-shrink-0"
                           >
-                            <polygon points="0,0 30,0 0,30" className="fill-[#fee2e2] dark:fill-[#7f1d1d]" />
-                            <polygon points="0,0 20,0 0,20" className="fill-[#f87171] dark:fill-[#dc2626]" />
-                            <polygon points="0,0 10,0 0,10" className="fill-[#b71422] dark:fill-[#fca5a5]" />
-                          </svg>
-                        </span>
-                        <span className="flex-1">{t('dashboard.pinHelp.desc')}</span>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 30 30"
+                              className="absolute top-0 left-0"
+                            >
+                              <polygon points="0,0 30,0 0,30" className="fill-[#fee2e2] dark:fill-[#7f1d1d]" />
+                              <polygon points="0,0 20,0 0,20" className="fill-[#f87171] dark:fill-[#dc2626]" />
+                              <polygon points="0,0 10,0 0,10" className="fill-[#b71422] dark:fill-[#fca5a5]" />
+                            </svg>
+                          </span>
+                          <span className="flex-1">{t('dashboard.pinHelp.desc')}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
             </>,
             document.body
           );

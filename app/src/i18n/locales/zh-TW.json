@@ -168,6 +168,7 @@
       "deleteSkill": "刪除技能"
     },
     "source": {
+      "all": "全部",
       "global": "Global",
       "removeFromRoot": "從根目錄中移除",
       "existsInRoot": "根目錄中已存在",

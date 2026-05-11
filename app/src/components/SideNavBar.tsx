@@ -2,16 +2,14 @@ import { useTranslation } from 'react-i18next';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { PROJECT_NAME, PROJECT_VERSION, PAGE, SESSION_STORAGE_KEYS, WINDOW_EVENTS, pageToPath, type Page } from '@/constants';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 import { Icon } from '@/components/Icon';
-interface SideNavBarProps {
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
-}
 
-export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBarProps) {
+export default function SideNavBar() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { isCollapsed, toggle } = useSidebar();
 
   const handleLogoClick = () => {
     try {
@@ -101,7 +99,7 @@ export default function SideNavBar({ isCollapsed, onToggleCollapse }: SideNavBar
 
       {/* Collapse Toggle Button - Fixed on the right edge */}
       <button
-        onClick={onToggleCollapse}
+        onClick={toggle}
         className="absolute top-1/2 -translate-y-1/2 -right-2 w-4 h-10 rounded-lg bg-white dark:bg-dark-bg-card shadow-md flex items-center justify-center z-50 border border-transparent dark:border-dark-border"
         title={isCollapsed ? t('nav.expand') : t('nav.collapse')}
       >

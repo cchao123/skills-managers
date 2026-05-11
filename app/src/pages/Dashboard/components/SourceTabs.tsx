@@ -37,6 +37,7 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({ agents, selectedSource, 
   const visibleAgents = useVisibleAgents(agents);
 
   const tabs = useMemo<TabItem[]>(() => [
+    { id: SOURCE.All, label: t('dashboard.source.all'), icon: OCTOPUS_LOGO_URL },
     { id: SOURCE.Global, label: t('dashboard.source.global'), icon: OCTOPUS_LOGO_URL },
     ...visibleAgents.map(a => ({
       id: a.name,
@@ -68,38 +69,79 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({ agents, selectedSource, 
     : [];
 
   return (
-    <>
-      <div className="inline-flex items-center gap-2 px-1 py-1 bg-[#f5f5f5] dark:bg-dark-bg rounded-lg">
-        {tabs.map((item, index) => (
-          <React.Fragment key={item.id}>
-            {index > 0 && (
-              <div className="w-px h-3 bg-slate-300 dark:bg-dark-bg-tertiary shrink-0" />
-            )}
-            <button
-              onClick={() => onSelect(item.id)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setCtxMenu({ open: true, x: e.clientX, y: e.clientY, sourceId: item.id });
-              }}
-              className={`flex items-center gap-1.5 transition-all rounded-md px-2 py-1.5 whitespace-nowrap ${
-                selectedSource === item.id
-                  ? 'bg-white dark:bg-dark-bg-card shadow-sm'
-                  : 'hover:bg-white/50 dark:hover:bg-dark-bg-card/50'
-              }`}
-            >
-              <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
-                <img src={item.icon} alt={item.label} className="w-full h-full object-contain" />
-              </div>
-              <span className={`text-xs font-bold transition-colors ${
-                selectedSource === item.id
-                  ? 'text-slate-700 dark:text-white'
-                  : 'text-slate-600 dark:text-gray-300'
-              }`}>{item.label}</span>
-            </button>
-          </React.Fragment>
-        ))}
+    <div className="h-full flex flex-col">
+      {/* 侧边栏背景 */}
+      <div className="flex-1 w-16 bg-white/80 dark:bg-dark-bg-card/80 backdrop-blur-sm border-r border-slate-200/60 dark:border-dark-border flex flex-col items-center py-4 gap-1 overflow-y-auto">
+        {tabs.map((item) => {
+          const isSelected = selectedSource === item.id;
+          const isAll = item.id === SOURCE.All;
+          const isGlobal = item.id === SOURCE.Global;
+          const showSeparator = isGlobal && visibleAgents.length > 0;
+
+          return (
+            <React.Fragment key={item.id}>
+              <button
+                onClick={() => onSelect(item.id)}
+                onContextMenu={(e) => {
+                  if (!isAll) {
+                    e.preventDefault();
+                    setCtxMenu({ open: true, x: e.clientX, y: e.clientY, sourceId: item.id });
+                  }
+                }}
+                className="relative group w-full flex flex-col items-center gap-1.5 py-2.5 px-1 transition-all duration-200"
+                title={item.label}
+              >
+                {/* 左侧选中指示条 */}
+                {isSelected && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-[#b71422] dark:bg-[#d9304a]" />
+                )}
+
+                {/* 背景悬停效果 */}
+                <div className={`absolute inset-x-1 inset-y-1.5 rounded-lg transition-all duration-200 ${
+                  isSelected
+                    ? 'bg-[#f5f5f5] dark:bg-white/5'
+                    : 'bg-transparent group-hover:bg-slate-100/50 dark:group-hover:bg-white/3'
+                }`} />
+
+                {/* 图标和文字 */}
+                <div className="relative flex flex-col items-center gap-1.5">
+                  {/* 图标容器 */}
+                  <div className={`w-7 h-6 flex items-center justify-center transition-all duration-200 ${
+                    isSelected ? 'scale-110' : 'scale-100 group-hover:scale-105'
+                  }`}>
+                    <img
+                      src={item.icon}
+                      alt={item.label}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  {/* 文字标签 */}
+                  <span className={`text-[10px] font-medium transition-all duration-200 max-w-[3.5rem] truncate px-0.5 ${
+                    isSelected
+                      ? 'text-[#b71422] dark:text-[#f86a7d] font-semibold'
+                      : 'text-slate-500 dark:text-gray-400 group-hover:text-slate-600 dark:group-hover:text-gray-300'
+                  }`}>
+                    {item.label}
+                  </span>
+                </div>
+
+                {/* 选中状态的外边框 */}
+                {isSelected && (
+                  <div className="absolute inset-x-1 inset-y-1.5 rounded-lg border border-[#b71422]/20 dark:border-[#d9304a]/20 pointer-events-none" />
+                )}
+              </button>
+
+              {/* 分隔线 */}
+              {showSeparator && (
+                <div key="separator" className="w-8 h-px bg-slate-200 dark:bg-dark-border my-1" />
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
 
+      {/* 右键菜单 */}
       <ContextMenu
         open={ctxMenu.open}
         x={ctxMenu.x}
@@ -107,6 +149,6 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({ agents, selectedSource, 
         items={ctxItems}
         onClose={closeCtxMenu}
       />
-    </>
+    </div>
   );
 };

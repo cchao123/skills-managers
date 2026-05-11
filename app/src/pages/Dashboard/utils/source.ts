@@ -2,6 +2,7 @@ import { getAgentShortName, KNOWN_AGENTS } from '@/constants';
 
 /**
  * 技能来源枚举：
+ * - All: 所有来源
  * - Global: Skills Manager 根目录（`~/.skills-manager/skills`）
  * - Cursor: Cursor 原生目录
  * - Claude: Claude Code 原生目录
@@ -11,6 +12,7 @@ import { getAgentShortName, KNOWN_AGENTS } from '@/constants';
  * 使用 `as const` 对象 + 派生类型，保持运行时零开销。
  */
 export const SOURCE = {
+  All: 'all',
   Global: 'global',
   Cursor: 'cursor',
   Claude: 'claude',
@@ -21,6 +23,7 @@ export const SOURCE = {
 type Source = typeof SOURCE[keyof typeof SOURCE];
 
 const SOURCE_BADGE_STYLES: Record<Source, string> = {
+  [SOURCE.All]: 'bg-gray-50 dark:bg-gray-500/10 text-gray-600 dark:text-gray-400',
   [SOURCE.Global]: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
   [SOURCE.Cursor]: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400',
   [SOURCE.Claude]: 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400',
@@ -38,6 +41,7 @@ export const badgeClass = (src?: string) =>
  * 非 Global 的展示名从 {@link AGENT_META} 派生，新增 agent 无需改这里。
  */
 const SOURCE_DISPLAY_NAME: Record<Source, string> = {
+  [SOURCE.All]: 'All',
   [SOURCE.Global]: 'Root',
   [SOURCE.Cursor]: getAgentShortName(SOURCE.Cursor),
   [SOURCE.Claude]: getAgentShortName(SOURCE.Claude),
@@ -50,4 +54,4 @@ export const sourceDisplayName = (s?: string) =>
 
 export const isSource = (v: unknown): v is string =>
   typeof v === 'string' &&
-  (v === SOURCE.Global || KNOWN_AGENTS.some(a => a.name === v));
+  (v === SOURCE.All || v === SOURCE.Global || KNOWN_AGENTS.some(a => a.name === v));
