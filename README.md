@@ -52,8 +52,8 @@
 - **进度追踪**：实时显示下载进度与安装状态
 - **Agent 选择器**：可选择安装到 Root 或特定 Agent 目录
 
-![技能市场](docs/screen-shot/zh-marketplace-01.png)
-![技能详情](docs/screen-shot/zh-marketplace-02.png)
+![技能市场](docs/screen-shot/ScreenShot_Marketplace-1.png)
+![技能详情](docs/screen-shot/ScreenShot_Marketplace-2.png)
 
 ### Skills 总览与管理
 
@@ -62,8 +62,8 @@
 - **多来源查看**：查看 skill 的详情、来源和文件结构
 - **拖拽导入**：支持将包含 `SKILL.md` 的文件夹直接拖入导入
 
-![主页](docs/screen-shot/zh-skills-home.png)
-![技能详情](docs/screen-shot/zh-skills-detail.png)
+![主页](docs/screen-shot/ScreenShot_Dashboard-1.png)
+![技能详情](docs/screen-shot/ScreenShot_Dashboard-2.png)
 
 ### GitHub 备份与分发
 
@@ -72,7 +72,8 @@
 - **分发技能仓库**：把整理好的 skills 作为共享仓库提供给自己或团队使用
 - **配置向导**：可视化配置 GitHub 仓库信息
 
-![GitHub](docs/screen-shot/zh-github.png)
+![GitHub 备份](docs/screen-shot/ScreenShot_Github.png)
+![GitHub 设置](docs/screen-shot/ScreenShot_Setting.png)
 
 
 ---
