@@ -6,6 +6,8 @@ import { useDebounce, useRequest, useSet } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/Icon';
 import { useToast } from '@/components/Toast';
+import { appendOperationLog } from '@/pages/Dashboard/hooks/useOperationLog';
+import { OperationLogPopover } from '@/pages/Dashboard/components/OperationLogPopover';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
 import { useHiddenAgents } from '@/hooks/useHiddenAgents';
@@ -16,6 +18,7 @@ import { usePanelResize } from '@/pages/Dashboard/hooks/usePanelResize';
 import { SkillDetailInline } from '@/pages/Dashboard/components/SkillDetailInline';
 import { skillsApi } from '@/api/tauri';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { ResizableDetailLayout } from '@/components/ResizableDetailLayout';
 
 interface MarketplaceSkill {
   id: string;
@@ -38,6 +41,13 @@ const TABS: Array<{ id: SourceType; labelKey: string; icon: string; shortcut: st
 ];
 
 const IS_MAC = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+// 同名但来自不同仓库的技能用 "repository::id" 区分（下载状态）
+const skillKey = (skill: MarketplaceSkill) => `${skill.repository}::${skill.id}`;
+
+// 已安装状态用 "id::source_repository" 精确匹配，无来源记录时退化为 "id"
+const installedKey = (id: string, sourceRepository: string | undefined) =>
+  sourceRepository ? `${id}::${sourceRepository}` : id;
 const SHORTCUT_MOD = IS_MAC ? '⌘' : 'Ctrl';
 
 // ─── 下载目标选择器 ───────────────────────────────────────────────────────────
@@ -235,6 +245,7 @@ interface SkillDetail {
 interface DrawerProps {
   skill: MarketplaceSkill;
   installedIds: Set<string>;
+  legacyInstalledIds: Set<string>;
   downloading: Set<string>;
   progress: Record<string, number>;
   succeeded: Set<string>;
@@ -247,6 +258,7 @@ interface DrawerProps {
 function MarketplaceDetailDrawer({
   skill,
   installedIds,
+  legacyInstalledIds,
   downloading,
   progress,
   succeeded,
@@ -306,9 +318,10 @@ function MarketplaceDetailDrawer({
   }, [skillMd]);
 
   const pct = progress[skill.id] ?? 0;
-  const isDownloading = downloading.has(skill.id);
-  const isSucceeded = succeeded.has(skill.id);
-  const isInstalled = installedIds.has(skill.id);
+  const isDownloading = downloading.has(skillKey(skill));
+  const isSucceeded = succeeded.has(skillKey(skill));
+  const isInstalled = installedIds.has(installedKey(skill.id, skill.repository))
+    || legacyInstalledIds.has(skill.id);
 
   const auditStatusClass: Record<string, string> = {
     Pass: 'bg-green-500/10 text-green-600 dark:text-green-400',
@@ -321,188 +334,188 @@ function MarketplaceDetailDrawer({
       {/* Header */}
       <div className="flex-shrink-0 p-6 pb-4 border-b border-gray-200 dark:border-dark-border">
         <div className="flex items-center gap-4">
-            <div className="min-w-0">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{skill.name}</h2>
-              <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
-                <Icon name="person" className="text-xs flex-shrink-0" />
-                <span className="truncate">{skill.author}</span>
-              </div>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{skill.name}</h2>
+            <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-500 dark:text-gray-400">
+              <Icon name="person" className="text-xs flex-shrink-0" />
+              <span className="truncate">{skill.author}</span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* 描述：来自 skills.sh 详情页渲染好的 SKILL.md，可切换原文 */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500">{t('skillDownload.description')}</h3>
-              {skillMd && !skillMdLoading && !skillMdError && (
-                <div className="inline-flex items-center rounded-md border border-[#e1e3e4] dark:border-dark-border overflow-hidden text-[11px] font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setSkillMdView('md')}
-                    aria-pressed={skillMdView === 'md'}
-                    className={`px-2 py-1 transition-colors ${skillMdView === 'md'
-                      ? 'bg-slate-100 dark:bg-dark-bg-tertiary text-slate-700 dark:text-white'
-                      : 'bg-white dark:bg-dark-bg-card text-slate-500 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-dark-hover'
-                      }`}
-                  >
-                    {t('skillDownload.previewMd')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSkillMdView('text')}
-                    aria-pressed={skillMdView === 'text'}
-                    className={`px-2 py-1 border-l border-[#e1e3e4] dark:border-dark-border transition-colors ${skillMdView === 'text'
-                      ? 'bg-slate-100 dark:bg-dark-bg-tertiary text-slate-700 dark:text-white'
-                      : 'bg-white dark:bg-dark-bg-card text-slate-500 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-dark-hover'
-                      }`}
-                  >
-                    {t('skillDownload.previewText')}
-                  </button>
-                </div>
-              )}
-            </div>
-            {skillMdLoading ? (
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400 py-3">
-                <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-slate-200 dark:border-dark-bg-secondary border-t-[#b71422]"></div>
-                <span>{t('skillDownload.loadingSkillMd')}</span>
-              </div>
-            ) : skillMdError ? (
-              <div className="text-xs text-slate-500 dark:text-gray-400 italic">{t('skillDownload.skillMdError', { error: skillMdError })}</div>
-            ) : skillMd ? (
-              <div className="rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-[#fafbfb] dark:bg-dark-bg-tertiary overflow-hidden">
-                <div className="p-3 max-h-[420px] overflow-y-auto">
-                  {skillMdView === 'md' ? (
-                    <div
-                      className="prose prose-sm dark:prose-invert max-w-none prose-headings:mb-2 prose-headings:mt-3 prose-p:my-2 prose-pre:my-2 prose-code:text-[12px] prose-pre:text-[12px]"
-                      dangerouslySetInnerHTML={{ __html: skillMd }}
-                    />
-                  ) : (
-                    <pre className="text-xs text-slate-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed">
-                      {skillMdAsText}
-                    </pre>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          {/* 统计数据 */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-3">{t('skillDownload.stats')}</h3>
-            {detailLoading ? (
-              <div className="flex gap-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="h-8 w-24 bg-slate-100 dark:bg-dark-bg-tertiary rounded animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-4">
-                {skill.stars != null && (
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Icon name="download" className="text-base text-slate-400" />
-                    <span className="font-semibold text-slate-900 dark:text-white">{skill.stars.toLocaleString()}</span>
-                  </div>
-                )}
-                {detail?.weekly_installs && (
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Icon name="autorenew" className="text-base text-slate-400" />
-                    <span className="font-semibold text-slate-900 dark:text-white">{detail.weekly_installs}</span>
-                    <span className="text-slate-500 dark:text-gray-400">{t('skillDownload.weeklyInstalls')}</span>
-                  </div>
-                )}
-                {detail?.github_stars && (
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Icon name="star" className="text-base text-yellow-500" />
-                    <span className="font-semibold text-slate-900 dark:text-white">{detail.github_stars}</span>
-                    <span className="text-slate-500 dark:text-gray-400">GitHub Stars</span>
-                  </div>
-                )}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* 描述：来自 skills.sh 详情页渲染好的 SKILL.md，可切换原文 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500">{t('skillDownload.description')}</h3>
+            {skillMd && !skillMdLoading && !skillMdError && (
+              <div className="inline-flex items-center rounded-md border border-[#e1e3e4] dark:border-dark-border overflow-hidden text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setSkillMdView('md')}
+                  aria-pressed={skillMdView === 'md'}
+                  className={`px-2 py-1 transition-colors ${skillMdView === 'md'
+                    ? 'bg-slate-100 dark:bg-dark-bg-tertiary text-slate-700 dark:text-white'
+                    : 'bg-white dark:bg-dark-bg-card text-slate-500 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-dark-hover'
+                    }`}
+                >
+                  {t('skillDownload.previewMd')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSkillMdView('text')}
+                  aria-pressed={skillMdView === 'text'}
+                  className={`px-2 py-1 border-l border-[#e1e3e4] dark:border-dark-border transition-colors ${skillMdView === 'text'
+                    ? 'bg-slate-100 dark:bg-dark-bg-tertiary text-slate-700 dark:text-white'
+                    : 'bg-white dark:bg-dark-bg-card text-slate-500 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-dark-hover'
+                    }`}
+                >
+                  {t('skillDownload.previewText')}
+                </button>
               </div>
             )}
           </div>
-
-          {/* 首次出现 */}
-          {!detailLoading && detail?.first_seen && (
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-2">{t('skillDownload.firstSeen')}</h3>
-              <p className="text-sm text-slate-700 dark:text-gray-300">{detail.first_seen}</p>
+          {skillMdLoading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400 py-3">
+              <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-slate-200 dark:border-dark-bg-secondary border-t-[#b71422]"></div>
+              <span>{t('skillDownload.loadingSkillMd')}</span>
             </div>
-          )}
-
-          {/* 安全审计 */}
-          {!detailLoading && detail && detail.security_audits.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-3">{t('skillDownload.securityAudits')}</h3>
-              <div className="space-y-2">
-                {detail.security_audits.map((audit) => (
-                  <div key={audit.name} className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-dark-border last:border-0">
-                    <span className="text-sm text-slate-700 dark:text-gray-300">{audit.name}</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase ${auditStatusClass[audit.status] ?? 'bg-slate-100 text-slate-500'}`}>
-                      {audit.status}
-                    </span>
-                  </div>
-                ))}
+          ) : skillMdError ? (
+            <div className="text-xs text-slate-500 dark:text-gray-400 italic">{t('skillDownload.skillMdError', { error: skillMdError })}</div>
+          ) : skillMd ? (
+            <div className="rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-[#fafbfb] dark:bg-dark-bg-tertiary overflow-hidden">
+              <div className="p-3 max-h-[420px] overflow-y-auto">
+                {skillMdView === 'md' ? (
+                  <div
+                    className="prose prose-sm dark:prose-invert max-w-none prose-headings:mb-2 prose-headings:mt-3 prose-p:my-2 prose-pre:my-2 prose-code:text-[12px] prose-pre:text-[12px]"
+                    dangerouslySetInnerHTML={{ __html: skillMd }}
+                  />
+                ) : (
+                  <pre className="text-xs text-slate-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed">
+                    {skillMdAsText}
+                  </pre>
+                )}
               </div>
             </div>
-          )}
-
-          {/* 仓库 */}
-          {skill.repository && (
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-2">{t('skillDownload.repository')}</h3>
-              <button
-                onClick={() => openUrl(skill.repository)}
-                className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline break-all text-left"
-              >
-                <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0 fill-current text-blue-600 dark:text-blue-400" aria-hidden="true">
-                  <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
-                </svg>
-                {skill.repository.replace('https://github.com/', '')}
-              </button>
-            </div>
-          )}
-
-          {/* 安装命令 */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-2">{t('skillDownload.installCommand')}</h3>
-            <CopyCommand text={`npx skills add ${skill.repository?.replace('https://github.com/', '') ?? skill.id} --skill ${skill.id}`} />
-          </div>
+          ) : null}
         </div>
 
-        {/* Footer：下载 / 删除按钮 */}
-        <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-dark-border">
-          {isInstalled && !isSucceeded ? (
-            <button
-              onClick={() => onDelete(skill)}
-              className="w-full py-2.5 rounded-lg font-bold text-sm border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center gap-2 transition-colors"
-            >
-              <Icon name="delete" className="text-base" />
-              {t('skillDownload.uninstall')}
-            </button>
-          ) : isSucceeded ? (
-            <div className="w-full py-2.5 rounded-lg font-bold text-sm bg-green-500 text-white flex items-center justify-center gap-2">
-              <Icon name="check" className="text-base" />
-              {t('skillDownload.downloadSuccess')}
-            </div>
-          ) : isDownloading ? (
-            <div className="relative overflow-hidden w-full py-2.5 rounded-lg font-bold text-sm bg-[#f3f4f5] dark:bg-dark-bg-tertiary border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed">
-              <div className="absolute inset-0 bg-[#b71422] transition-[width] duration-300 ease-out" style={{ width: `${pct}%` }} />
-              <span className="absolute inset-0 flex items-center justify-center text-white pointer-events-none" style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}>{pct}%</span>
-              <span className="absolute inset-0 flex items-center justify-center text-[#b71422] dark:text-white pointer-events-none" style={{ clipPath: `inset(0 0 0 ${pct}%)` }}>{pct}%</span>
+        {/* 统计数据 */}
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-3">{t('skillDownload.stats')}</h3>
+          {detailLoading ? (
+            <div className="flex gap-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-8 w-24 bg-slate-100 dark:bg-dark-bg-tertiary rounded animate-pulse" />
+              ))}
             </div>
           ) : (
-            <button
-              onClick={() => onDownload(skill)}
-              className="w-full py-2.5 rounded-lg font-bold text-sm bg-[#b71422] text-white hover:bg-[#8f0f1a] transition-colors"
-            >
-              {t('skillDownload.downloadTo', { target: selectedAgent === 'global' ? 'Root' : selectedAgent })}
-            </button>
+            <div className="flex flex-wrap gap-4">
+              {skill.stars != null && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Icon name="download" className="text-base text-slate-400" />
+                  <span className="font-semibold text-slate-900 dark:text-white">{skill.stars.toLocaleString()}</span>
+                </div>
+              )}
+              {detail?.weekly_installs && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Icon name="autorenew" className="text-base text-slate-400" />
+                  <span className="font-semibold text-slate-900 dark:text-white">{detail.weekly_installs}</span>
+                  <span className="text-slate-500 dark:text-gray-400">{t('skillDownload.weeklyInstalls')}</span>
+                </div>
+              )}
+              {detail?.github_stars && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Icon name="star" className="text-base text-yellow-500" />
+                  <span className="font-semibold text-slate-900 dark:text-white">{detail.github_stars}</span>
+                  <span className="text-slate-500 dark:text-gray-400">GitHub Stars</span>
+                </div>
+              )}
+            </div>
           )}
         </div>
+
+        {/* 首次出现 */}
+        {!detailLoading && detail?.first_seen && (
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-2">{t('skillDownload.firstSeen')}</h3>
+            <p className="text-sm text-slate-700 dark:text-gray-300">{detail.first_seen}</p>
+          </div>
+        )}
+
+        {/* 安全审计 */}
+        {!detailLoading && detail && detail.security_audits.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-3">{t('skillDownload.securityAudits')}</h3>
+            <div className="space-y-2">
+              {detail.security_audits.map((audit) => (
+                <div key={audit.name} className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-dark-border last:border-0">
+                  <span className="text-sm text-slate-700 dark:text-gray-300">{audit.name}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase ${auditStatusClass[audit.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                    {audit.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 仓库 */}
+        {skill.repository && (
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-2">{t('skillDownload.repository')}</h3>
+            <button
+              onClick={() => openUrl(skill.repository)}
+              className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline break-all text-left"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0 fill-current text-blue-600 dark:text-blue-400" aria-hidden="true">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
+              </svg>
+              {skill.repository.replace('https://github.com/', '')}
+            </button>
+          </div>
+        )}
+
+        {/* 安装命令 */}
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500 mb-2">{t('skillDownload.installCommand')}</h3>
+          <CopyCommand text={`npx skills add ${skill.repository?.replace('https://github.com/', '') ?? skill.id} --skill ${skill.id}`} />
+        </div>
       </div>
+
+      {/* Footer：下载 / 删除按钮 */}
+      <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-dark-border">
+        {isInstalled && !isSucceeded ? (
+          <button
+            onClick={() => onDelete(skill)}
+            className="w-full py-2.5 rounded-lg font-bold text-sm border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center gap-2 transition-colors"
+          >
+            <Icon name="delete" className="text-base" />
+            {t('skillDownload.uninstall')}
+          </button>
+        ) : isSucceeded ? (
+          <div className="w-full py-2.5 rounded-lg font-bold text-sm bg-green-500 text-white flex items-center justify-center gap-2">
+            <Icon name="check" className="text-base" />
+            {t('skillDownload.downloadSuccess')}
+          </div>
+        ) : isDownloading ? (
+          <div className="relative overflow-hidden w-full py-2.5 rounded-lg font-bold text-sm bg-[#f3f4f5] dark:bg-dark-bg-tertiary border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed">
+            <div className="absolute inset-0 bg-[#b71422] transition-[width] duration-300 ease-out" style={{ width: `${pct}%` }} />
+            <span className="absolute inset-0 flex items-center justify-center text-white pointer-events-none" style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}>{pct}%</span>
+            <span className="absolute inset-0 flex items-center justify-center text-[#b71422] dark:text-white pointer-events-none" style={{ clipPath: `inset(0 0 0 ${pct}%)` }}>{pct}%</span>
+          </div>
+        ) : (
+          <button
+            onClick={() => onDownload(skill)}
+            className="w-full py-2.5 rounded-lg font-bold text-sm bg-[#b71422] text-white hover:bg-[#8f0f1a] transition-colors"
+          >
+            {t('skillDownload.downloadTo', { target: selectedAgent === 'global' ? 'Root' : selectedAgent })}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -520,6 +533,15 @@ export default function SkillDownload() {
   const [sourceType, setSourceType] = useState<SourceType>('allTime');
   const [detailSkill, setDetailSkill] = useState<MarketplaceSkill | null>(null);
   const [previousSidebarState, setPreviousSidebarState] = useState<boolean>(true);
+  const [logPopoverAnchor, setLogPopoverAnchor] = useState<DOMRect | null>(null);
+  const logButtonRef = useRef<HTMLButtonElement>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleListScroll = () => {
+    setIsScrolling(true);
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => setIsScrolling(false), 1000);
+  };
 
   useEffect(() => {
     const unlisten = listen<{ skill_id: string; percent: number }>('download-progress', (e) => {
@@ -574,7 +596,12 @@ export default function SkillDownload() {
   } = useRequest(() => invoke<SkillMetadata[]>('list_skills'));
 
   const installedIds = useMemo(
-    () => new Set(installedSkills.map((s) => s.id)),
+    () => new Set(installedSkills.map((s) => installedKey(s.id, s.source_repository))),
+    [installedSkills],
+  );
+  // 没有 .skill-source 记录的旧下载，退化为纯 id 匹配（兜底）
+  const legacyInstalledIds = useMemo(
+    () => new Set(installedSkills.filter((s) => !s.source_repository).map((s) => s.id)),
     [installedSkills],
   );
   const installedSkillsMap = useMemo(
@@ -606,6 +633,42 @@ export default function SkillDownload() {
         : null,
     [localDetailSkill, installedSkills],
   );
+
+  // ---- 统一详情面板：防止两种面板切换时触发宽度动画 ----
+  const isAnyPanelOpen = !!(detailSkill || (showLocalDetailModal && localDetailSkillLive));
+  const isAnyPanelOpenRef = useRef(isAnyPanelOpen);
+  isAnyPanelOpenRef.current = isAnyPanelOpen;
+
+  // widthOpen 用 setTimeout(0) 防抖：切换面板类型时的中间态 false 不会触发宽度收缩
+  const [widthOpen, setWidthOpen] = useState(isAnyPanelOpen);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isAnyPanelOpen) {
+      if (closeTimerRef.current !== null) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+      setWidthOpen(true);
+    } else {
+      closeTimerRef.current = setTimeout(() => {
+        closeTimerRef.current = null;
+        if (!isAnyPanelOpenRef.current) setWidthOpen(false);
+      }, 0);
+    }
+  }, [isAnyPanelOpen]);
+
+  // 记录最后渲染的内容供关闭动画期间继续显示
+  const lastPanelTypeRef = useRef<'marketplace' | 'local' | null>(null);
+  const lastMarketplaceSkillRef = useRef<typeof detailSkill>(null);
+  const lastLocalSkillRef = useRef<typeof localDetailSkillLive>(null);
+  if (detailSkill) {
+    lastPanelTypeRef.current = 'marketplace';
+    lastMarketplaceSkillRef.current = detailSkill;
+  } else if (showLocalDetailModal && localDetailSkillLive) {
+    lastPanelTypeRef.current = 'local';
+    lastLocalSkillRef.current = localDetailSkillLive;
+  }
 
   // 当详情弹框打开时，自动收起侧边栏
   useEffect(() => {
@@ -668,8 +731,9 @@ export default function SkillDownload() {
   };
 
   const handleDownload = async (skill: MarketplaceSkill) => {
-    if (downloading.has(skill.id)) return;
-    addDownloading(skill.id);
+    const key = skillKey(skill);
+    if (downloading.has(key)) return;
+    addDownloading(key);
     try {
       const targetAgent = selectedAgent === 'global' ? null : selectedAgent;
       await invoke('download_skill_from_marketplace', {
@@ -678,9 +742,14 @@ export default function SkillDownload() {
         branch: skill.branch || 'main',
         targetAgent,
       });
-      addSucceeded(skill.id);
-      setTimeout(() => removeSucceeded(skill.id), 2000);
+      addSucceeded(key);
+      setTimeout(() => removeSucceeded(key), 2000);
       showToast('success', t('skillDownload.toast.downloadSuccess', { name: skill.name }));
+      appendOperationLog({
+        type: 'download',
+        skillName: skill.name,
+        downloadTarget: selectedAgent === 'global' ? 'Root' : selectedAgent,
+      });
       invoke('rescan_skills');
       refreshInstalled();
     } catch (error) {
@@ -688,93 +757,173 @@ export default function SkillDownload() {
       const errorMessage = error instanceof Error ? error.message : String(error);
       showToast('error', t('skillDownload.toast.downloadFailed', { error: errorMessage }));
     } finally {
-      removeDownloading(skill.id);
+      removeDownloading(key);
       setProgress((prev) => { const next = { ...prev }; delete next[skill.id]; return next; });
     }
   };
 
   const filteredSkills = skills;
 
+  // 基于表格容器实际宽度决定显示哪些列
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [tableWidth, setTableWidth] = useState(0);
+  useEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    let rafId: number | undefined;
+    const ro = new ResizeObserver(entries => {
+      if (rafId !== undefined) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => { setTableWidth(entries[0].contentRect.width); });
+    });
+    ro.observe(el);
+    return () => { ro.disconnect(); if (rafId !== undefined) cancelAnimationFrame(rafId); };
+  }, []);
+  const showAuthorCol = tableWidth >= 600;
+  const showInstallsCol = tableWidth >= 750;
+  // 操作按钮：面板展开时始终用小图标；面板关闭时宽度足够才展示文字
+  const showActionText = !isAnyPanelOpen && tableWidth >= 600;
+
   return (
-    <div className="h-full flex overflow-hidden">
-      <div className='flex flex-col flex-1 min-w-0 bg-[#f8f9fa] dark:bg-dark-bg-secondary main-content-transition'>
+    <>
+    <ResizableDetailLayout
+      isPanelOpen={widthOpen}
+      panel={(isClosing) => (
+        <>
+          {(!!detailSkill || (isClosing && lastPanelTypeRef.current === 'marketplace')) && (
+            <>
+              {!isClosing && (
+                <button
+                  onClick={() => setDetailSkill(null)}
+                  className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded-lg transition-colors z-10"
+                >
+                  <Icon name="close" className="text-gray-600 dark:text-gray-300" />
+                </button>
+              )}
+              <div className="h-full flex flex-col">
+                <MarketplaceDetailDrawer
+                  skill={(detailSkill ?? lastMarketplaceSkillRef.current)!}
+                  installedIds={installedIds}
+                  legacyInstalledIds={legacyInstalledIds}
+                  downloading={downloading}
+                  progress={progress}
+                  succeeded={succeeded}
+                  selectedAgent={selectedAgent}
+                  onDownload={handleDownload}
+                  onDelete={handleDelete}
+                  onClose={() => { }}
+                />
+              </div>
+            </>
+          )}
+          {((!detailSkill && showLocalDetailModal && !!localDetailSkillLive) || (isClosing && lastPanelTypeRef.current === 'local')) && (
+            <SkillDetailInline
+              skill={(localDetailSkillLive ?? lastLocalSkillRef.current)!}
+              agents={agents}
+              skillFiles={skillFiles}
+              loadingFiles={loadingFiles}
+              expandedFolders={expandedFolders}
+              currentFile={currentFile}
+              loadingFile={loadingFile}
+              leftPanelWidth={leftPanelWidth}
+              isResizing={isResizing}
+              onClose={() => handleCloseDetailModal()}
+              onToggleFolder={toggleFolder}
+              onReadFile={handleReadFile}
+              onToggleAgent={handleToggleAgentLocal}
+              onDelete={async () => {
+                const target = localDetailSkillLive ?? lastLocalSkillRef.current;
+                if (!target) return;
+                try {
+                  await invoke('delete_skill', { skillId: target.id });
+                  showToast('success', t('skillDownload.toast.uninstalled', { name: target.name }));
+                  handleCloseDetailModal();
+                  refreshInstalled();
+                } catch (error) {
+                  showToast('error', t('skillDownload.toast.uninstallFailed', { error: String(error) }));
+                }
+              }}
+              onResizeStart={handleMouseDown}
+            />
+          )}
+        </>
+      )}
+    >
+      <div className='flex flex-col flex-1 min-h-0 bg-[#f8f9fa] dark:bg-dark-bg-secondary main-content-transition'>
         {/* 顶部：Tab + 搜索（与 Dashboard 风格一致：无白底、无分割线） */}
         <div className="flex-shrink-0 px-5 pt-5 pb-4" data-tauri-drag-region>
-          <div className="max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl mx-auto">
-            {/* 搜索和筛选栏：滑块 + 搜索框 + 下载目标，单行布局（与 Dashboard 一致） */}
-            <div className="flex items-center gap-3 h-11">
-              <div className="relative grid grid-cols-3 items-center rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-slate-100 dark:bg-dark-bg-tertiary p-0.5 h-9 shrink-0">
-                {/* 滑动高亮块 */}
-                <div
-                  className="absolute top-0.5 bottom-0.5 rounded-md bg-white dark:bg-dark-bg-card shadow-sm transition-all duration-200 ease-in-out"
-                  style={{
-                    left: `calc(${TABS.findIndex((t) => t.id === sourceType)} * (100% - 4px) / 3 + 2px)`,
-                    width: 'calc((100% - 4px) / 3)',
-                  }}
-                />
-                {TABS.map((tab) => {
-                  const isActive = sourceType === tab.id;
-                  return (
-                    <div key={tab.id} className="relative z-10 group">
-                      <button
-                        onClick={() => setSourceType(tab.id)}
-                        aria-pressed={isActive}
-                        className="flex items-center justify-center w-full h-full gap-1.5 px-3 rounded-md transition-colors"
-                      >
-                        <Icon
-                          name={tab.icon}
-                          className={`text-lg transition-colors ${isActive
-                            ? 'text-slate-700 dark:text-white'
-                            : 'text-slate-400 dark:text-gray-500'
-                          }`}
-                        />
-                        <span className={`text-xs font-bold whitespace-nowrap transition-colors ${isActive
+          {/* 搜索和筛选栏：滑块 + 搜索框 + 下载目标，单行布局（与 Dashboard 一致） */}
+          <div className="flex items-center gap-3 h-11">
+            <div className="relative grid grid-cols-3 items-center rounded-lg border border-[#e1e3e4] dark:border-dark-border bg-slate-100 dark:bg-dark-bg-tertiary p-0.5 h-9 shrink-0">
+              {/* 滑动高亮块 */}
+              <div
+                className="absolute top-0.5 bottom-0.5 rounded-md bg-white dark:bg-dark-bg-card shadow-sm transition-all duration-200 ease-in-out"
+                style={{
+                  left: `calc(${TABS.findIndex((t) => t.id === sourceType)} * (100% - 4px) / 3 + 2px)`,
+                  width: 'calc((100% - 4px) / 3)',
+                }}
+              />
+              {TABS.map((tab) => {
+                const isActive = sourceType === tab.id;
+                return (
+                  <div key={tab.id} className="relative z-10 group">
+                    <button
+                      onClick={() => setSourceType(tab.id)}
+                      aria-pressed={isActive}
+                      className="flex items-center justify-center w-full h-full gap-1.5 px-3 rounded-md transition-colors"
+                    >
+                      <Icon
+                        name={tab.icon}
+                        className={`text-lg transition-colors ${isActive
                           ? 'text-slate-700 dark:text-white'
                           : 'text-slate-400 dark:text-gray-500'
-                          }`}>{t(tab.labelKey)}</span>
-                      </button>
-                      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[9999] pointer-events-none hidden group-hover:block">
-                        <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
-                          {t(tab.labelKey)} {SHORTCUT_MOD}{tab.shortcut}
-                        </div>
+                          }`}
+                      />
+                      <span className={`text-xs font-bold whitespace-nowrap transition-colors ${isActive
+                        ? 'text-slate-700 dark:text-white'
+                        : 'text-slate-400 dark:text-gray-500'
+                        }`}>{t(tab.labelKey)}</span>
+                    </button>
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[9999] pointer-events-none hidden group-hover:block">
+                      <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
+                        {t(tab.labelKey)} {SHORTCUT_MOD}{tab.shortcut}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex-1 relative">
-                <div className={`flex items-center h-9 rounded-lg border bg-white dark:bg-dark-bg-card overflow-hidden transition-all duration-300 ${searchTerm ? 'border-[#b71422]/40 dark:border-[#fca5a5]/40' : 'border-[#e1e3e4] dark:border-dark-border focus-within:border-[#b71422]'
-                  }`}>
-                  <Icon name="search" className={`flex-shrink-0 text-slate-400 dark:text-gray-400 transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'ml-2' : 'ml-3'}`} />
-                  <input
-                    type="text"
-                    placeholder={t('skillDownload.searchPlaceholder')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`flex-1 h-full w-full bg-transparent border-0 outline-none ring-0 focus:ring-0 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 transition-all duration-300 pl-2 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'pr-6' : 'pr-3'}`}
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-dark-bg-tertiary transition-colors flex-shrink-0 transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-4 h-4 mr-1' : 'w-5 h-5 right-2'}`}
-                      title={t('skillDownload.clear')}
-                    >
-                      <Icon name="close" className={`text-slate-400 dark:text-gray-500 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'text-xs' : 'text-sm'}`} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <AgentPicker agents={agents} selected={selectedAgent} onSelect={setSelectedAgent} isDrawerOpen={!!(detailSkill || (showLocalDetailModal && localDetailSkillLive))} />
+                  </div>
+                );
+              })}
             </div>
+
+            <div className="flex-1 relative">
+              <div className={`flex items-center h-9 rounded-lg border bg-white dark:bg-dark-bg-card overflow-hidden transition-all duration-300 ${searchTerm ? 'border-[#b71422]/40 dark:border-[#fca5a5]/40' : 'border-[#e1e3e4] dark:border-dark-border focus-within:border-[#b71422]'
+                }`}>
+                <Icon name="search" className={`flex-shrink-0 text-slate-400 dark:text-gray-400 transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'ml-2' : 'ml-3'}`} />
+                <input
+                  type="text"
+                  placeholder={t('skillDownload.searchPlaceholder')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`flex-1 h-full w-full bg-transparent border-0 outline-none ring-0 focus:ring-0 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 transition-all duration-300 pl-2 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'pr-6' : 'pr-3'}`}
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-dark-bg-tertiary transition-colors flex-shrink-0 transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-4 h-4 mr-1' : 'w-5 h-5 right-2'}`}
+                    title={t('skillDownload.clear')}
+                  >
+                    <Icon name="close" className={`text-slate-400 dark:text-gray-500 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'text-xs' : 'text-sm'}`} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <AgentPicker agents={agents} selected={selectedAgent} onSelect={setSelectedAgent} isDrawerOpen={!!(detailSkill || (showLocalDetailModal && localDetailSkillLive))} />
           </div>
         </div>
 
         {/* 主内容区：左右布局 */}
         <div className="flex-1 min-h-0 flex overflow-hidden px-5 pb-5">
           {/* 左边：技能列表 */}
-          <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
+          <div ref={tableContainerRef} className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
             {/* 技能列表 */}
             {loading ? (
               <div className="flex-1 flex items-center justify-center backdrop-blur-md bg-white/40 dark:bg-dark-bg-card/40 rounded-xl border border-white/40 dark:border-white/10 min-h-0">
@@ -792,154 +941,160 @@ export default function SkillDownload() {
               </div>
             ) : (
               <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div className="overflow-y-auto flex-1 min-h-0">
+                <div onScroll={handleListScroll} className="overflow-y-auto flex-1 min-h-0">
                   <table className="w-full">
                     <colgroup>
                       <col className="w-14" />
                       <col />
-                      <col className={`transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-0' : 'w-56'}`} />
-                      <col className={`transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-0' : 'w-36'}`} />
-                      <col className={`transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-16' : 'w-44'}`} />
+                      <col className={`transition-all duration-300 ${showAuthorCol ? 'w-56' : 'w-0'}`} />
+                      <col className={`transition-all duration-300 ${showInstallsCol ? 'w-36' : 'w-0'}`} />
+                      <col className="w-28" />
                     </colgroup>
                     <thead className="sticky top-0 z-10 bg-[#f9fafb] dark:bg-dark-bg-tertiary shadow-sm">
                       <tr>
                         <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border">#</th>
                         <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border">{t('skillDownload.column.skill')}</th>
-                        <th className={`px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border transition-all duration-300 overflow-hidden whitespace-nowrap ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'hidden' : ''}`}>{t('skillDownload.column.author')}</th>
-                        <th className={`px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border transition-all duration-300 overflow-hidden whitespace-nowrap ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'hidden' : ''}`}>
+                        <th className={`px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border overflow-hidden whitespace-nowrap ${showAuthorCol ? '' : 'hidden'}`}>{t('skillDownload.column.author')}</th>
+                        <th className={`px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border overflow-hidden whitespace-nowrap ${showInstallsCol ? '' : 'hidden'}`}>
                           {sourceType === 'hot' ? t('skillDownload.column.installs1hChange') : t('skillDownload.column.installs')}
                         </th>
-                        <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border">{t('skillDownload.column.action')}</th>
+                        <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border">{t('skillDownload.column.action')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e1e3e4] dark:divide-dark-border">
-                      {filteredSkills.map((skill, index) => (
-                        <tr
-                          key={skill.id}
-                          className="hover:bg-[#fafbfb] dark:hover:bg-dark-hover transition-colors group cursor-pointer"
-                          onClick={() => {
-                            const localSkill = installedSkillsMap.get(skill.id);
-                            if (localSkill) {
-                              setDetailSkill(null); // 关闭 marketplace 详情
-                              handleShowSkillDetail(localSkill);
-                            } else {
-                              handleCloseDetailModal(); // 关闭本地详情
-                              setDetailSkill(skill);
-                            }
-                          }}
-                        >
-                          {/* # 序号 */}
-                          <td className="px-4 py-3 align-middle text-sm font-bold text-slate-500 dark:text-gray-400">
-                            #{index + 1}
-                          </td>
+                      {filteredSkills.map((skill, index) => {
+                        const isSelected = detailSkill?.id === skill.id || localDetailSkillLive?.id === skill.id;
+                        const cellBgClass = isSelected ? 'bg-red-50 dark:bg-red-900/20' : '';
+                        return (
+                          <tr
+                            key={skill.id}
+                            className="hover:bg-[#fafbfb] dark:hover:bg-dark-hover transition-colors group cursor-pointer"
+                            onClick={() => {
+                              const localSkill = installedSkillsMap.get(skill.id);
+                              if (localSkill) {
+                                setDetailSkill(null); // 关闭 marketplace 详情
+                                handleShowSkillDetail(localSkill);
+                              } else {
+                                handleCloseDetailModal(); // 关闭本地详情
+                                setDetailSkill(skill);
+                              }
+                            }}
+                          >
+                            {/* # 序号 */}
+                            <td className={`px-4 py-3 align-middle text-sm font-bold text-slate-500 dark:text-gray-400 ${cellBgClass}`}>
+                              #{index + 1}
+                            </td>
 
-                          {/* 技能：名称 + 描述 */}
-                          <td className="px-4 py-3 align-middle">
-                            <div className="min-w-0">
-                              <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{skill.name}</div>
-                              <div className="text-xs text-[#5e5e5e] dark:text-gray-400 truncate leading-relaxed">{skill.description}</div>
-                            </div>
-                          </td>
-
-                          {/* 作者 */}
-                          <td className={`px-4 py-3 align-middle transition-all duration-300 overflow-hidden whitespace-nowrap ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'hidden' : ''}`}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openUrl(skill.repository); }}
-                              className="inline-flex items-center gap-1 max-w-full hover:text-[#b71422] dark:hover:text-[#fca5a5] transition-colors"
-                            >
-                              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 flex-shrink-0 fill-current text-slate-400 dark:text-gray-500 group-hover:text-[#b71422] dark:group-hover:text-[#fca5a5]" aria-hidden="true">
-                                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
-                              </svg>
-                              <span className="text-xs font-bold text-slate-600 dark:text-gray-300 truncate">{skill.author}</span>
-                            </button>
-                          </td>
-
-                          {/* 下载量 / Hot 模式：1H + Change */}
-                          <td className={`px-4 py-3 align-middle transition-all duration-300 overflow-hidden whitespace-nowrap ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'hidden' : ''}`}>
-                            {skill.stars != null ? (
-                              <div className="flex items-center gap-2 text-xs">
-                                <div className="flex items-center gap-1">
-                                  <Icon name="download" className="text-sm text-slate-400 dark:text-gray-500" />
-                                  <span className="font-bold text-[#191c1d] dark:text-white">{skill.stars.toLocaleString()}</span>
-                                </div>
-                                {skill.change != null && (
-                                  <span
-                                    className={`font-bold tabular-nums ${skill.change > 0
-                                      ? 'text-green-600 dark:text-green-400'
-                                      : skill.change < 0
-                                        ? 'text-red-600 dark:text-red-400'
-                                        : 'text-slate-500 dark:text-gray-400'
-                                      }`}
-                                  >
-                                    {skill.change > 0 ? '+' : ''}{skill.change.toLocaleString()}
-                                  </span>
-                                )}
+                            {/* 技能：名称 + 描述 */}
+                            <td className={`px-4 py-3 align-middle ${cellBgClass}`}>
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{skill.name}</div>
+                                <div className="text-xs text-[#5e5e5e] dark:text-gray-400 truncate leading-relaxed">{skill.description}</div>
                               </div>
-                            ) : (
-                              <span className="text-xs text-slate-400 dark:text-gray-500">—</span>
-                            )}
-                          </td>
+                            </td>
 
-                          {/* 操作：下载 */}
-                          <td className="px-4 py-3 align-middle">
-                            <div className="flex items-center justify-end">
-                              {installedIds.has(skill.id) && !succeeded.has(skill.id) ? (
-                                <div
-                                  className={`h-8 rounded-md font-bold text-xs bg-white dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-8' : 'w-32'}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Icon name="check_circle" className="text-sm" />
-                                  <span className={`truncate transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'hidden' : ''}`}>{t('skillDownload.installed')}</span>
-                                </div>
-                              ) : succeeded.has(skill.id) ? (
-                                <div
-                                  className={`h-8 rounded-md font-bold text-xs bg-green-500 text-white flex items-center justify-center gap-1 transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-8' : 'w-32'}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Icon name="check" className="text-sm" />
-                                  <span className={`truncate transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'hidden' : ''}`}>{t('skillDownload.downloadSuccess')}</span>
-                                </div>
-                              ) : downloading.has(skill.id) ? (
-                                <div
-                                  className={`relative overflow-hidden h-8 rounded-md font-bold text-xs bg-[#f3f4f5] dark:bg-dark-bg-tertiary border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-8' : 'w-32'}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <div
-                                    className="absolute inset-0 bg-[#b71422] transition-[width] duration-300 ease-out"
-                                    style={{ width: `${progress[skill.id] ?? 0}%` }}
-                                  />
-                                  <span
-                                    className="absolute inset-0 flex items-center justify-center text-white pointer-events-none"
-                                    style={{ clipPath: `inset(0 ${100 - (progress[skill.id] ?? 0)}% 0 0)` }}
-                                  >{progress[skill.id] ?? 0}%</span>
-                                  <span
-                                    className="absolute inset-0 flex items-center justify-center text-[#b71422] dark:text-white pointer-events-none"
-                                    style={{ clipPath: `inset(0 0 0 ${progress[skill.id] ?? 0}%)` }}
-                                  >{progress[skill.id] ?? 0}%</span>
+                            {/* 作者 */}
+                            <td className={`px-4 py-3 align-middle overflow-hidden whitespace-nowrap ${cellBgClass} ${showAuthorCol ? '' : 'hidden'}`}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openUrl(skill.repository); }}
+                                className="inline-flex items-center gap-1 max-w-full hover:text-[#b71422] dark:hover:text-[#fca5a5] transition-colors"
+                              >
+                                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 flex-shrink-0 fill-current text-slate-400 dark:text-gray-500 group-hover:text-[#b71422] dark:group-hover:text-[#fca5a5]" aria-hidden="true">
+                                  <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
+                                </svg>
+                                <span className="text-xs font-bold text-slate-600 dark:text-gray-300 truncate">{skill.author}</span>
+                              </button>
+                            </td>
+
+                            {/* 下载量 / Hot 模式：1H + Change */}
+                            <td className={`px-4 py-3 align-middle overflow-hidden whitespace-nowrap ${cellBgClass} ${showInstallsCol ? '' : 'hidden'}`}>
+                              {skill.stars != null ? (
+                                <div className="flex items-center gap-2 text-xs">
+                                  <div className="flex items-center gap-1">
+                                    <Icon name="download" className="text-sm text-slate-400 dark:text-gray-500" />
+                                    <span className="font-bold text-[#191c1d] dark:text-white">{skill.stars.toLocaleString()}</span>
+                                  </div>
+                                  {skill.change != null && (
+                                    <span
+                                      className={`font-bold tabular-nums ${skill.change > 0
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : skill.change < 0
+                                          ? 'text-red-600 dark:text-red-400'
+                                          : 'text-slate-500 dark:text-gray-400'
+                                        }`}
+                                    >
+                                      {skill.change > 0 ? '+' : ''}{skill.change.toLocaleString()}
+                                    </span>
+                                  )}
                                 </div>
                               ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDownload(skill);
-                                  }}
-                                  className={`h-8 px-2 rounded-md font-bold text-xs bg-[#b71422] text-white hover:bg-[#8f0f1a] transition-all duration-300 flex items-center justify-center ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-8' : 'w-32'}`}
-                                  title={selectedAgent === 'global'
-                                    ? t('skillDownload.download')
-                                    : t('skillDownload.downloadTo', { target: selectedAgent })}
-                                >
-                                  <Icon name="download" className="text-sm" />
-                                  <span className={`truncate transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'hidden' : ''}`}>
-                                    {selectedAgent === 'global'
+                                <span className="text-xs text-slate-400 dark:text-gray-500">—</span>
+                              )}
+                            </td>
+
+                            {/* 操作：下载 */}
+                            <td className={`px-4 py-3 align-middle ${cellBgClass} w-full`}>
+                              <div className="flex items-center justify-end">
+                                {(installedIds.has(installedKey(skill.id, skill.repository)) || legacyInstalledIds.has(skill.id)) && !succeeded.has(skillKey(skill)) ? (
+                                  <div
+                                    className={`h-8 rounded-md font-bold text-xs bg-white dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed transition-all duration-300 ${showActionText ? 'w-32' : 'w-8'}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Icon name="check_circle" className="text-sm" />
+                                    {showActionText && <span className="truncate">{t('skillDownload.installed')}</span>}
+                                  </div>
+                                ) : succeeded.has(skillKey(skill)) ? (
+                                  <div
+                                    className={`h-8 rounded-md font-bold text-xs bg-green-500 text-white flex items-center justify-center gap-1 transition-all duration-300 ${showActionText ? 'w-32' : 'w-8'}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Icon name="check" className="text-sm" />
+                                    {showActionText && <span className="truncate">{t('skillDownload.downloadSuccess')}</span>}
+                                  </div>
+                                ) : downloading.has(skillKey(skill)) ? (
+                                  <div
+                                    className={`relative overflow-hidden h-8 rounded-md font-bold text-xs bg-[#f3f4f5] dark:bg-dark-bg-tertiary border border-[#e1e3e4] dark:border-dark-border cursor-not-allowed transition-all duration-300 ${showActionText ? 'w-32' : 'w-8'}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div
+                                      className="absolute inset-0 bg-[#b71422] transition-[width] duration-300 ease-out"
+                                      style={{ width: `${progress[skill.id] ?? 0}%` }}
+                                    />
+                                    <span
+                                      className="absolute inset-0 flex items-center justify-center text-white pointer-events-none"
+                                      style={{ clipPath: `inset(0 ${100 - (progress[skill.id] ?? 0)}% 0 0)` }}
+                                    >{progress[skill.id] ?? 0}%</span>
+                                    <span
+                                      className="absolute inset-0 flex items-center justify-center text-[#b71422] dark:text-white pointer-events-none"
+                                      style={{ clipPath: `inset(0 0 0 ${progress[skill.id] ?? 0}%)` }}
+                                    >{progress[skill.id] ?? 0}%</span>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(skill);
+                                    }}
+                                    className={`h-8 px-2 rounded-md font-bold text-xs bg-[#b71422] text-white hover:bg-[#8f0f1a] transition-all duration-300 flex items-center justify-center gap-1 ${showActionText ? 'w-32' : 'w-8'}`}
+                                    title={selectedAgent === 'global'
                                       ? t('skillDownload.download')
                                       : t('skillDownload.downloadTo', { target: selectedAgent })}
-                                  </span>
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                                  >
+                                    <Icon name="download" className="text-sm" />
+                                    {showActionText && (
+                                      <span className="truncate">
+                                        {selectedAgent === 'global'
+                                          ? t('skillDownload.download')
+                                          : t('skillDownload.downloadTo', { target: selectedAgent })}
+                                      </span>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -949,74 +1104,39 @@ export default function SkillDownload() {
 
         </div>
       </div>
+    </ResizableDetailLayout>
 
-      {/* 右边：Marketplace 详情面板（内联显示） */}
-      <div className={`overflow-hidden flex-shrink-0 bg-white dark:bg-dark-bg-card border-l border-[#e1e3e4] dark:border-dark-border flex flex-col min-h-0 relative drawer-width-transition ${
-        detailSkill ? 'w-[500px]' : 'w-0 border-none'
-      }`}>
-        {detailSkill && (
-          <>
-            {/* 关闭按钮 */}
-            <button
-              onClick={() => setDetailSkill(null)}
-              className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-dark-bg-tertiary rounded-lg transition-colors z-10"
-            >
-              <Icon name="close" className="text-gray-600 dark:text-gray-300" />
-            </button>
-
-            {/* 详情内容 */}
-            <div className="h-full flex flex-col">
-              <MarketplaceDetailDrawer
-                skill={detailSkill}
-                installedIds={installedIds}
-                downloading={downloading}
-                progress={progress}
-                succeeded={succeeded}
-                selectedAgent={selectedAgent}
-                onDownload={handleDownload}
-                onDelete={handleDelete}
-                onClose={() => { }}
-              />
+      {/* 下载记录悬浮按钮：日志弹出时收起 */}
+      <div className={`fixed bottom-6 right-6 z-40 transition-transform duration-300 ${(isAnyPanelOpen || isScrolling) ? 'translate-x-[calc(100%+1.5rem)]' : ''}`}>
+        <div className="relative group">
+          <button
+            ref={logButtonRef}
+            onClick={() => {
+              if (logButtonRef.current) setLogPopoverAnchor(logButtonRef.current.getBoundingClientRect());
+            }}
+            className="w-9 h-9 rounded-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border shadow-md flex items-center justify-center hover:bg-slate-50 dark:hover:bg-gray-700 hover:shadow-lg transition-all"
+          >
+            <Icon name="history" className="text-base text-slate-500 dark:text-gray-400" />
+          </button>
+          <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 z-50 pointer-events-none hidden group-hover:block">
+            <div className="whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium px-2.5 py-1 shadow-lg">
+              {t('skillDownload.downloadLog')}
             </div>
-          </>
-        )}
+          </div>
+        </div>
       </div>
 
-      {/* 右边：本地技能详情面板 */}
-      <div className={`overflow-hidden flex-shrink-0 bg-white dark:bg-dark-bg-card border-l border-[#e1e3e4] dark:border-dark-border flex flex-col min-h-0 relative drawer-width-transition ${
-        showLocalDetailModal && localDetailSkillLive ? 'w-[500px]' : 'w-0 border-none'
-      }`}>
-        {showLocalDetailModal && localDetailSkillLive && (
-          <>
-            <SkillDetailInline
-              skill={localDetailSkillLive}
-              agents={agents}
-              skillFiles={skillFiles}
-              loadingFiles={loadingFiles}
-              expandedFolders={expandedFolders}
-              currentFile={currentFile}
-              loadingFile={loadingFile}
-              leftPanelWidth={leftPanelWidth}
-              isResizing={isResizing}
-              onClose={() => handleCloseDetailModal()}
-              onToggleFolder={toggleFolder}
-              onReadFile={handleReadFile}
-              onToggleAgent={handleToggleAgentLocal}
-              onDelete={async () => {
-                try {
-                  await invoke('delete_skill', { skillId: localDetailSkillLive.id });
-                  showToast('success', t('skillDownload.toast.uninstalled', { name: localDetailSkillLive.name }));
-                  handleCloseDetailModal();
-                  refreshInstalled();
-                } catch (error) {
-                  showToast('error', t('skillDownload.toast.uninstallFailed', { error: String(error) }));
-                }
-              }}
-              onResizeStart={handleMouseDown}
-            />
-          </>
-        )}
-      </div>
-    </div>
+      {/* 下载记录弹出层 */}
+      {logPopoverAnchor && (
+        <OperationLogPopover
+          anchorRect={logPopoverAnchor}
+          onClose={() => setLogPopoverAnchor(null)}
+          openAbove
+          filterTypes={['download']}
+          panelTitle={t('skillDownload.downloadLogTitle')}
+          emptyMessage={t('skillDownload.downloadLogEmpty')}
+        />
+      )}
+    </>
   );
 }

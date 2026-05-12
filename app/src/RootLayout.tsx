@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import SideNavBar from './components/SideNavBar';
 import Dashboard from './pages/Dashboard';
+import SkillDownload from './pages/SkillDownload';
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
 import { isTauri } from '@/lib/tauri-env';
 import { PAGE, SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS, pageToPath, pathToPage, type Page } from '@/constants';
@@ -48,6 +49,7 @@ function RootLayoutContent() {
 
   const currentPage: Page = pathToPage(location.pathname);
   const isDashboard = currentPage === PAGE.Dashboard;
+  const isSkillDownload = currentPage === PAGE.SkillDownload;
 
   const setCurrentPage = (page: Page) => {
     navigate(pageToPath(page));
@@ -91,6 +93,7 @@ function RootLayoutContent() {
       <SideNavBar />
       <main className="flex-1 h-screen overflow-hidden">
         {/* Dashboard 是最重的页面（扫描所有 SKILL.md），始终挂载避免每次切页都重新扫描。
+            SkillDownload 同样始终挂载，保留下载进度状态。
             其他页面走 Outlet，按 Route 配置渲染。 */}
         <div
           className="h-full"
@@ -103,7 +106,13 @@ function RootLayoutContent() {
             onViewModeChange={setDashboardViewMode}
           />
         </div>
-        {!isDashboard && <Outlet />}
+        <div
+          className="h-full"
+          style={{ display: isSkillDownload ? 'block' : 'none' }}
+        >
+          <SkillDownload />
+        </div>
+        {!isDashboard && !isSkillDownload && <Outlet />}
       </main>
     </div>
   );

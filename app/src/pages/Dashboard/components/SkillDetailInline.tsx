@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useDeferredValue, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/components/Toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { SkillMetadata, AgentConfig, SkillFileEntry } from '@/types';
@@ -12,6 +13,41 @@ import { FILE_TREE_HEIGHT } from '@/pages/Dashboard/constants/panel';
 import { agentsApi } from '@/api/tauri';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
 import { Icon } from '@/components/Icon';
+
+// 模块级常量，避免每次渲染重新创建
+const REMARK_PLUGINS = [remarkGfm];
+const MD_COMPONENTS = {
+  code: ({ node, inline, className, children, ...rest }: any) =>
+    !inline ? (
+      <code className={`${className ?? ''} text-slate-800 dark:text-gray-200`} {...rest}>
+        {children}
+      </code>
+    ) : (
+      <code className="bg-gray-100 dark:bg-gray-800 text-slate-800 dark:text-gray-200 px-1 py-0.5 rounded text-xs" {...rest}>
+        {children}
+      </code>
+    ),
+  pre: ({ children }: any) => (
+    <pre className="bg-gray-100 dark:bg-gray-800 text-slate-800 dark:text-gray-200 p-2 rounded-lg overflow-x-auto text-xs">
+      {children}
+    </pre>
+  ),
+};
+
+// content 不变则跳过重渲染；配合 useDeferredValue 让渲染成为低优先级任务
+const MarkdownPreview = memo(({ content }: { content: string }) => (
+  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-xs prose-headings:text-xs prose-li:text-xs prose-code:text-xs">
+    <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MD_COMPONENTS}>
+      {content}
+    </ReactMarkdown>
+  </div>
+));
+
+const RawPreview = memo(({ content }: { content: string }) => (
+  <pre className="text-xs text-slate-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed">
+    {content}
+  </pre>
+));
 
 interface SkillDetailInlineProps {
   skill: SkillMetadata;
@@ -35,7 +71,7 @@ function normalizePath(p: string, isWindows: boolean): string {
   return isWindows ? p.replace(/\//g, '\\') : p;
 }
 
-export const SkillDetailInline: React.FC<SkillDetailInlineProps> = ({
+export const SkillDetailInline: React.FC<SkillDetailInlineProps> = memo(({
   skill,
   agents,
   skillFiles,
@@ -54,17 +90,24 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = ({
 }) => {
   const [markdownView, setMarkdownView] = useState<'raw' | 'preview'>('raw');
   const { t } = useTranslation();
+  const { showToast } = useToast();
+  const deferredContent = useDeferredValue(currentFile?.content ?? '');
+
+  const handleCopyName = useCallback(() => {
+    navigator.clipboard.writeText(skill.name).then(() => {
+      showToast('success', `已复制 ${skill.name}`);
+    }).catch(() => {});
+  }, [skill.name, showToast]);
   const isWindows = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
   const { allSources, nativeAgents, allPaths } = useMergedView(skill);
   const detectedAgents = useVisibleAgents(agents);
 
-  const handleAgentToggle = (agentName: string, e?: React.MouseEvent<HTMLButtonElement>) =>
-    onToggleAgent(skill, agentName, e);
-
+  const handleAgentToggle = useCallback((agentName: string, e?: React.MouseEvent<HTMLButtonElement>) =>
+    onToggleAgent(skill, agentName, e), [onToggleAgent, skill]);
   return (
     <div className="h-full bg-white dark:bg-dark-bg-card dark:border-dark-border flex flex-col">
       {/* Header */}
-      <div className="flex-shrink-0 p-6 pb-3 border-b border-gray-200 dark:border-dark-border relative" data-tauri-drag-region>
+      <div className="flex-shrink-0 p-6 pb-3 border-b border-gray-200 dark:border-dark-border relative">
         {/* Action buttons */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <button
@@ -86,7 +129,11 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = ({
         <div className="flex items-center gap-3 mb-3 pr-20">
           <div className="flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="text-xl font-bold text-black dark:text-white">{skill.name}</h2>
+              <h2
+                className="text-xl font-bold text-black dark:text-white cursor-pointer hover:text-[#b71422] dark:hover:text-rose-400 transition-colors select-none"
+                onClick={handleCopyName}
+                title="点击复制"
+              >{skill.name}</h2>
               {allSources.map(src => (
                 <span key={src} className={`text-[10px] font-bold py-0.5 px-1.5 rounded flex-shrink-0 ${badgeClass(src)}`}>
                   {sourceLabel(src)}
@@ -96,13 +143,15 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = ({
           </div>
         </div>
 
-        {/* Description */}
-        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{skill.description}</p>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden p-6 py-3" data-tauri-drag-region>
+      <div className="flex-1 overflow-y-auto p-6 py-3 hide-scrollbar">
         <div className="space-y-4">
+          {/* Description */}
+          {skill.description && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{skill.description}</p>
+          )}
           {/* File Tree with Content Preview - Split View */}
           {skillFiles.length > 0 ? (
             <div>
@@ -206,35 +255,9 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = ({
                           <div className="inline-block animate-spin rounded-full h-5 w-5 border-4 border-gray-200 dark:border-dark-bg-secondary border-t-[#b71422]"></div>
                         </div>
                       ) : markdownView === 'raw' ? (
-                        <pre className="text-xs text-slate-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed">
-                          {currentFile.content}
-                        </pre>
+                        <RawPreview content={deferredContent} />
                       ) : (
-                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-xs prose-headings:text-xs prose-li:text-xs prose-code:text-xs">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              code: ({ node, inline, className, children, ...rest }: any) => {
-                                return !inline ? (
-                                  <code className={className} {...rest}>
-                                    {children}
-                                  </code>
-                                ) : (
-                                  <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs" {...rest}>
-                                    {children}
-                                  </code>
-                                );
-                              },
-                              pre: ({ children }) => (
-                                <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg overflow-x-auto text-xs">
-                                  {children}
-                                </pre>
-                              ),
-                            }}
-                          >
-                            {currentFile.content}
-                          </ReactMarkdown>
-                        </div>
+                        <MarkdownPreview content={deferredContent} />
                       )}
                     </div>
                   ) : (
@@ -382,4 +405,4 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = ({
       </div>
     </div>
   );
-};
+});

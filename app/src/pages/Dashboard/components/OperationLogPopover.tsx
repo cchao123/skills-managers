@@ -20,12 +20,19 @@ interface Props {
   hideBackdrop?: boolean;
   /** 弹窗向上展开（锚点在底部时使用） */
   openAbove?: boolean;
+  /** 只显示指定类型的日志条目 */
+  filterTypes?: OperationLogEntry['type'][];
+  /** 自定义面板标题 */
+  panelTitle?: string;
+  /** 自定义空状态文案 */
+  emptyMessage?: string;
 }
 
 const ICON_BY_TYPE: Record<OperationLogEntry['type'], string> = {
   copyFromSource: 'file_copy',
   dragImport: 'upload',
   enableAgent: 'toggle_on',
+  download: 'download',
 };
 
 const formatTime = (ts: number) => {
@@ -47,9 +54,13 @@ export const OperationLogPopover: React.FC<Props> = ({
   onPanelMouseLeave,
   hideBackdrop = false,
   openAbove = false,
+  filterTypes,
+  panelTitle,
+  emptyMessage,
 }) => {
   const { t } = useTranslation();
-  const entries = useOperationLog();
+  const allEntries = useOperationLog();
+  const entries = filterTypes ? allEntries.filter(e => filterTypes.includes(e.type)) : allEntries;
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -102,7 +113,7 @@ export const OperationLogPopover: React.FC<Props> = ({
       <div className={`${LIQUID_GLASS_TOAST_PANEL_CLASS} max-h-[min(70vh,28rem)] overflow-hidden p-3 animate-toast-in flex-col`}>
         <div className="flex items-center justify-between mb-2 px-1 gap-2">
           <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
-            {t('dashboard.operationLog.panelTitle')}
+            {panelTitle ?? t('dashboard.operationLog.panelTitle')}
           </p>
           <div className="flex items-center gap-1 flex-shrink-0">
             {entries.length > 0 && (
@@ -127,7 +138,7 @@ export const OperationLogPopover: React.FC<Props> = ({
 
         {entries.length === 0 ? (
           <p className="px-1 py-6 text-center text-xs text-slate-400 dark:text-gray-500">
-            {t('dashboard.operationLog.empty')}
+            {emptyMessage ?? t('dashboard.operationLog.empty')}
           </p>
         ) : (
           <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
@@ -151,7 +162,12 @@ export const OperationLogPopover: React.FC<Props> = ({
                             target: entry.targetAgent ?? '-',
                             source: entry.source ?? '-',
                           })
-                        : t('dashboard.operationLog.dragImport', { skill: entry.skillName })}
+                        : entry.type === 'download'
+                          ? t('dashboard.operationLog.download', {
+                              skill: entry.skillName,
+                              target: entry.downloadTarget ?? 'Root',
+                            })
+                          : t('dashboard.operationLog.dragImport', { skill: entry.skillName })}
                   </p>
                   {entry.folderPath && (
                     <p

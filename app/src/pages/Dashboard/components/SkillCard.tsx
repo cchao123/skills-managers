@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SkillMetadata, AgentConfig } from '@/types';
 // TODO: 暂时隐藏技能图标，缺少每个技能对应的 icon 映射，恢复时一并启用
@@ -15,17 +16,18 @@ interface SkillCardProps {
   skill: SkillMetadata;
   agents: AgentConfig[];
   expanded: boolean;
-  onToggleExpand: () => void;
+  /** 接收 skillId，由 SkillCard 内部绑定，保持父组件传入的函数引用稳定 */
+  onToggleExpand: (id: string) => void;
   onToggleSkill: (skill: SkillMetadata) => void;
   onToggleAgent: (skill: SkillMetadata, agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
   onShowDetail: (skill: SkillMetadata) => void;
-  /** 右键点击时触发，由父组件统一管理上下文菜单 */
-  onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
-  /** 当前卡片是否已被置顶（影响排序 + 显示 pin 标记） */
+  /** 接收 skillId + event，由 SkillCard 内部绑定 */
+  onContextMenu?: (skillId: string, e: React.MouseEvent<HTMLDivElement>) => void;
   pinned?: boolean;
+  isSelected?: boolean;
 }
 
-export const SkillCard: React.FC<SkillCardProps> = ({
+export const SkillCard: React.FC<SkillCardProps> = memo(({
   skill,
   agents,
   expanded,
@@ -35,6 +37,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
   onShowDetail,
   onContextMenu,
   pinned = false,
+  isSelected = false,
 }) => {
   const { t } = useTranslation();
   const { allSources, nativeAgents } = useMergedView(skill);
@@ -77,12 +80,14 @@ export const SkillCard: React.FC<SkillCardProps> = ({
 
   return (
     <div
-      className={`relative bg-white dark:bg-dark-bg-card rounded-xl border ${
-        pinned
-          ? 'border-[#b71422]/40 dark:border-[#b71422]/50 shadow-[0_0_0_1px_rgba(183,20,34,0.08)]'
-          : 'border-[#e1e3e4] dark:border-dark-border'
-      } hover:shadow-lg hover:border-[#b71422]/20 transition-all duration-300 overflow-hidden flex flex-col`}
-      onContextMenu={onContextMenu}
+      className={`relative rounded-xl border overflow-hidden flex flex-col transition-all duration-300 ${
+        isSelected
+          ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 shadow-md'
+          : pinned
+            ? 'bg-white dark:bg-dark-bg-card border-[#b71422]/40 dark:border-[#b71422]/50 shadow-[0_0_0_1px_rgba(183,20,34,0.08)]'
+            : 'bg-white dark:bg-dark-bg-card border-[#e1e3e4] dark:border-dark-border hover:shadow-lg hover:border-[#b71422]/20'
+      }`}
+      onContextMenu={onContextMenu ? (e) => onContextMenu(skill.id, e) : undefined}
     >
       <PinIndicator pinned={pinned} />
 
@@ -128,7 +133,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
       </div>
 
       {/* Bottom bar: agent summary + expand button (always visible) */}
-      <div className="relative z-[100] px-4 py-2.5 flex items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-dark-hover transition-colors" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} >
+      <div className="relative z-[100] px-4 py-2.5 flex items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-dark-hover transition-colors" onClick={(e) => { e.stopPropagation(); onToggleExpand(skill.id); }} >
         {/* 短分割线：避开右下角的来源水印（水印 size=110，露出约 90px，留 ~20px 缓冲） */}
         <span
           className="absolute left-4 right-[110px] top-0 h-px bg-[#f0f0f0] dark:bg-dark-border pointer-events-none"
@@ -230,4 +235,4 @@ export const SkillCard: React.FC<SkillCardProps> = ({
       )}
     </div>
   );
-};
+});

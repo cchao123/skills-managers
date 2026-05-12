@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { StatsBar } from '@/pages/Dashboard/components/StatsBar';
 import type { FilterType } from '@/pages/Dashboard/constants/filterType';
-import type { SkillMetadata, AgentConfig } from '@/types';
+import type { SkillMetadata } from '@/types';
 import { useSkillHidePrefixes } from '@/hooks/useSkillHidePrefixes';
 import { useSearchBarPrefs } from '@/hooks/useSearchBarPrefs';
 
@@ -13,9 +14,8 @@ interface SearchAndFilterBarProps {
   filterType: FilterType;
   onFilterChange: (type: FilterType) => void;
   skills: SkillMetadata[];
-  agents: AgentConfig[];
-  selectedSource: string;
-  onSourceSelect: (source: string) => void;
+  /** 详情抽屉展开时隐藏统计文字，仅显示数字 */
+  compact?: boolean;
   /** 渲染在搜索栏最右侧的额外操作（如操作日志、帮助按钮等） */
   rightActions?: React.ReactNode;
 }
@@ -26,14 +26,20 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
   filterType,
   onFilterChange,
   skills,
-  agents,
-  selectedSource,
-  onSourceSelect,
+  compact,
   rightActions,
 }) => {
   const { t } = useTranslation();
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!isFilterDropdownOpen || !filterButtonRef.current) return;
+    const rect = filterButtonRef.current.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 6, left: rect.left });
+  }, [isFilterDropdownOpen]);
   const { prefixes, addPrefix, removePrefix } = useSkillHidePrefixes();
   const { prefs: searchBarPrefs } = useSearchBarPrefs();
 
@@ -54,7 +60,10 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
       }
     };
     const onClickOutside = (e: MouseEvent) => {
-      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inDropdown = filterDropdownRef.current?.contains(target);
+      const inButton = filterButtonRef.current?.contains(target);
+      if (!inDropdown && !inButton) {
         setIsFilterDropdownOpen(false);
       }
     };
@@ -67,26 +76,15 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
   }, [isFilterDropdownOpen]);
 
   return (
-    <div className="flex items-center gap-5" data-tauri-drag-region>
-      {/* Source Tabs */}
-      {/* {searchBarPrefs.showSearch && (
-        <div className="shrink-0">
-          111
-          <SourceTabs
-            agents={agents}
-            selectedSource={selectedSource}
-            onSelect={onSourceSelect}
-          />
-        </div>
-      )} */}
-
+    <div className="flex items-center gap-3 pl-5" data-tauri-drag-region>
       {searchBarPrefs.showSearch && (
-        <div ref={filterDropdownRef} className="relative shrink-0 flex-1">
+        <div className="relative flex-1 min-w-0">
           <div className={`flex items-center h-9 rounded-lg border transition-colors focus-within:border-[#b71422] bg-white dark:bg-dark-bg-card overflow-hidden ${
             searchTerm ? 'border-[#b71422]/40 dark:border-[#fca5a5]/40' : 'border-[#e1e3e4] dark:border-dark-border'
           }`}>
             {searchBarPrefs.showFilter && (
               <button
+                ref={filterButtonRef}
                 onClick={() => setIsFilterDropdownOpen((v) => !v)}
                 className={`relative flex-shrink-0 self-stretch px-2 flex items-center border-r border-[#e1e3e4] dark:border-dark-border transition-colors ${
                   isFilterDropdownOpen
@@ -122,9 +120,13 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
             )}
           </div>
 
-          {/* Filter Dropdown */}
-          {isFilterDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1.5 w-96 bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border shadow-xl z-50 overflow-hidden animate-toast-in">
+          {/* Filter Dropdown — 挂到 body 以避免被 SkillCard 层叠上下文遮挡 */}
+          {isFilterDropdownOpen && dropdownPos && createPortal(
+            <div
+              ref={filterDropdownRef}
+              style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999 }}
+              className="w-96 bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border shadow-xl overflow-hidden animate-toast-in"
+            >
               <div className="px-4 py-3 border-b border-[#e1e3e4] dark:border-dark-border flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Icon name="filter_alt_off" className="text-base text-slate-500 dark:text-gray-300" />
@@ -142,13 +144,14 @@ export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
                 addPrefix={addPrefix}
                 removePrefix={removePrefix}
               />
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       )}
 
       <div className="shrink-0 ml-auto">
-        <StatsBar skills={skills} filterType={filterType} onFilterChange={onFilterChange} />
+        <StatsBar skills={skills} filterType={filterType} onFilterChange={onFilterChange} compact={compact} />
       </div>
   
 
