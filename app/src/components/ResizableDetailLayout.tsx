@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 
 if (typeof document !== 'undefined' && !document.getElementById('resizable-detail-layout-style')) {
   const style = document.createElement('style');
@@ -50,10 +51,22 @@ export function ResizableDetailLayout({
   className = 'h-full',
 }: ResizableDetailLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  // 每次组件挂载时从 localStorage 读取最新宽度
   const [panelWidth, setPanelWidth] = useState(() => readStoredWidth(defaultPanelWidth));
   const [isDragging, setIsDragging] = useState(false);
   const panelWidthRef = useRef(panelWidth);
   panelWidthRef.current = panelWidth;
+
+  // 确保每次路由变化时都从 localStorage 读取最新值
+  // 修复：Dashboard 和 SkillDownload 页面始终挂载，只在 display 切换，需要监听路由变化来恢复宽度
+  useEffect(() => {
+    const storedWidth = readStoredWidth(defaultPanelWidth);
+    if (storedWidth !== panelWidth) {
+      setPanelWidth(storedWidth);
+      panelWidthRef.current = storedWidth;
+    }
+  }, [location.pathname, location.hash, defaultPanelWidth]); // 监听路由变化
 
   // 窗口缩小时自动将面板宽度 clamp 到有效范围内，避免内容溢出右侧
   useEffect(() => {
