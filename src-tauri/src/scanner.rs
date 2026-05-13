@@ -364,6 +364,15 @@ pub fn scan_and_merge(
                 .find_map(|d| f(d).filter(|s| !s.is_empty()).map(|s| s.to_string()))
         };
 
+        // 从任意副本的 .skill-source 文件读取 marketplace 来源仓库 URL
+        let source_repository = group.iter().find_map(|d| {
+            let source_file = std::path::PathBuf::from(&d.path).join(".skill-source");
+            std::fs::read_to_string(&source_file)
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        });
+
         result.push(SkillMetadata {
             id: id.clone(),
             name: pick_str(&|d| d.name.as_str()),
@@ -380,6 +389,7 @@ pub fn scan_and_merge(
             primary: entry.primary.clone(),
             open: entry.open.clone(),
             source_paths,
+            source_repository,
         });
     }
 

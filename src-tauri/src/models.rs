@@ -39,6 +39,9 @@ pub struct SkillMetadata {
     /// 每个 source 对应的物理路径（供"查看来源"之类的功能用）。
     #[serde(default)]
     pub source_paths: HashMap<String, String>,
+    /// 从 marketplace 下载时记录的来源仓库 URL（写入 .skill-source 文件）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_repository: Option<String>,
 }
 
 /// Agent 配置

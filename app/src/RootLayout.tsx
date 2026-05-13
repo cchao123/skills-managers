@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import SideNavBar from './components/SideNavBar';
 import Dashboard from './pages/Dashboard';
+import SkillDownload from './pages/SkillDownload';
+import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
 import { isTauri } from '@/lib/tauri-env';
 import { PAGE, SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS, pageToPath, pathToPage, type Page } from '@/constants';
 import { TelemetryEvent } from '@/constants/events';
@@ -15,43 +17,16 @@ import { VIEW_MODE, isViewMode, type ViewMode } from '@/pages/Dashboard/constant
  * 其他页面通过 <Outlet /> 按需挂载。
  */
 export default function RootLayout() {
+  return (
+    <SidebarProvider>
+      <RootLayoutContent />
+    </SidebarProvider>
+  );
+}
+
+function RootLayoutContent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isSidebarCollapsed, setIsSidebarCollapsedRaw] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(LOCAL_STORAGE_KEYS.sidebarCollapsed) === '1';
-    } catch {
-      return true; // 默认收起
-    }
-  });
-  const setIsSidebarCollapsed = useCallback((value: boolean) => {
-    setIsSidebarCollapsedRaw(value);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEYS.sidebarCollapsed, value ? '1' : '0');
-    } catch {
-      /* ignore quota / private mode */
-    }
-  }, []);
-
-  const [agentFilter, setAgentFilterRaw] = useState<string>(() => {
-    try {
-      return localStorage.getItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter) ?? '';
-    } catch {
-      return '';
-    }
-  });
-  const setAgentFilter = useCallback((value: string) => {
-    setAgentFilterRaw(value);
-    try {
-      if (value) {
-        localStorage.setItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter, value);
-      } else {
-        localStorage.removeItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter);
-      }
-    } catch {
-      /* ignore quota / private mode */
-    }
-  }, []);
 
   // Dashboard 视图模式：状态提到 RootLayout 仅是为了与其它跨页持久化保持一致；
   // 主要使用方仍是 Dashboard 自身。
@@ -74,6 +49,7 @@ export default function RootLayout() {
 
   const currentPage: Page = pathToPage(location.pathname);
   const isDashboard = currentPage === PAGE.Dashboard;
+  const isSkillDownload = currentPage === PAGE.SkillDownload;
 
   const setCurrentPage = (page: Page) => {
     navigate(pageToPath(page));
@@ -114,27 +90,35 @@ export default function RootLayout() {
 
   return (
     <div className="h-screen bg-[#f8f9fa] dark:bg-dark-bg-secondary flex">
-      <SideNavBar
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
+      <SideNavBar />
       <main className="flex-1 h-screen overflow-hidden">
         {/* Dashboard 是最重的页面（扫描所有 SKILL.md），始终挂载避免每次切页都重新扫描。
+            SkillDownload 同样始终挂载，保留下载进度状态。
             其他页面走 Outlet，按 Route 配置渲染。 */}
         <div
           className="h-full"
-          style={{ display: isDashboard ? 'block' : 'none' }}
+          style={{
+            display: isDashboard ? 'block' : 'none',
+            contentVisibility: isDashboard ? 'auto' : 'hidden'  // 跳过隐藏页面的渲染
+          }}
         >
           <Dashboard
             onNavigate={setCurrentPage}
             isActive={isDashboard}
-            agentFilter={agentFilter}
-            onAgentFilterChange={setAgentFilter}
             viewMode={dashboardViewMode}
             onViewModeChange={setDashboardViewMode}
           />
         </div>
-        {!isDashboard && <Outlet />}
+        <div
+          className="h-full"
+          style={{
+            display: isSkillDownload ? 'block' : 'none',
+            contentVisibility: isSkillDownload ? 'auto' : 'hidden'  // 跳过隐藏页面的渲染
+          }}
+        >
+          <SkillDownload />
+        </div>
+        {!isDashboard && !isSkillDownload && <Outlet />}
       </main>
     </div>
   );

@@ -5,8 +5,12 @@ import { skillsApi } from '@/api/tauri';
 import { useToast } from '@/components/Toast';
 import { appendOperationLog } from '@/pages/Dashboard/hooks/useOperationLog';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { SOURCE } from '@/pages/Dashboard/utils/source';
 
-export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void) => {
+export const useDragDrop = (
+  onImportComplete?: (importedNames: string[], targetSource: string) => void,
+  selectedSource?: string,
+) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [isDragOver, { setTrue: setDragOverTrue, setFalse: setDragOverFalse }] = useBoolean(false);
@@ -17,6 +21,11 @@ export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void
     if (importingRef.current) return;
     importingRef.current = true;
     setImportingTrue();
+
+    // ALL / Global → 根目录；选中了 agent → 先存根目录再复制进 agent
+    const targetAgent = selectedSource && selectedSource !== SOURCE.All && selectedSource !== SOURCE.Global
+      ? selectedSource
+      : null;
 
     const importedNames: string[] = [];
     // 与后端 `import_skill_folder` 的错误文案保持一致：`根目录中已存在技能 'xxx'...`
@@ -30,17 +39,32 @@ export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void
         importedNames.push(name);
         resolvedNames.push(name);
         appendOperationLog({ type: 'dragImport', skillName: name, folderPath: folder });
+        if (targetAgent) {
+          await skillsApi.copyToAgent(name, SOURCE.Global, targetAgent, true);
+        }
       } catch (error) {
         const msg = typeof error === 'string' ? error : (error as Error)?.message || '导入失败';
-        errorMsg = msg;
-        // 冲突（根目录已存在同名技能）时仍然能从错误消息抠出 skill name，
-        // 交给 onImportComplete 让前端把搜索框 + tab 定位过去，避免"报错了但找不到在哪"的体验。
         const existsMatch = msg.match(EXISTS_REGEX);
-        if (existsMatch) resolvedNames.push(existsMatch[1]);
-        console.error(`Failed to import ${folder}:`, error);
+        // 根目录已存在 + 目标是 agent：直接从根目录复制到 agent，不算失败
+        if (existsMatch && targetAgent) {
+          const name = existsMatch[1];
+          try {
+            await skillsApi.copyToAgent(name, SOURCE.Global, targetAgent, true);
+            importedNames.push(name);
+            resolvedNames.push(name);
+          } catch (copyErr) {
+            errorMsg = typeof copyErr === 'string' ? copyErr : (copyErr as Error)?.message || '导入失败';
+            resolvedNames.push(name);
+          }
+        } else {
+          errorMsg = msg;
+          if (existsMatch) resolvedNames.push(existsMatch[1]);
+          console.error(`Failed to import ${folder}:`, error);
+        }
       }
     }
 
+    const finalTarget = targetAgent ?? SOURCE.Global;
     if (importedNames.length > 0) {
       showToast('success', t('dashboard.toast.importSkillsSuccess', { count: importedNames.length }));
     }
@@ -48,11 +72,11 @@ export const useDragDrop = (onImportComplete?: (importedNames: string[]) => void
       showToast('error', errorMsg);
     }
     if (resolvedNames.length > 0) {
-      onImportComplete?.(resolvedNames);
+      onImportComplete?.(resolvedNames, finalTarget);
     }
     importingRef.current = false;
     setImportingFalse();
-  }, [showToast, onImportComplete]);
+  }, [showToast, onImportComplete, selectedSource]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

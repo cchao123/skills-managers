@@ -82,7 +82,10 @@
       "uninstallFailed": "解除安裝失敗: {{error}}",
       "downloadSuccess": "成功下載技能: {{name}}",
       "downloadFailed": "下載失敗: {{error}}"
-    }
+    },
+    "downloadLog": "下載記錄",
+    "downloadLogEmpty": "暫無下載記錄",
+    "downloadLogTitle": "下載歷史"
   },
   "dashboard": {
     "title": "已安裝",
@@ -95,6 +98,10 @@
       "enabled": "部分啟用",
       "disabled": "未啟用",
       "noResults": "沒有符合條件的技能"
+    },
+    "emptyView": {
+      "statePrefix": "狀態：",
+      "sourcePrefix": "來源："
     },
     "total": "技能總數",
     "enabled": "部分啟用",
@@ -122,6 +129,16 @@
       "enabled": "已啟用",
       "disabled": "已停用",
       "dedupeFooter": "已過濾 {{count}} 條重複"
+    },
+    "sidebarHelp": {
+      "title": "左側邊欄",
+      "desc": "點擊「ALL」聚合展示所有 Agent 的 Skills；點擊任意 Agent 圖示可按來源篩選，僅展示該 Agent 下的技能"
+    },
+    "statsHelp": {
+      "title": "統計欄說明",
+      "total": "去重後的 Skill 總數（同一 Skill 來自多個 Agent 時只計一次）",
+      "enabled": "在至少一個 Agent 中處於啟用狀態的 Skill 數量",
+      "disabled": "在所有 Agent 中均未啟用的 Skill 數量"
     },
     "agentsEnabled": "Agent 已啟用",
     "notInstalled": "未安裝",
@@ -168,7 +185,8 @@
       "deleteSkill": "刪除技能"
     },
     "source": {
-      "global": "Global",
+      "all": "全部",
+      "global": "根目錄",
       "removeFromRoot": "從根目錄中移除",
       "existsInRoot": "根目錄中已存在",
       "copyToRoot": "拷貝到根目錄",
@@ -188,7 +206,8 @@
       "close": "關閉",
       "copyFromSource": "從 {{source}} 拷貝「{{skill}}」到根目錄",
       "dragImport": "拖曳匯入「{{skill}}」到根目錄",
-      "enableAgent": "為 {{target}} 啟用「{{skill}}」（來源：{{source}}）"
+      "enableAgent": "為 {{target}} 啟用「{{skill}}」（來源：{{source}}）",
+      "download": "從市場下載「{{skill}}」到 {{target}}"
     },
     "import": {
       "fromOther": "從 Agent 匯入到原生目錄",
@@ -213,8 +232,8 @@
     "viewBySource": "按來源展示",
     "viewSwitch": "切換檢視",
     "viewHelp": "說明",
-    "viewHelpFlat": "聚合本地多個 Agent 的 skill 目錄，合併成一份可管理檢視",
-    "viewHelpBySource": "按照不同的 Agent 對 Skills 進行分類展示，可以清晰地看到每個 Agent 下有哪些 Skills",
+    "viewHelpFlat": "點擊左側邊欄「ALL」，聚合展示所有 Agent 的 Skills，便於全域搜尋與管理",
+    "viewHelpBySource": "點擊左側邊欄的 Agent 圖示，僅展示該 Agent 下的 Skills，清晰查看每個 Agent 的技能配置",
     "mainToggleHelp": {
       "title": "主開關狀態",
       "off": "未啟用",

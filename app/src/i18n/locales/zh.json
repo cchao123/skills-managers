@@ -82,7 +82,11 @@
       "uninstallFailed": "卸载失败: {{error}}",
       "downloadSuccess": "成功下载技能: {{name}}",
       "downloadFailed": "下载失败: {{error}}"
-    }
+    },
+    "downloadLog": "下载记录",
+    "downloadLogEmpty": "暂无下载记录",
+    "downloadLogTitle": "下载历史",
+    "loadingMore": "加载更多... ({{current}}/{{total}})"
   },
   "dashboard": {
     "title": "已安装",
@@ -95,6 +99,10 @@
       "enabled": "部分启用",
       "disabled": "未启用",
       "noResults": "没有符合条件的技能"
+    },
+    "emptyView": {
+      "statePrefix": "状态：",
+      "sourcePrefix": "来源："
     },
     "total": "技能总数",
     "enabled": "部分启用",
@@ -122,6 +130,16 @@
       "enabled": "已启用",
       "disabled": "已停用",
       "dedupeFooter": "已过滤 {{count}} 条重复"
+    },
+    "sidebarHelp": {
+      "title": "左侧边栏",
+      "desc": "点击「ALL」聚合展示所有 Agent 的 Skills；点击任意 Agent 图标可按来源筛选，仅展示该 Agent 下的技能"
+    },
+    "statsHelp": {
+      "title": "统计栏说明",
+      "total": "去重后的 Skill 总数（同一 Skill 来自多个 Agent 时只计一次）",
+      "enabled": "在至少一个 Agent 中处于启用状态的 Skill 数量",
+      "disabled": "在所有 Agent 中均未启用的 Skill 数量"
     },
     "agentsEnabled": "Agent 已启用",
     "notInstalled": "未安装",
@@ -168,7 +186,8 @@
       "deleteSkill": "删除技能"
     },
     "source": {
-      "global": "Global",
+      "all": "全部",
+      "global": "根目录",
       "removeFromRoot": "从根目录中移除",
       "existsInRoot": "根目录中已存在",
       "copyToRoot": "拷贝到根目录",
@@ -188,7 +207,8 @@
       "close": "关闭",
       "copyFromSource": "从 {{source}} 拷贝「{{skill}}」到根目录",
       "dragImport": "拖拽导入「{{skill}}」到根目录",
-      "enableAgent": "为 {{target}} 启用「{{skill}}」（来源：{{source}}）"
+      "enableAgent": "为 {{target}} 启用「{{skill}}」（来源：{{source}}）",
+      "download": "从市场下载「{{skill}}」到 {{target}}"
     },
     "import": {
       "fromOther": "从 Agent 导入到原生目录",
@@ -213,8 +233,8 @@
     "viewBySource": "按来源展示",
     "viewSwitch": "切换视图",
     "viewHelp": "帮助",
-    "viewHelpFlat": "聚合本地多个 Agent 的 skill 目录，合并成一份可管理视图",
-    "viewHelpBySource": "按照不同的 Agent 对 Skills 进行分类展示，可以清晰地看到每个 Agent 下有哪些 Skills",
+    "viewHelpFlat": "点击左侧边栏「ALL」，聚合展示所有 Agent 的 Skills，便于全局搜索与管理",
+    "viewHelpBySource": "点击左侧边栏的 Agent 图标，仅展示该 Agent 下的 Skills，清晰查看每个 Agent 的技能配置",
     "mainToggleHelp": {
       "title": "主开关状态",
       "off": "未启用",

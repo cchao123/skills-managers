@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 
-export type OperationLogType = 'copyFromSource' | 'dragImport' | 'enableAgent';
+export type OperationLogType = 'copyFromSource' | 'dragImport' | 'enableAgent' | 'download';
 
 export interface OperationLogEntry {
   id: string;
@@ -21,6 +21,8 @@ export interface OperationLogEntry {
   targetAgent?: string;
   /** `dragImport` 时填被导入的源文件夹路径 */
   folderPath?: string;
+  /** `download` 时记录下载目标（'Root' 或 agent 名） */
+  downloadTarget?: string;
 }
 
 const STORAGE_KEY = 'skills-manager:operation-log';

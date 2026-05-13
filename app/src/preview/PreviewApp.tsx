@@ -26,21 +26,6 @@ function PreviewLayout() {
     } catch { /* ignore */ }
   }, []);
 
-  const [agentFilter, setAgentFilterRaw] = useState<string>(() => {
-    try {
-      return localStorage.getItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter) ?? '';
-    } catch {
-      return '';
-    }
-  });
-  const setAgentFilter = useCallback((value: string) => {
-    setAgentFilterRaw(value);
-    try {
-      if (value) localStorage.setItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter, value);
-      else localStorage.removeItem(LOCAL_STORAGE_KEYS.dashboardAgentFilter);
-    } catch { /* ignore */ }
-  }, []);
-
   const [dashboardViewMode, setDashboardViewModeRaw] = useState<ViewMode>(() => {
     try {
       const v = sessionStorage.getItem(SESSION_STORAGE_KEYS.dashboardViewMode);
@@ -72,8 +57,6 @@ function PreviewLayout() {
           <Dashboard
             onNavigate={setCurrentPage}
             isActive={isDashboard}
-            agentFilter={agentFilter}
-            onAgentFilterChange={setAgentFilter}
             viewMode={dashboardViewMode}
             onViewModeChange={setDashboardViewMode}
           />
