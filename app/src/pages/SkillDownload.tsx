@@ -766,22 +766,54 @@ export default function SkillDownload() {
 
   // 基于表格容器实际宽度决定显示哪些列
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [tableWidth, setTableWidth] = useState(0);
+  const [isTableScrolled, setIsTableScrolled] = useState(false);
+
+  // 监听表格滚动，控制固定列阴影（类似 Ant Design 固定列阴影逻辑）
   useEffect(() => {
-    const el = tableContainerRef.current;
-    if (!el) return;
-    let rafId: number | undefined;
-    const ro = new ResizeObserver(entries => {
-      if (rafId !== undefined) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => { setTableWidth(entries[0].contentRect.width); });
+    const tableWrapper = tableContainerRef.current?.querySelector('div.overflow-x-auto') as HTMLElement;
+    if (!tableWrapper) return;
+
+    // 检查是否需要显示阴影的函数（参考 rc-table 的 onInternalScroll 逻辑）
+    const checkNeedShadow = () => {
+      const scrollLeft = tableWrapper.scrollLeft;
+      const scrollWidth = tableWrapper.scrollWidth;
+      const clientWidth = tableWrapper.clientWidth;
+
+      // 1. 如果没有横向滚动空间，隐藏阴影
+      if (scrollWidth <= clientWidth) {
+        return false;
+      }
+
+      // 2. 右侧阴影：只要没有滚动到最右端，就显示阴影
+      // 即：scrollLeft < scrollWidth - clientWidth
+      return scrollLeft < scrollWidth - clientWidth;
+    };
+
+    // 滚动事件处理器
+    const handleScroll = () => {
+      setIsTableScrolled(checkNeedShadow());
+    };
+
+    // 使用 ResizeObserver 监听尺寸变化（类似 rc-table 的 onFullTableResize）
+    const resizeObserver = new ResizeObserver(() => {
+      setIsTableScrolled(checkNeedShadow());
     });
-    ro.observe(el);
-    return () => { ro.disconnect(); if (rafId !== undefined) cancelAnimationFrame(rafId); };
+
+    // 初始化检查
+    setIsTableScrolled(checkNeedShadow());
+
+    // 监听滚动和尺寸变化
+    tableWrapper.addEventListener('scroll', handleScroll);
+    resizeObserver.observe(tableWrapper);
+
+    return () => {
+      tableWrapper.removeEventListener('scroll', handleScroll);
+      resizeObserver.disconnect();
+    };
   }, []);
-  const showAuthorCol = tableWidth >= 600;
-  const showInstallsCol = tableWidth >= 750;
-  // 操作按钮：面板展开时始终用小图标；面板关闭时宽度足够才展示文字
-  const showActionText = !isAnyPanelOpen && tableWidth >= 600;
+
+  // 操作按钮：面板展开时只显示小图标，面板关闭时显示文字
+  const showActionText = !isAnyPanelOpen;
 
   return (
     <>
@@ -907,7 +939,7 @@ export default function SkillDownload() {
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-dark-bg-tertiary transition-colors flex-shrink-0 transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-4 h-4 mr-1' : 'w-5 h-5 right-2'}`}
+                    className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-dark-bg-tertiary flex-shrink-0 transition-all duration-300 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'w-4 h-4 mr-1' : 'w-5 h-5 right-2'}`}
                     title={t('skillDownload.clear')}
                   >
                     <Icon name="close" className={`text-slate-400 dark:text-gray-500 ${detailSkill || (showLocalDetailModal && localDetailSkillLive) ? 'text-xs' : 'text-sm'}`} />
@@ -941,30 +973,31 @@ export default function SkillDownload() {
               </div>
             ) : (
               <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div onScroll={handleListScroll} className="overflow-y-auto flex-1 min-h-0">
-                  <table className="w-full">
+                <div onScroll={handleListScroll} className="overflow-x-auto overflow-y-auto flex-1 min-h-0 overscroll-x-contain overscroll-behavior-x-none" style={{ overscrollBehaviorX: 'none' }}>
+                  <table className="w-full min-w-[900px]">
                     <colgroup>
                       <col className="w-14" />
                       <col />
-                      <col className={`transition-all duration-300 ${showAuthorCol ? 'w-56' : 'w-0'}`} />
-                      <col className={`transition-all duration-300 ${showInstallsCol ? 'w-36' : 'w-0'}`} />
-                      <col className="w-28" />
+                      <col className="w-56" />
+                      <col className="w-36" />
+                      <col className={showActionText ? "w-36" : "w-16"} />
                     </colgroup>
                     <thead className="sticky top-0 z-10 bg-[#f9fafb] dark:bg-dark-bg-tertiary shadow-sm">
                       <tr>
                         <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border">#</th>
                         <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border">{t('skillDownload.column.skill')}</th>
-                        <th className={`px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border overflow-hidden whitespace-nowrap ${showAuthorCol ? '' : 'hidden'}`}>{t('skillDownload.column.author')}</th>
-                        <th className={`px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border overflow-hidden whitespace-nowrap ${showInstallsCol ? '' : 'hidden'}`}>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border overflow-hidden whitespace-nowrap">{t('skillDownload.column.author')}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border overflow-hidden whitespace-nowrap">
                           {sourceType === 'hot' ? t('skillDownload.column.installs1hChange') : t('skillDownload.column.installs')}
                         </th>
-                        <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border">{t('skillDownload.column.action')}</th>
+                        <th className={`sticky right-0 ${showActionText ? 'px-4' : 'px-2'} py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border bg-[#f9fafb] dark:bg-dark-bg-tertiary ${isTableScrolled ? 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.3)]' : ''} transition-shadow duration-200`}>{t('skillDownload.column.action')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e1e3e4] dark:divide-dark-border">
                       {filteredSkills.map((skill, index) => {
                         const isSelected = detailSkill?.id === skill.id || localDetailSkillLive?.id === skill.id;
                         const cellBgClass = isSelected ? 'bg-red-50 dark:bg-red-900/20' : '';
+                        const actionCellBgClass = isSelected ? 'bg-red-50 dark:bg-red-900/20' : 'bg-white dark:bg-dark-bg-card';
                         return (
                           <tr
                             key={skill.id}
@@ -994,7 +1027,7 @@ export default function SkillDownload() {
                             </td>
 
                             {/* 作者 */}
-                            <td className={`px-4 py-3 align-middle overflow-hidden whitespace-nowrap ${cellBgClass} ${showAuthorCol ? '' : 'hidden'}`}>
+                            <td className={`px-4 py-3 align-middle overflow-hidden whitespace-nowrap ${cellBgClass}`}>
                               <button
                                 onClick={(e) => { e.stopPropagation(); openUrl(skill.repository); }}
                                 className="inline-flex items-center gap-1 max-w-full hover:text-[#b71422] dark:hover:text-[#fca5a5] transition-colors"
@@ -1007,7 +1040,7 @@ export default function SkillDownload() {
                             </td>
 
                             {/* 下载量 / Hot 模式：1H + Change */}
-                            <td className={`px-4 py-3 align-middle overflow-hidden whitespace-nowrap ${cellBgClass} ${showInstallsCol ? '' : 'hidden'}`}>
+                            <td className={`px-4 py-3 align-middle overflow-hidden whitespace-nowrap ${cellBgClass}`}>
                               {skill.stars != null ? (
                                 <div className="flex items-center gap-2 text-xs">
                                   <div className="flex items-center gap-1">
@@ -1033,8 +1066,8 @@ export default function SkillDownload() {
                             </td>
 
                             {/* 操作：下载 */}
-                            <td className={`px-4 py-3 align-middle ${cellBgClass} w-full`}>
-                              <div className="flex items-center justify-end">
+                            <td className={`sticky right-0 ${showActionText ? 'px-4' : 'px-2'} py-3 align-middle ${actionCellBgClass} ${isTableScrolled ? 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.3)]' : ''} transition-shadow duration-200`}>
+                              <div className="flex items-center justify-center">
                                 {(installedIds.has(installedKey(skill.id, skill.repository)) || legacyInstalledIds.has(skill.id)) && !succeeded.has(skillKey(skill)) ? (
                                   <div
                                     className={`h-8 rounded-md font-bold text-xs bg-white dark:bg-dark-bg-tertiary text-[#5e5e5e] dark:text-gray-400 flex items-center justify-center gap-1 cursor-not-allowed transition-all duration-300 ${showActionText ? 'w-32' : 'w-8'}`}
@@ -1075,7 +1108,7 @@ export default function SkillDownload() {
                                       e.stopPropagation();
                                       handleDownload(skill);
                                     }}
-                                    className={`h-8 px-2 rounded-md font-bold text-xs bg-[#b71422] text-white hover:bg-[#8f0f1a] transition-all duration-300 flex items-center justify-center gap-1 ${showActionText ? 'w-32' : 'w-8'}`}
+                                    className={`h-8 rounded-md font-bold text-xs bg-[#b71422] text-white hover:bg-[#8f0f1a] transition-all duration-300 flex items-center justify-center gap-1 ${showActionText ? 'w-32 px-2' : 'w-8'}`}
                                     title={selectedAgent === 'global'
                                       ? t('skillDownload.download')
                                       : t('skillDownload.downloadTo', { target: selectedAgent })}

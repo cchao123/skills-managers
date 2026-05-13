@@ -1,13 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import type { AgentConfig, SkillMetadata } from '@/types';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { SOURCE } from '@/pages/Dashboard/utils/source';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
-import { getAgentRootPath } from '@/constants';
+import { getAgentRootPath, SESSION_STORAGE_KEYS, ROUTE_PATH } from '@/constants';
 import { agentsApi } from '@/api/tauri';
 import { ContextMenu, type ContextMenuItem } from '@/components/ContextMenu';
+import { Icon } from '@/components/Icon';
 import { useVisibleAgents } from '@/pages/Dashboard/hooks/useVisibleAgents';
+import { TAB_TYPE } from '@/pages/Settings/constants/config';
 
 interface TabItem {
   id: string;
@@ -48,6 +51,7 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({
   filterType,
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const visibleAgents = useVisibleAgents(agents);
 
   // 判断是否有过滤条件（搜索或非全部过滤）
@@ -101,6 +105,15 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({
         },
       ]
     : [];
+
+  const handleSettingsClick = () => {
+    try {
+      sessionStorage.setItem(SESSION_STORAGE_KEYS.settingsInitialTab, TAB_TYPE.Agents);
+    } catch {
+      /* ignore quota / private mode */
+    }
+    navigate(ROUTE_PATH.Settings);
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -190,6 +203,21 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({
               </div>
             );
           })}
+
+          {/* 设置按钮 */}
+          <div className="relative z-10 w-full mt-1">
+            <button
+              onClick={handleSettingsClick}
+              className="group w-full flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-all duration-200 h-[60px]"
+              title={t('settings.tabAgents')}
+            >
+              <div className="relative flex flex-col items-center justify-center h-full">
+                <div className="w-7 h-6 flex items-center justify-center transition-all duration-200 scale-100 group-hover:scale-105">
+                  <Icon name="settings" className="w-full h-full text-slate-400 dark:text-gray-500 group-hover:text-slate-600 dark:group-hover:text-gray-300 transition-colors" />
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
 
