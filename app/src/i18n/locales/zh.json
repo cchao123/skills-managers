@@ -85,7 +85,8 @@
     },
     "downloadLog": "下载记录",
     "downloadLogEmpty": "暂无下载记录",
-    "downloadLogTitle": "下载历史"
+    "downloadLogTitle": "下载历史",
+    "loadingMore": "加载更多... ({{current}}/{{total}})"
   },
   "dashboard": {
     "title": "已安装",

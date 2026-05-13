@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/Icon';
 
@@ -11,7 +11,7 @@ interface DashboardFloatingActionsProps {
   isScrolling?: boolean;
 }
 
-export const DashboardFloatingActions: React.FC<DashboardFloatingActionsProps> = ({
+export const DashboardFloatingActions: React.FC<DashboardFloatingActionsProps> = memo(({
   helpButtonRef,
   onHelpClick,
   logButtonRef,
@@ -53,4 +53,4 @@ export const DashboardFloatingActions: React.FC<DashboardFloatingActionsProps> =
       </div>
     </div>
   );
-};
+});

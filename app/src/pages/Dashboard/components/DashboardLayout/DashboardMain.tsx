@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AgentConfig, SkillMetadata } from '@/types';
 import { SearchAndFilterBar } from '@/pages/Dashboard/components/SearchAndFilterBar';
@@ -40,7 +40,7 @@ interface DashboardMainProps {
   onMainScroll?: () => void;
 }
 
-export const DashboardMain: React.FC<DashboardMainProps> = ({
+export const DashboardMain: React.FC<DashboardMainProps> = memo(({
   searchTerm,
   onSearchChange,
   filterType,
@@ -176,7 +176,7 @@ export const DashboardMain: React.FC<DashboardMainProps> = ({
       </div>
     </div>
   );
-};
+});
 
 interface SkillGridProps {
   skills: SkillMetadata[];

@@ -4,7 +4,16 @@ import { useLocation } from 'react-router-dom';
 if (typeof document !== 'undefined' && !document.getElementById('resizable-detail-layout-style')) {
   const style = document.createElement('style');
   style.id = 'resizable-detail-layout-style';
-  style.textContent = `.drawer-width-transition { transition: width 0.3s ease-out, flex 0.3s ease-out; }`;
+  style.textContent = `
+    .drawer-width-transition {
+      transition: width 0.3s ease-out, flex 0.3s ease-out;
+      will-change: width; /* 提示浏览器优化 */
+    }
+    .drawer-panel {
+      transform: translateZ(0); /* 开启 GPU 加速 */
+      backface-visibility: hidden; /* 避免闪烁 */
+    }
+  `;
   document.head.appendChild(style);
 }
 
@@ -122,7 +131,7 @@ export function ResizableDetailLayout({
 
       {/* 可拖拽详情面板 */}
       <div
-        className={`overflow-hidden flex-shrink-0 bg-white dark:bg-dark-bg-card flex flex-row min-h-0 ${
+        className={`overflow-hidden flex-shrink-0 bg-white dark:bg-dark-bg-card flex flex-row min-h-0 drawer-panel ${
           !isDragging ? 'drawer-width-transition' : ''
         }`}
         style={{ width: isPanelOpen ? panelWidth : 0 }}

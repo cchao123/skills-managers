@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import type { AgentConfig, SkillMetadata } from '@/types';
 import { SourceTabs } from '@/pages/Dashboard/components/SourceTabs';
 
@@ -13,7 +13,7 @@ interface DashboardSidebarProps {
   filterType: string;
 }
 
-export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
+export const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({
   agents,
   selectedSource,
   onSourceSelect,
@@ -35,4 +35,4 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       filterType={filterType}
     />
   );
-};
+});

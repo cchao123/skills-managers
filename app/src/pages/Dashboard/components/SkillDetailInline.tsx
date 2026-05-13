@@ -107,7 +107,7 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = memo(({
   return (
     <div className="h-full bg-white dark:bg-dark-bg-card dark:border-dark-border flex flex-col">
       {/* Header */}
-      <div className="flex-shrink-0 p-6 pb-3 border-b border-gray-200 dark:border-dark-border relative">
+      <div className="flex-shrink-0 p-6 pb-3 border-b border-gray-200 dark:border-dark-border relative" data-tauri-drag-region>
         {/* Action buttons */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <button

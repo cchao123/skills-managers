@@ -97,7 +97,10 @@ function RootLayoutContent() {
             其他页面走 Outlet，按 Route 配置渲染。 */}
         <div
           className="h-full"
-          style={{ display: isDashboard ? 'block' : 'none' }}
+          style={{
+            display: isDashboard ? 'block' : 'none',
+            contentVisibility: isDashboard ? 'auto' : 'hidden'  // 跳过隐藏页面的渲染
+          }}
         >
           <Dashboard
             onNavigate={setCurrentPage}
@@ -108,7 +111,10 @@ function RootLayoutContent() {
         </div>
         <div
           className="h-full"
-          style={{ display: isSkillDownload ? 'block' : 'none' }}
+          style={{
+            display: isSkillDownload ? 'block' : 'none',
+            contentVisibility: isSkillDownload ? 'auto' : 'hidden'  // 跳过隐藏页面的渲染
+          }}
         >
           <SkillDownload />
         </div>

@@ -82,7 +82,8 @@
       "uninstallFailed": "Uninstall failed: {{error}}",
       "downloadSuccess": "Successfully downloaded skill: {{name}}",
       "downloadFailed": "Download failed: {{error}}"
-    }
+    },
+    "loadingMore": "Loading more... ({{current}}/{{total}})"
   },
   "dashboard": {
     "title": "Installed",

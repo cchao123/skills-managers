@@ -537,10 +537,25 @@ export default function SkillDownload() {
   const logButtonRef = useRef<HTMLButtonElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleListScroll = () => {
+  const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
     setIsScrolling(true);
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => setIsScrolling(false), 1000);
+
+    // 检测滚动到底部，加载更多行
+    const target = e.currentTarget;
+    const scrollTop = target.scrollTop;
+    const scrollHeight = target.scrollHeight;
+    const clientHeight = target.clientHeight;
+
+    // 当滚动到距离底部 100px 以内时，加载更多
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      setDisplayCount(prev => {
+        const maxCount = filteredSkills.length;
+        const nextCount = Math.min(prev + LOAD_MORE_COUNT, maxCount);
+        return prev < nextCount ? nextCount : prev;
+      });
+    }
   };
 
   useEffect(() => {
@@ -768,6 +783,11 @@ export default function SkillDownload() {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [isTableScrolled, setIsTableScrolled] = useState(false);
 
+  // 分页渲染：初始只显示前 50 行，滚动到底部加载更多
+  const INITIAL_DISPLAY_COUNT = 50;
+  const LOAD_MORE_COUNT = 50;
+  const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
+
   // 监听表格滚动，控制固定列阴影（类似 Ant Design 固定列阴影逻辑）
   useEffect(() => {
     const tableWrapper = tableContainerRef.current?.querySelector('div.overflow-x-auto') as HTMLElement;
@@ -789,14 +809,23 @@ export default function SkillDownload() {
       return scrollLeft < scrollWidth - clientWidth;
     };
 
-    // 滚动事件处理器
+    // 滚动事件处理器（使用 requestAnimationFrame 节流，避免频繁更新）
+    let rafId: number | undefined;
     const handleScroll = () => {
-      setIsTableScrolled(checkNeedShadow());
+      if (rafId !== undefined) return;
+      rafId = requestAnimationFrame(() => {
+        setIsTableScrolled(checkNeedShadow());
+        rafId = undefined;
+      });
     };
 
-    // 使用 ResizeObserver 监听尺寸变化（类似 rc-table 的 onFullTableResize）
+    // 使用 ResizeObserver 监听尺寸变化（防抖处理）
+    let resizeTimeout: ReturnType<typeof setTimeout>;
     const resizeObserver = new ResizeObserver(() => {
-      setIsTableScrolled(checkNeedShadow());
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        setIsTableScrolled(checkNeedShadow());
+      }, 200); // 200ms 防抖
     });
 
     // 初始化检查
@@ -809,8 +838,17 @@ export default function SkillDownload() {
     return () => {
       tableWrapper.removeEventListener('scroll', handleScroll);
       resizeObserver.disconnect();
+      clearTimeout(resizeTimeout);
+      if (rafId !== undefined) {
+        cancelAnimationFrame(rafId);
+      }
     };
   }, []);
+
+  // 当过滤结果变化时，重置分页显示数量
+  useEffect(() => {
+    setDisplayCount(INITIAL_DISPLAY_COUNT);
+  }, [sourceType, debouncedSearch]);
 
   // 操作按钮：面板展开时只显示小图标，面板关闭时显示文字
   const showActionText = !isAnyPanelOpen;
@@ -994,7 +1032,7 @@ export default function SkillDownload() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e1e3e4] dark:divide-dark-border">
-                      {filteredSkills.map((skill, index) => {
+                      {filteredSkills.slice(0, displayCount).map((skill, index) => {
                         const isSelected = detailSkill?.id === skill.id || localDetailSkillLive?.id === skill.id;
                         const cellBgClass = isSelected ? 'bg-red-50 dark:bg-red-900/20' : '';
                         const actionCellBgClass = isSelected ? 'bg-red-50 dark:bg-red-900/20' : 'bg-white dark:bg-dark-bg-card';
@@ -1128,6 +1166,16 @@ export default function SkillDownload() {
                           </tr>
                         );
                       })}
+                      {displayCount < filteredSkills.length && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-3 text-center text-sm text-slate-500 dark:text-gray-400">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-300 dark:border-gray-600 border-t-[#b71422]"></div>
+                              <span>{t('skillDownload.loadingMore', { current: displayCount, total: filteredSkills.length })}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
