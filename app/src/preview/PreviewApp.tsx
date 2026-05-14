@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom
 import SideNavBar from '@/components/SideNavBar';
 import Dashboard from '@/pages/Dashboard';
 import Settings from '@/pages/Settings';
-import SkillDownloadPreview from '@/pages/SkillDownloadPreview';
+import SkillDownloadPreview from '@/pages/Marketplace/SkillDownloadPreview';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/components/Toast';
 import { SidebarProvider } from '@/contexts/SidebarContext';

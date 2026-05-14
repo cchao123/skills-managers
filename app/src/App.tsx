@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import RootLayout from './RootLayout';
 import GitHubBackup from './pages/GitHubBackup';
 import Settings from './pages/Settings';
-import SkillDownload from './pages/SkillDownload';
+import SkillDownload from './pages/Marketplace/SkillDownload';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './components/Toast';
 import { invoke } from '@tauri-apps/api/core';
