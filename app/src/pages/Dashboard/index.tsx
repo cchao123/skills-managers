@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/components/Toast';
-import type { SkillMetadata, SkillDeletionRow } from '@/types';
+import type { SkillMetadata } from '@/types';
 import { SESSION_STORAGE_KEYS } from '@/constants';
 import { FILTER_TYPE } from '@/pages/Dashboard/constants/filterType';
 import { SOURCE, isSource } from '@/pages/Dashboard/utils/source';
@@ -52,20 +52,6 @@ function readPersistedSelectedSource(): string {
   }
 }
 
-/**
- * Schema v2：把后端已合并的单条 skill 按 sources/source_paths 展开成多行，
- * 供"从详情删除多源技能"场景下的 DeleteConfirmModal 多选展示与逐源删除。
- */
-function expandToSourceRows(skill: SkillMetadata | null): SkillDeletionRow[] {
-  if (!skill) return [];
-  const sources = skill.sources?.length ? skill.sources : [SOURCE.Global];
-  return sources.map(src => ({
-    skill,
-    source: src,
-    path: skill.source_paths?.[src],
-  }));
-}
-
 function Dashboard({
   isActive = true,
 }: {
@@ -90,10 +76,6 @@ function Dashboard({
   const {
     expandedCards,
     setExpandedCards,
-    deleteTarget,
-    setDeleteTarget,
-    deleteTargetFromRoot,
-    setDeleteTargetFromRoot,
     showImportModal,
     setShowImportModal,
     helpPopover,
@@ -204,11 +186,6 @@ function Dashboard({
   const lastSkillRef = useRef<SkillMetadata | null>(null);
   if (detailSkillLive) lastSkillRef.current = detailSkillLive;
 
-  const handleDetailDelete = useCallback(() => {
-    setDeleteTargetFromRoot(false);
-    setDeleteTarget(lastSkillRef.current);
-  }, [setDeleteTargetFromRoot, setDeleteTarget]);
-
   // 详情面板打开时，自动收起侧边栏
   useEffect(() => {
     const hasDrawerOpen = showDetailModal && detailSkillLive;
@@ -227,26 +204,6 @@ function Dashboard({
       if (showDetailModal) handleCloseDetailModal();
     }
   }, [isSidebarCollapsed]);
-
-  // Esc：删除确认优先于技能详情关闭
-  useEffect(() => {
-    if (!showDetailModal && !deleteTarget) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (deleteTarget) {
-        e.preventDefault();
-        setDeleteTarget(null);
-        setDeleteTargetFromRoot(false);
-        return;
-      }
-      if (showDetailModal) {
-        e.preventDefault();
-        handleCloseDetailModal();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showDetailModal, deleteTarget, handleCloseDetailModal]);
 
   const { isDragOver, importing } = useDragDrop(useCallback(async (importedNames: string[], targetSource: string) => {
     // 切换到实际导入目标的 tab（根目录或选中的 agent）
@@ -274,35 +231,6 @@ function Dashboard({
       return newExpanded;
     });
   }, []);
-
-  const handleDeleteConfirm = async (selected: SkillDeletionRow[]) => {
-    setDeleteTarget(null);
-    setDeleteTargetFromRoot(false);
-    handleCloseDetailModal();
-
-    const succeeded: string[] = [];
-    const failed: string[] = [];
-    for (const row of selected) {
-      try {
-        await handleDeleteSkill(row.skill, row.source, true);
-        succeeded.push(t('common.sources.' + row.source)); // 简化翻译
-      } catch {
-        failed.push(t('common.sources.' + row.source));
-      }
-    }
-
-    const name = selected[0]?.skill.name ?? '';
-    if (succeeded.length > 0) {
-      showToast('success', t('dashboard.toast.skillDeletedFrom', { name, sources: succeeded.join('、') }));
-    }
-    if (failed.length > 0) {
-      showToast('error', t('dashboard.toast.skillDeleteFromFailed', { name, sources: failed.join('、') }));
-    }
-
-    // 多源删除场景下，单次删除后合并记录可能仍然存在（还剩其它源），
-    // 所以 handleDeleteSkill 已不再做乐观移除 —— 这里统一拉一次后端真实状态。
-    await refreshSkills();
-  };
 
   // 处理跨 Agent 技能导入
   const handleImportSkills = async (importedSkills: SkillMetadata[], defaultEnabled: boolean) => {
@@ -395,7 +323,7 @@ function Dashboard({
             onToggleFolder={toggleFolder}
             onReadFile={handleReadFile}
             onToggleAgent={handleToggleAgentMerged}
-            onDelete={handleDetailDelete}
+            onDeleteSuccess={refreshSkills}
             onResizeStart={handleMouseDown}
           />
         }
@@ -440,12 +368,6 @@ function Dashboard({
 
       {/* Modals */}
       <DashboardModals
-        deleteTarget={deleteTarget}
-        deleteTargetFromRoot={deleteTargetFromRoot}
-        expandToSourceRows={expandToSourceRows}
-        handleDeleteConfirm={handleDeleteConfirm}
-        setDeleteTarget={setDeleteTarget}
-        setDeleteTargetFromRoot={setDeleteTargetFromRoot}
         showImportModal={showImportModal}
         setShowImportModal={setShowImportModal}
         agents={agents}

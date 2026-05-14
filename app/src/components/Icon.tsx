@@ -40,12 +40,12 @@ import IconExtension from '~icons/material-symbols/extension-outline';
 import IconFilterAltOff from '~icons/material-symbols/filter-alt-off-outline';
 import IconFolderOpen from '~icons/material-symbols/folder-open-outline';
 import IconFunctions from '~icons/material-symbols/functions';
-import IconGridView from '~icons/material-symbols/grid-view-outline';
 import IconHelp from '~icons/material-symbols/help-outline';
 import IconHistory from '~icons/material-symbols/history';
 import IconHome from '~icons/material-symbols/home-outline';
 import IconHourglassTop from '~icons/material-symbols/hourglass-top';
 import IconHtml from '~icons/material-symbols/html';
+import IconInbox from '~icons/material-symbols/inbox';
 import IconHub from '~icons/material-symbols/hub-outline';
 import IconInfo from '~icons/material-symbols/info-outline';
 import IconIntegrationInstructions from '~icons/material-symbols/integration-instructions-outline';
@@ -82,6 +82,7 @@ import IconTransform from '~icons/material-symbols/transform';
 import IconTrendingUp from '~icons/material-symbols/trending-up';
 import IconTune from '~icons/material-symbols/tune';
 import IconUpdate from '~icons/material-symbols/update';
+import IconViewSidebar from '~icons/material-symbols/view-sidebar-outline';
 import IconVisibility from '~icons/material-symbols/visibility-outline';
 import IconVisibilityOff from '~icons/material-symbols/visibility-off-outline';
 import IconWarning from '~icons/material-symbols/warning-outline';
@@ -140,13 +141,13 @@ const ICONS: Record<string, IconComponent> = {
   filter_alt_off: IconFilterAltOff,
   folder_open: IconFolderOpen,
   functions: IconFunctions,
-  grid_view: IconGridView,
   help: IconHelp,
   history: IconHistory,
   home: IconHome,
   hourglass_top: IconHourglassTop,
   html: IconHtml,
   hub: IconHub,
+  inbox: IconInbox,
   info: IconInfo,
   integration_instructions: IconIntegrationInstructions,
   javascript: IconJavascript,
@@ -182,6 +183,7 @@ const ICONS: Record<string, IconComponent> = {
   trending_up: IconTrendingUp,
   tune: IconTune,
   update: IconUpdate,
+  view_sidebar: IconViewSidebar,
   visibility: IconVisibility,
   visibility_off: IconVisibilityOff,
   warning: IconWarning,

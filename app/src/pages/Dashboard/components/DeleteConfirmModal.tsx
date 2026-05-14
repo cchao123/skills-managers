@@ -49,6 +49,20 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, rows, advancedMode]);
 
+  // ESC 键关闭删除确认弹窗
+  useEffect(() => {
+    if (!target) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true); // 使用捕获阶段优先处理
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [target, onCancel]);
+
   if (!target) return null;
 
   const toggleCheck = (key: string) => {

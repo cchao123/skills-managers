@@ -7,8 +7,6 @@ import { pinApi } from '@/api/tauri';
  */
 export function useDashboardState() {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const [deleteTarget, setDeleteTarget] = useState<SkillMetadata | null>(null);
-  const [deleteTargetFromRoot, setDeleteTargetFromRoot] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
 
   // 帮助气泡状态
@@ -82,10 +80,6 @@ export function useDashboardState() {
     // 状态
     expandedCards,
     setExpandedCards,
-    deleteTarget,
-    setDeleteTarget,
-    deleteTargetFromRoot,
-    setDeleteTargetFromRoot,
     showImportModal,
     setShowImportModal,
     helpPopover,

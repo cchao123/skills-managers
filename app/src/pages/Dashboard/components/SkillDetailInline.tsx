@@ -1,9 +1,10 @@
-import { useState, useDeferredValue, memo, useCallback } from 'react';
+import { useState, useEffect, useDeferredValue, memo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/components/Toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { SkillMetadata, AgentConfig, SkillFileEntry } from '@/types';
+import type { SkillMetadata, AgentConfig, SkillFileEntry, SkillDeletionRow } from '@/types';
 import { getAgentIcon, needsInvertInDark } from '@/pages/Dashboard/utils/agentHelpers';
 import { badgeClass, sourceLabel, SOURCE } from '@/pages/Dashboard/utils/source';
 import { useVisibleAgents } from '@/pages/Dashboard/hooks/useVisibleAgents';
@@ -13,6 +14,8 @@ import { FILE_TREE_HEIGHT } from '@/pages/Dashboard/constants/panel';
 import { agentsApi } from '@/api/tauri';
 import { OCTOPUS_LOGO_URL } from '@/lib/assets';
 import { Icon } from '@/components/Icon';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { invoke } from '@tauri-apps/api/core';
 
 // 模块级常量，避免每次渲染重新创建
 const REMARK_PLUGINS = [remarkGfm];
@@ -63,7 +66,7 @@ interface SkillDetailInlineProps {
   onToggleFolder: (path: string) => void;
   onReadFile: (path: string) => void;
   onToggleAgent: (skill: SkillMetadata, agentName: string, e?: React.MouseEvent<HTMLButtonElement>) => void;
-  onDelete: () => void;
+  onDeleteSuccess?: () => void; // 删除成功后的回调（用于刷新列表）
   onResizeStart: (e: React.MouseEvent) => void;
 }
 
@@ -85,13 +88,84 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = memo(({
   onToggleFolder,
   onReadFile,
   onToggleAgent,
-  onDelete,
+  onDeleteSuccess,
   onResizeStart,
 }) => {
   const [markdownView, setMarkdownView] = useState<'raw' | 'preview'>('raw');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { t } = useTranslation();
   const { showToast } = useToast();
   const deferredContent = useDeferredValue(currentFile?.content ?? '');
+
+  // 把技能按 sources 展开成多行，供删除确认弹窗使用
+  const expandToSourceRows = useCallback((): SkillDeletionRow[] => {
+    const sources = skill.sources?.length ? skill.sources : [SOURCE.Global];
+    return sources.map(src => ({
+      skill,
+      source: src,
+      path: skill.source_paths?.[src],
+    }));
+  }, [skill]);
+
+  // 点击删除按钮：显示确认弹窗
+  const handleDeleteClick = useCallback(() => {
+    setShowDeleteConfirm(true);
+  }, []);
+
+  // 确认删除：执行删除操作
+  const handleDeleteConfirm = useCallback(async (selected: SkillDeletionRow[]) => {
+    if (selected.length === 0) return;
+    const sources = selected.map(row => row.source);
+
+    setShowDeleteConfirm(false);
+
+    const succeeded: string[] = [];
+    const failed: string[] = [];
+
+    for (const source of sources) {
+      try {
+        await invoke('delete_skill', { skillId: skill.id });
+        succeeded.push(source);
+      } catch {
+        failed.push(source);
+      }
+    }
+
+    if (succeeded.length > 0) {
+      showToast('success', t('dashboard.toast.skillDeletedFrom', { name: skill.name, sources: succeeded.join('、') }));
+    }
+    if (failed.length > 0) {
+      showToast('error', t('dashboard.toast.skillDeleteFromFailed', { name: skill.name, sources: failed.join('、') }));
+    }
+
+    // 删除成功后才关闭详情面板
+    onClose();
+    // 通知父组件删除成功（用于刷新列表）
+    onDeleteSuccess?.();
+  }, [skill, onClose, showToast, t, onDeleteSuccess]);
+
+  // ESC 键处理：删除确认优先，然后关闭详情面板
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // 检查组件是否可见（避免处理其他隐藏页面的 ESC 事件）
+        const rootElement = document.querySelector('[data-skill-detail-inline]');
+        if (!rootElement || rootElement.offsetParent === null) {
+          return; // 组件不可见，不处理 ESC
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true); // 使用捕获阶段
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [showDeleteConfirm, onClose]);
 
   const handleCopyName = useCallback(() => {
     navigator.clipboard.writeText(skill.name).then(() => {
@@ -105,13 +179,14 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = memo(({
   const handleAgentToggle = useCallback((agentName: string, e?: React.MouseEvent<HTMLButtonElement>) =>
     onToggleAgent(skill, agentName, e), [onToggleAgent, skill]);
   return (
-    <div className="h-full bg-white dark:bg-dark-bg-card dark:border-dark-border flex flex-col">
+    <>
+    <div className="h-full bg-white dark:bg-dark-bg-card dark:border-dark-border flex flex-col" data-skill-detail-inline="true">
       {/* Header */}
       <div className="flex-shrink-0 p-6 pb-3 border-b border-gray-200 dark:border-dark-border relative" data-tauri-drag-region>
         {/* Action buttons */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <button
-            onClick={onDelete}
+            onClick={handleDeleteClick}
             className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             title={t('dashboard.detail.deleteSkill')}
           >
@@ -404,5 +479,17 @@ export const SkillDetailInline: React.FC<SkillDetailInlineProps> = memo(({
         </div>
       </div>
     </div>
+
+    {/* 删除确认弹窗 - 使用 Portal 确保全屏显示 */}
+    {showDeleteConfirm && createPortal(
+      <DeleteConfirmModal
+        target={skill}
+        rows={expandToSourceRows()}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />,
+      document.body
+    )}
+    </>
   );
 });

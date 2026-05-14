@@ -2,8 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { LIQUID_GLASS_TOAST_PANEL_CLASS } from '@/components/toastPanelStyles';
-import type { AgentConfig, SkillMetadata, SkillDeletionRow } from '@/types';
-import { DeleteConfirmModal } from '@/pages/Dashboard/components/DeleteConfirmModal';
+import type { AgentConfig, SkillMetadata } from '@/types';
 import { SkillImportModal } from '@/pages/Dashboard/components/SkillImportModal';
 import { OperationLogPopover } from '@/pages/Dashboard/components/OperationLogPopover';
 import { CardContextMenu } from '@/pages/Dashboard/components/CardContextMenu';
@@ -11,12 +10,6 @@ import { Icon } from '@/components/Icon';
 import { MainToggleIndicator, MAIN_TOGGLE_STATES } from '@/pages/Dashboard/components/MainToggleIndicator';
 
 interface DashboardModalsProps {
-  deleteTarget: SkillMetadata | null;
-  deleteTargetFromRoot: boolean;
-  expandToSourceRows: (skill: SkillMetadata | null) => SkillDeletionRow[];
-  handleDeleteConfirm: (selected: SkillDeletionRow[]) => Promise<void>;
-  setDeleteTarget: (skill: SkillMetadata | null) => void;
-  setDeleteTargetFromRoot: (fromRoot: boolean) => void;
   showImportModal: boolean;
   setShowImportModal: (show: boolean) => void;
   agents: AgentConfig[];
@@ -35,12 +28,6 @@ interface DashboardModalsProps {
 }
 
 export const DashboardModals: React.FC<DashboardModalsProps> = ({
-  deleteTarget,
-  deleteTargetFromRoot,
-  expandToSourceRows,
-  handleDeleteConfirm,
-  setDeleteTarget,
-  setDeleteTargetFromRoot,
   showImportModal,
   setShowImportModal,
   agents,
@@ -61,22 +48,6 @@ export const DashboardModals: React.FC<DashboardModalsProps> = ({
 
   return (
     <>
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmModal
-        target={deleteTarget}
-        rows={
-          deleteTarget && !deleteTargetFromRoot
-            ? expandToSourceRows(deleteTarget)
-            : undefined
-        }
-        purpose={deleteTargetFromRoot ? 'root-only' : 'multi-source'}
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => {
-          setDeleteTarget(null);
-          setDeleteTargetFromRoot(false);
-        }}
-      />
-
       {/* Skill Import Modal */}
       {showImportModal && (
         <SkillImportModal
