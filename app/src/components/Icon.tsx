@@ -5,6 +5,7 @@ import IconAdd from '~icons/material-symbols/add';
 import IconApi from '~icons/material-symbols/api';
 import IconApps from '~icons/material-symbols/apps';
 import IconArrowBack from '~icons/material-symbols/arrow-back';
+import IconArrowForward from '~icons/material-symbols/arrow-forward';
 import IconAutorenew from '~icons/material-symbols/autorenew';
 import IconBackup from '~icons/material-symbols/backup-outline';
 import IconBolt from '~icons/material-symbols/bolt-outline';
@@ -103,6 +104,7 @@ const ICONS: Record<string, IconComponent> = {
   api: IconApi,
   apps: IconApps,
   arrow_back: IconArrowBack,
+  arrow_forward: IconArrowForward,
   autorenew: IconAutorenew,
   backup: IconBackup,
   bolt: IconBolt,

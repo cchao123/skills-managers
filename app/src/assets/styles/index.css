@@ -278,3 +278,12 @@ select:focus {
 .resizable-divider:hover {
   transform: scaleX(1.1);
 }
+
+/* Hide scrollbar but keep scroll functionality (even for drag regions) */
+.hide-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}

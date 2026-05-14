@@ -82,7 +82,8 @@
       "uninstallFailed": "Uninstall failed: {{error}}",
       "downloadSuccess": "Successfully downloaded skill: {{name}}",
       "downloadFailed": "Download failed: {{error}}"
-    }
+    },
+    "loadingMore": "Loading more... ({{current}}/{{total}})"
   },
   "dashboard": {
     "title": "Installed",
@@ -168,6 +169,7 @@
       "deleteSkill": "Delete Skill"
     },
     "source": {
+      "all": "All",
       "global": "Root",
       "removeFromRoot": "Remove from Root",
       "existsInRoot": "Already in Root",

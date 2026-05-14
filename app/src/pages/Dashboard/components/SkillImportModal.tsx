@@ -108,22 +108,39 @@ export const SkillImportModal: React.FC<SkillImportModalProps> = ({
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border flex-shrink-0" data-tauri-drag-region>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-            <img
-              src={getAgentIcon(currentAgent)}
-              alt={getAgentDisplayName(currentAgent)}
-              className={`w-full h-full object-contain ${needsInvertInDark(currentAgent) ? 'dark:invert' : ''}`}
-            />
+        <div>
+          <div className="flex items-center gap-2">
+            {selectedSourceAgent ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <img
+                    src={getAgentIcon(selectedSourceAgent)}
+                    alt={getAgentDisplayName(selectedSourceAgent)}
+                    className={`w-5 h-5 object-contain ${needsInvertInDark(selectedSourceAgent) ? 'dark:invert' : ''}`}
+                  />
+                  <span className="text-lg font-bold text-slate-900 dark:text-white">
+                    从 {getAgentDisplayName(selectedSourceAgent)} 导入
+                  </span>
+                </div>
+                <Icon name="arrow_forward" className="text-base text-[#b71422] flex-shrink-0" />
+                <div className="flex items-center gap-1.5">
+                  <img
+                    src={getAgentIcon(currentAgent)}
+                    alt={getAgentDisplayName(currentAgent)}
+                    className={`w-5 h-5 object-contain ${needsInvertInDark(currentAgent) ? 'dark:invert' : ''}`}
+                  />
+                  <span className="text-lg font-bold text-slate-900 dark:text-white">{getAgentDisplayName(currentAgent)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('dashboard.import.title')}</h2>
+                <Icon name="arrow_forward" className="text-base text-[#b71422] flex-shrink-0" />
+                <span className="text-lg font-bold text-slate-900 dark:text-white">{getAgentDisplayName(currentAgent)}</span>
+              </>
+            )}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('dashboard.import.title')}</h2>
-              <span className="text-sm font-medium text-[#b71422]">→</span>
-              <span className="text-lg font-bold text-slate-900 dark:text-white">{getAgentDisplayName(currentAgent)}</span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">{t('dashboard.import.hint')}</p>
-          </div>
+          <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">{t('dashboard.import.hint')}</p>
         </div>
         <button
           onClick={onClose}

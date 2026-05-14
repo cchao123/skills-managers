@@ -1,3 +1,4 @@
+import { OCTOPUS_LOGO_URL } from '@/lib/assets';
 import claudeIcon from '@/assets/agents/claude.svg';
 import cursorIcon from '@/assets/agents/cursor.svg';
 import gptIcon from '@/assets/agents/GPT.svg';
@@ -116,8 +117,10 @@ export const getAgentDisplayName = (name: string): string =>
 export const getAgentShortName = (name: string): string =>
   getMeta(name)?.shortName ?? name;
 
-export const getAgentIconUrl = (name: string): string =>
-  getMeta(name)?.icon ?? DEFAULT_AGENT_ICON;
+export const getAgentIconUrl = (name: string): string => {
+  if (name === 'global') return OCTOPUS_LOGO_URL;
+  return getMeta(name)?.icon ?? DEFAULT_AGENT_ICON;
+};
 
 export const agentNeedsInvertInDark = (name: string): boolean =>
   getMeta(name)?.invertInDark === true;
