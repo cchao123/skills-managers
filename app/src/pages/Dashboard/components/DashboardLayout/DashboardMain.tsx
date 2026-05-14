@@ -26,7 +26,7 @@ interface DashboardMainProps {
   expandedCards: Set<string>;
   onToggleExpand: (id: string) => void;
   onToggleSkill: (skill: SkillMetadata) => void;
-  onToggleAgent: (skill: Metadata, agent: string) => void;
+  onToggleAgent: (skill: SkillMetadata, agent: string) => void;
   onShowDetail: (skill: SkillMetadata) => void;
   pinnedIds: Set<string>;
   onContextMenu: (skillId: string, e: React.MouseEvent<HTMLElement>) => void;
@@ -61,7 +61,6 @@ export const DashboardMain: React.FC<DashboardMainProps> = memo(({
   importing,
   sidebar,
   showDetailModal,
-  skills,
   detailSkill,
   onMainScroll,
 }) => {
@@ -136,7 +135,7 @@ export const DashboardMain: React.FC<DashboardMainProps> = memo(({
                 onClick={onOpenImportModal}
                 className="text-[11px] text-slate-700 dark:text-slate-300 font-medium px-2 py-1 bg-white dark:bg-slate-800 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex-shrink-0 flex items-center gap-1.5"
               >
-                <Icon name="download" size={12} />
+                <Icon name="download" className="text-xs" />
                 从已有Agent导入
               </button>
             </div>
@@ -199,14 +198,11 @@ const SkillGrid: React.FC<SkillGridProps> = ({
   agents,
   expandedCards,
   pinnedIds,
-  selectedSource,
   onToggleExpand,
   onToggleSkill,
   onToggleAgent,
   onShowDetail,
   onContextMenu,
-  onOpenImportModal,
-  showDetailModal,
   detailSkill,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);

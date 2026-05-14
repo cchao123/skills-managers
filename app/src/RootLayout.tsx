@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import SideNavBar from './components/SideNavBar';
 import Dashboard from './pages/Dashboard';
 import SkillDownload from './pages/SkillDownload';
-import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
+import { SidebarProvider } from './contexts/SidebarContext';
 import { isTauri } from '@/lib/tauri-env';
-import { PAGE, SESSION_STORAGE_KEYS, LOCAL_STORAGE_KEYS, pageToPath, pathToPage, type Page } from '@/constants';
+import { PAGE, pageToPath, pathToPage, type Page } from '@/constants';
 import { TelemetryEvent } from '@/constants/events';
 import { trackEvent } from '@/lib/telemetry';
-import { VIEW_MODE, isViewMode, type ViewMode } from '@/pages/Dashboard/constants/viewMode';
-
 /**
  * 应用根布局：承载 SideNavBar + 页面容器，作为所有子路由的 layout。
  *
@@ -28,32 +26,9 @@ function RootLayoutContent() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Dashboard 视图模式：状态提到 RootLayout 仅是为了与其它跨页持久化保持一致；
-  // 主要使用方仍是 Dashboard 自身。
-  const [dashboardViewMode, setDashboardViewModeRaw] = useState<ViewMode>(() => {
-    try {
-      const v = sessionStorage.getItem(SESSION_STORAGE_KEYS.dashboardViewMode);
-      return isViewMode(v) ? v : VIEW_MODE.Flat;
-    } catch {
-      return VIEW_MODE.Flat;
-    }
-  });
-  const setDashboardViewMode = useCallback((mode: ViewMode) => {
-    setDashboardViewModeRaw(mode);
-    try {
-      sessionStorage.setItem(SESSION_STORAGE_KEYS.dashboardViewMode, mode);
-    } catch {
-      /* ignore quota / private mode */
-    }
-  }, []);
-
   const currentPage: Page = pathToPage(location.pathname);
   const isDashboard = currentPage === PAGE.Dashboard;
   const isSkillDownload = currentPage === PAGE.SkillDownload;
-
-  const setCurrentPage = (page: Page) => {
-    navigate(pageToPath(page));
-  };
 
   useEffect(() => {
     if (isTauri()) {
@@ -103,10 +78,7 @@ function RootLayoutContent() {
           }}
         >
           <Dashboard
-            onNavigate={setCurrentPage}
             isActive={isDashboard}
-            viewMode={dashboardViewMode}
-            onViewModeChange={setDashboardViewMode}
           />
         </div>
         <div

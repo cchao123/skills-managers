@@ -33,7 +33,7 @@ const TEXT_COLORS: Record<ChipColor, string> = {
   red: 'text-red-600 dark:text-red-400',
 };
 
-export const EmptyView: React.FC<EmptyViewProps> = ({ message, searchTerm, filterType, selectedSource }) => {
+export const EmptyView: React.FC<EmptyViewProps> = ({ message, filterType, selectedSource }) => {
   const { t } = useTranslation();
 
   const chips: ChipItem[] = [];

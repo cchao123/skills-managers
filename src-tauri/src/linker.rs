@@ -3,9 +3,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
-
 #[derive(Debug, Error)]
 pub enum LinkerError {
     #[error("IO error: {0}")]

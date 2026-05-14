@@ -45,17 +45,11 @@ export const SourceTabs: React.FC<SourceTabsProps> = ({
   selectedSource,
   onSelect,
   skills,
-  displayedSkillCount,
   totalFilteredCount,
-  searchTerm,
-  filterType,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const visibleAgents = useVisibleAgents(agents);
-
-  // 判断是否有过滤条件（搜索或非全部过滤）
-  const hasFilter = searchTerm !== '' || filterType !== 'all';
 
   // 计算每个 source 对应的 skills 数量
   const getSkillCount = (sourceId: string): number => {
