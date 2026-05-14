@@ -6,6 +6,7 @@ interface StatsBarProps {
   skills: SkillMetadata[];
   filterType: FilterType;
   onFilterChange: (type: FilterType) => void;
+  compact?: boolean;
 }
 
 export const StatsBar: React.FC<StatsBarProps> = ({ skills, filterType, onFilterChange }) => {

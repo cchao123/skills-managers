@@ -282,7 +282,7 @@ pub async fn fetch_marketplace_skills(
             MarketplaceSkill {
                 id: s.skill_id.clone(),
                 name: s.name.clone(),
-                description: s.description.unwrap_or_else(|| s.source.clone()),
+                description: s.description.unwrap_or_default(),
                 author: owner,
                 repository: format!("https://github.com/{}", s.source),
                 branch: Some("main".to_string()),
@@ -341,7 +341,7 @@ async fn fetch_by_search(query: &str) -> Result<Vec<MarketplaceSkill>, String> {
             MarketplaceSkill {
                 id: s.skill_id.clone(),
                 name: s.name.clone(),
-                description: s.description.unwrap_or_else(|| s.source.clone()),
+                description: s.description.unwrap_or_default(),
                 author: owner,
                 repository: format!("https://github.com/{}", s.source),
                 branch: Some("main".to_string()),
@@ -554,6 +554,9 @@ pub async fn download_skill_from_marketplace(
 
     let _ = std::fs::remove_dir_all(&temp_dir);
 
+    // 写入来源仓库 URL，供 installer 识别"是哪个 marketplace 仓库"
+    let _ = std::fs::write(target_path.join(".skill-source"), &repository);
+
     // 发送完成进度
     app_handle.emit("download-progress", DownloadProgressPayload {
         skill_id: skill_id.clone(),
@@ -577,29 +580,76 @@ fn skill_id_variants(skill_id: &str) -> Vec<String> {
 }
 
 /// 在仓库中查找技能目录
-/// 规则:
-/// 1. 如果根目录有 SKILL.md,则根目录就是技能目录
-/// 2. 否则依次尝试 `skills/<variant>/` 和 `<variant>/`,
-///    `<variant>` 包含 skill_id 本身以及去掉前缀单词后的版本
+/// 策略：
+/// 1. 根目录有 SKILL.md → 根目录即技能目录
+/// 2. 对每个 skill_id 变体，递归遍历整个仓库（最深 4 层），
+///    找到名为 <variant> 且含 SKILL.md 的目录
 fn find_skill_directory(repo_path: &Path, skill_id: &str) -> Result<PathBuf, String> {
-    // 检查根目录
-    let root_skill = repo_path.join("SKILL.md");
-    if root_skill.exists() {
+    // 1. 检查根目录
+    if repo_path.join("SKILL.md").exists() {
         return Ok(repo_path.to_path_buf());
     }
 
+    // 2. 对每个变体做递归查找（跳过 .git，最多 4 层深）
     for variant in skill_id_variants(skill_id) {
-        let skills_subdir = repo_path.join("skills").join(&variant).join("SKILL.md");
-        if skills_subdir.exists() {
-            return Ok(skills_subdir.parent().unwrap().to_path_buf());
-        }
-        let skill_subdir = repo_path.join(&variant).join("SKILL.md");
-        if skill_subdir.exists() {
-            return Ok(skill_subdir.parent().unwrap().to_path_buf());
+        if let Some(found) = find_named_dir_with_skill_md(repo_path, &variant, 0) {
+            return Ok(found);
         }
     }
 
     Err(format!("在仓库中找不到技能目录: {}", skill_id))
+}
+
+/// 递归查找：在 base 的子目录树中（当前深度 depth，最多 4 层），
+/// 找到以下任一条件的目录：
+/// 1. 目录名 == target_name 且含 SKILL.md
+/// 2. 含 SKILL.md 且其 frontmatter 的 `name:` 字段 == target_name
+fn find_named_dir_with_skill_md(base: &Path, target_name: &str, depth: usize) -> Option<PathBuf> {
+    if depth >= 4 {
+        return None;
+    }
+    let Ok(entries) = std::fs::read_dir(base) else {
+        return None;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if dir_name == ".git" || dir_name == "node_modules" {
+            continue;
+        }
+        let skill_md = path.join("SKILL.md");
+        if skill_md.exists() {
+            // 优先匹配目录名
+            if dir_name == target_name {
+                return Some(path);
+            }
+            // 目录名不符时，读 SKILL.md frontmatter 的 name 字段再比对
+            if let Ok(content) = std::fs::read_to_string(&skill_md) {
+                if skill_md_name_matches(&content, target_name) {
+                    return Some(path);
+                }
+            }
+        }
+        if let Some(found) = find_named_dir_with_skill_md(&path, target_name, depth + 1) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// 快速检查 SKILL.md frontmatter 里 `name:` 字段是否等于 expected（不完整 YAML 解析，性能优先）
+fn skill_md_name_matches(content: &str, expected: &str) -> bool {
+    let frontmatter = content
+        .strip_prefix("---")
+        .and_then(|s| s.find("\n---").map(|end| &s[..end]))
+        .unwrap_or("");
+    frontmatter.lines().any(|line| {
+        let line = line.trim();
+        line.starts_with("name:") && line[5..].trim() == expected
+    })
 }
 
 /// 展开路径中的 ~ 为用户主目录

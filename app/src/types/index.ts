@@ -28,6 +28,8 @@ export interface SkillMetadata {
   open: string[];
   /** 每个 source 对应的物理路径 */
   source_paths: Record<string, string>;
+  /** 从 marketplace 下载时写入的来源仓库 URL */
+  source_repository?: string;
 }
 
 /**

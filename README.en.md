@@ -49,8 +49,8 @@ Supported agents currently include **Claude, Cursor, Codex, OpenClaw, and OpenCo
 - **Progress tracking**: real-time download progress and installation status
 - **Agent selector**: choose to install to Root or specific agent directories
 
-![Marketplace](docs/screen-shot/en-marketplace-01.png)
-![Skill Details](docs/screen-shot/en-marketplace-02.png)
+![Marketplace](docs/screen-shot/ScreenShot_Marketplace-1.png)
+![Skill Details](docs/screen-shot/ScreenShot_Marketplace-2.png)
 
 ### Skill Overview and Management
 
@@ -59,8 +59,8 @@ Supported agents currently include **Claude, Cursor, Codex, OpenClaw, and OpenCo
 - **Source and file inspection**: view skill details, sources, and file trees
 - **Drag-and-drop import**: import any folder that contains a `SKILL.md`
 
-![Home](docs/screen-shot/en-skills-home.png)
-![Skill Details](docs/screen-shot/en-skills-detail.png)
+![Home](docs/screen-shot/ScreenShot_Dashboard-1.png)
+![Skill Details](docs/screen-shot/ScreenShot_Dashboard-2.png)
 
 ### GitHub Backup and Distribution
 
@@ -68,7 +68,8 @@ Supported agents currently include **Claude, Cursor, Codex, OpenClaw, and OpenCo
 - **Restore from GitHub**: pull the repository back onto a new machine
 - **Share a curated repository**: use a GitHub repo as a portable skills distribution source
 
-![GitHub](docs/screen-shot/en-github.png)
+![GitHub Backup](docs/screen-shot/ScreenShot_Github.png)
+![GitHub Settings](docs/screen-shot/ScreenShot_Setting.png)
 
 ---
 

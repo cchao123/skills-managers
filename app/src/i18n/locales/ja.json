@@ -168,6 +168,7 @@
       "deleteSkill": "スキルを削除"
     },
     "source": {
+      "all": "すべて",
       "global": "ルート",
       "removeFromRoot": "ルートから削除",
       "existsInRoot": "ルートに既に存在",
