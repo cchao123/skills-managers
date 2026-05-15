@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/Icon';
 export interface ContextMenuItem {
   /** 菜单项展示文案 */
@@ -76,7 +76,7 @@ export function ContextMenu({ open, x, y, items, onClose }: ContextMenuProps) {
 
   if (!open || items.length === 0) return null;
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       role="menu"
@@ -104,7 +104,8 @@ export function ContextMenu({ open, x, y, items, onClose }: ContextMenuProps) {
           <span className="flex-1 text-left">{item.label}</span>
         </button>
       ))}
-    </div>
+    </div>,
+    document.body
   );
 }
 

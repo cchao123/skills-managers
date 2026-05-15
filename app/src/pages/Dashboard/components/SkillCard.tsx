@@ -80,6 +80,7 @@ export const SkillCard: React.FC<SkillCardProps> = memo(({
 
   return (
     <div
+      data-skill-id={skill.id}
       className={`relative rounded-xl border overflow-hidden flex flex-col transition-all duration-300 ${
         isSelected
           ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 shadow-md'

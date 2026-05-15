@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect, memo } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AgentConfig, SkillMetadata } from '@/types';
 import { SearchAndFilterBar } from '@/pages/Dashboard/components/SearchAndFilterBar';
@@ -40,6 +40,7 @@ interface DashboardMainProps {
   onMainScroll?: () => void;
 }
 
+
 export const DashboardMain: React.FC<DashboardMainProps> = memo(({
   searchTerm,
   onSearchChange,
@@ -65,6 +66,67 @@ export const DashboardMain: React.FC<DashboardMainProps> = memo(({
   onMainScroll,
 }) => {
   const { t } = useTranslation();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastSelectedSkillIdRef = useRef<string | null>(null);
+  const prevShowDetailModalRef = useRef(false);
+
+  const jumpToSkill = useCallback((skillId: string) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const card = container.querySelector(`[data-skill-id="${skillId}"]`) as HTMLElement | null;
+    if (!card) return;
+    const containerRect = container.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    container.scrollTop = cardRect.top - containerRect.top + container.scrollTop;
+  }, []);
+
+  const scrollToSkill = useCallback((skillId: string) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const card = container.querySelector(`[data-skill-id="${skillId}"]`) as HTMLElement | null;
+    if (!card) return;
+    const containerRect = container.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const distance = cardRect.top - containerRect.top;
+    if (Math.abs(distance) < 1) return;
+    const startTop = container.scrollTop;
+    const targetTop = startTop + distance;
+    const startTime = performance.now();
+    const step = (now: number) => {
+      const p = Math.min((now - startTime) / 150, 1);
+      container.scrollTop = startTop + (targetTop - startTop) * (1 - Math.pow(1 - p, 3));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, []);
+
+  // 打开 / 切换卡片
+  useEffect(() => {
+    if (!detailSkill?.id) return;
+    const skillId = detailSkill.id;
+    lastSelectedSkillIdRef.current = skillId;
+
+    if (prevShowDetailModalRef.current) {
+      // 抽屉已展开：切换卡片，带动画滚动
+      const raf = requestAnimationFrame(() => scrollToSkill(skillId));
+      return () => cancelAnimationFrame(raf);
+    }
+    // 抽屉未展开：首次打开，等过渡结束后直接定位
+    const timer = setTimeout(() => jumpToSkill(skillId), 320);
+    return () => clearTimeout(timer);
+  }, [detailSkill?.id, scrollToSkill, jumpToSkill]);
+
+  // 同步 prevRef + 处理关闭复位
+  useEffect(() => {
+    const wasOpen = prevShowDetailModalRef.current;
+    prevShowDetailModalRef.current = showDetailModal;
+    if (!wasOpen || showDetailModal) return;
+    // 面板刚关闭：等过渡结束后直接复位
+    const skillId = lastSelectedSkillIdRef.current;
+    if (!skillId) return;
+    const timer = setTimeout(() => jumpToSkill(skillId), 320);
+    return () => clearTimeout(timer);
+  }, [showDetailModal, jumpToSkill]);
 
   return (
     <div className="flex flex-col flex-1 min-w-0 min-h-0">
@@ -86,7 +148,7 @@ export const DashboardMain: React.FC<DashboardMainProps> = memo(({
       {/* 内容区域 - 可滚动 */}
       <div className="relative flex-1 flex overflow-hidden bg-[#f8f9fa] dark:bg-dark-bg-secondary px-5 pl-0">
         {sidebar}
-        <div onScroll={onMainScroll} className={`relative flex-1 overflow-y-auto pb-20 ${isDragOver ? 'border-4 border-[#b71422] bg-white/90 dark:bg-dark-bg-primary rounded-xl' : ''}`}>
+        <div ref={scrollContainerRef} onScroll={onMainScroll} className={`relative flex-1 overflow-y-auto pb-20 ${isDragOver ? 'border-4 border-[#b71422] bg-white/90 dark:bg-dark-bg/90 rounded-xl' : ''}`}>
           {/* 当前扫描路径 */}
           {selectedSource && selectedSource !== SOURCE.All && (
             <div className="flex items-center justify-between gap-4 pb-2">
@@ -133,7 +195,7 @@ export const DashboardMain: React.FC<DashboardMainProps> = memo(({
               {/* 从已有Agent导入 */}
               <button
                 onClick={onOpenImportModal}
-                className="text-[11px] text-slate-700 dark:text-slate-300 font-medium px-2 py-1 bg-white dark:bg-slate-800 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex-shrink-0 flex items-center gap-1.5"
+                className="text-[11px] text-slate-700 dark:text-slate-300 font-medium px-2 py-1 bg-gray-100 dark:bg-dark-bg-tertiary rounded hover:bg-gray-200 dark:hover:bg-dark-hover transition-all flex-shrink-0 flex items-center gap-1.5"
               >
                 <Icon name="download" className="text-xs" />
                 从已有Agent导入

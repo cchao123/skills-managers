@@ -912,7 +912,7 @@ export default function SkillDownload() {
       resizeObserver.disconnect();
       clearTimeout(resizeTimeout);
     };
-  }, []);
+  }, [filteredSkills.length > 0]);
 
   // 当过滤结果变化时，重置分页显示数量
   useEffect(() => {
@@ -1080,7 +1080,7 @@ export default function SkillDownload() {
               </div>
             ) : (
               <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div onScroll={handleListScroll} className="overflow-x-auto overflow-y-auto flex-1 min-h-0 overscroll-x-contain overscroll-behavior-x-none" style={{ overscrollBehaviorX: 'none' }}>
+                <div onScroll={handleListScroll} className="overflow-x-auto overflow-y-auto flex-1 min-h-0 overscroll-x-contain show-scrollbar" style={{ overscrollBehaviorX: 'none' }}>
                   <table className="w-full min-w-[900px]">
                     <colgroup>
                       <col className="w-14" />
