@@ -231,6 +231,44 @@ if (typeof document !== 'undefined' && !document.getElementById('drawer-animatio
     .drawer-content-transition {
       transition: opacity 0.2s ease-out;
     }
+
+    /* 固定列阴影 - 在操作列左侧外部 */
+    .fixed-action-shadow {
+      position: relative;
+    }
+
+    /* 在操作列左边缘外侧显示阴影 */
+    .fixed-action-shadow::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -30px;
+      bottom: 0;
+      width: 30px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      background: linear-gradient(to right,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.08) 50%,
+        rgba(0, 0, 0, 0.12) 100%
+      );
+      z-index: 5;
+    }
+
+    /* 显示阴影 */
+    .fixed-action-shadow-show::before {
+      opacity: 1;
+    }
+
+    /* 深色模式 - 更明显的阴影 */
+    .dark .fixed-action-shadow::before {
+      background: linear-gradient(to right,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.2) 50%,
+        rgba(0, 0, 0, 0.35) 100%
+      );
+    }
   `;
   document.head.appendChild(style);
 }
@@ -542,8 +580,9 @@ export default function SkillDownload() {
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => setIsScrolling(false), 1000);
 
-    // 检测滚动到底部，加载更多行
     const target = e.currentTarget;
+
+    // 1. 检测垂直滚动 - 加载更多行
     const scrollTop = target.scrollTop;
     const scrollHeight = target.scrollHeight;
     const clientHeight = target.clientHeight;
@@ -556,6 +595,22 @@ export default function SkillDownload() {
         return prev < nextCount ? nextCount : prev;
       });
     }
+
+    // 2. 检测横向滚动 - 固定列阴影
+    const scrollLeft = target.scrollLeft;
+    const scrollWidth = target.scrollWidth;
+    const targetClientWidth = target.clientWidth;
+
+    // 没有横向滚动空间时隐藏阴影
+    if (scrollWidth <= targetClientWidth) {
+      setIsTableScrolled(false);
+      return;
+    }
+
+    // 当没有滚动到最右边时，显示阴影（表示左侧有内容被卷去）
+    // 使用 -1 避免浮点数精度问题，确保滚动到最右边时能正确隐藏阴影
+    const shouldShow = scrollLeft < scrollWidth - targetClientWidth - 1;
+    setIsTableScrolled(shouldShow);
   };
 
   useEffect(() => {
@@ -768,7 +823,6 @@ export default function SkillDownload() {
       invoke('rescan_skills');
       refreshInstalled();
     } catch (error) {
-      console.error('Failed to download skill:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       showToast('error', t('skillDownload.toast.downloadFailed', { error: errorMessage }));
     } finally {
@@ -788,35 +842,55 @@ export default function SkillDownload() {
   const LOAD_MORE_COUNT = 50;
   const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
 
-  // 监听表格滚动，控制固定列阴影（类似 Ant Design 固定列阴影逻辑）
+  // 当弹框或侧边栏状态变化时，重新检测阴影
   useEffect(() => {
     const tableWrapper = tableContainerRef.current?.querySelector('div.overflow-x-auto') as HTMLElement;
     if (!tableWrapper) return;
 
-    // 检查是否需要显示阴影的函数（参考 rc-table 的 onInternalScroll 逻辑）
+    // 使用 requestAnimationFrame 确保DOM布局完成后再检测
+    const detectShadow = () => {
+      const scrollLeft = tableWrapper.scrollLeft;
+      const scrollWidth = tableWrapper.scrollWidth;
+      const clientWidth = tableWrapper.clientWidth;
+
+      if (scrollWidth <= clientWidth) {
+        setIsTableScrolled(false);
+        return;
+      }
+
+      setIsTableScrolled(scrollLeft < scrollWidth - clientWidth - 1);
+    };
+
+    // 先立即检测一次
+    detectShadow();
+
+    // 然后延迟再检测一次，确保动画完成后的最终状态
+    const timer = setTimeout(() => {
+      detectShadow();
+    }, 400); // 等待动画完成（300ms + 缓冲）
+
+    return () => clearTimeout(timer);
+  }, [isAnyPanelOpen, isSidebarCollapsed]); // 监听弹框和侧边栏状态变化
+
+  // 监听表格容器尺寸变化，更新固定列阴影状态
+  useEffect(() => {
+    const tableWrapper = tableContainerRef.current?.querySelector('div.overflow-x-auto') as HTMLElement;
+    if (!tableWrapper) return;
+
+    // 检查阴影状态的函数
     const checkNeedShadow = () => {
       const scrollLeft = tableWrapper.scrollLeft;
       const scrollWidth = tableWrapper.scrollWidth;
       const clientWidth = tableWrapper.clientWidth;
 
-      // 1. 如果没有横向滚动空间，隐藏阴影
+      // 没有横向滚动空间时隐藏阴影
       if (scrollWidth <= clientWidth) {
-        return false;
+        setIsTableScrolled(false);
+        return;
       }
 
-      // 2. 右侧阴影：只要没有滚动到最右端，就显示阴影
-      // 即：scrollLeft < scrollWidth - clientWidth
-      return scrollLeft < scrollWidth - clientWidth;
-    };
-
-    // 滚动事件处理器（使用 requestAnimationFrame 节流，避免频繁更新）
-    let rafId: number | undefined;
-    const handleScroll = () => {
-      if (rafId !== undefined) return;
-      rafId = requestAnimationFrame(() => {
-        setIsTableScrolled(checkNeedShadow());
-        rafId = undefined;
-      });
+      // 当没有滚动到最右边时，显示阴影（使用 -1 避免浮点数精度问题）
+      setIsTableScrolled(scrollLeft < scrollWidth - clientWidth - 1);
     };
 
     // 使用 ResizeObserver 监听尺寸变化（防抖处理）
@@ -824,24 +898,19 @@ export default function SkillDownload() {
     const resizeObserver = new ResizeObserver(() => {
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
-        setIsTableScrolled(checkNeedShadow());
+        checkNeedShadow();
       }, 200); // 200ms 防抖
     });
 
     // 初始化检查
-    setIsTableScrolled(checkNeedShadow());
+    checkNeedShadow();
 
-    // 监听滚动和尺寸变化
-    tableWrapper.addEventListener('scroll', handleScroll);
+    // 监听尺寸变化
     resizeObserver.observe(tableWrapper);
 
     return () => {
-      tableWrapper.removeEventListener('scroll', handleScroll);
       resizeObserver.disconnect();
       clearTimeout(resizeTimeout);
-      if (rafId !== undefined) {
-        cancelAnimationFrame(rafId);
-      }
     };
   }, []);
 
@@ -1029,6 +1098,7 @@ export default function SkillDownload() {
                           {sourceType === 'hot' ? t('skillDownload.column.installs1hChange') : t('skillDownload.column.installs')}
                         </th>
                         <th className={`sticky right-0 ${showActionText ? 'px-4' : 'px-2'} py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border bg-[#f9fafb] dark:bg-dark-bg-tertiary ${isTableScrolled ? 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.3)]' : ''} transition-shadow duration-200`}>{t('skillDownload.column.action')}</th>
+
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e1e3e4] dark:divide-dark-border">

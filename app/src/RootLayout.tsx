@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import SideNavBar from './components/SideNavBar';
 import Dashboard from './pages/Dashboard';
-import SkillDownload from './pages/SkillDownload';
+import SkillDownload from './pages/Marketplace/SkillDownload';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { isTauri } from '@/lib/tauri-env';
 import { PAGE, pageToPath, pathToPage, type Page } from '@/constants';
