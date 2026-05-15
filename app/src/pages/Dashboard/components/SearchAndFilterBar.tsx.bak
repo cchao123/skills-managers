@@ -1,0 +1,202 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { StatsBar } from '@/pages/Dashboard/components/StatsBar';
+import { SourceTabs } from '@/pages/Dashboard/components/SourceTabs';
+import { AgentFilterButton } from '@/pages/Dashboard/components/AgentFilterButton';
+import type { FilterType } from '@/pages/Dashboard/constants/filterType';
+import type { SkillMetadata, AgentConfig } from '@/types';
+import { useSearchBarPrefs } from '@/hooks/useSearchBarPrefs';
+import { useDetectedAgents } from '@/pages/Dashboard/hooks/useDetectedAgents';
+
+import { Icon } from '@/components/Icon';
+interface SearchAndFilterBarProps {
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  filterType: FilterType;
+  onFilterChange: (type: FilterType) => void;
+  skills: SkillMetadata[];
+  agents: AgentConfig[];
+  selectedSource: string;
+  onSourceSelect: (source: string) => void;
+  /** 平铺视图下「按 Agent 快筛」当前选中项；'' 表示不筛 */
+  agentFilter: string;
+  /** 切换快筛选中项 */
+  onAgentFilterChange: (value: string) => void;
+  /** 渲染在搜索栏最右侧的额外操作（如操作日志、帮助按钮等） */
+  rightActions?: React.ReactNode;
+}
+
+export const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
+  searchTerm,
+  onSearchChange,
+  filterType,
+  onFilterChange,
+  skills,
+  agents,
+  selectedSource,
+  onSourceSelect,
+  agentFilter,
+  onAgentFilterChange,
+  rightActions,
+}) => {
+  const { t } = useTranslation();
+  const { prefs: searchBarPrefs } = useSearchBarPrefs();
+  const detectedAgents = useDetectedAgents(agents);
+
+  // 检测操作系统以显示正确的快捷键
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const shortcutKey = isMac ? '⌘' : 'Ctrl';
+
+  // 隐藏搜索框时同时清空已输入的关键字，避免出现"看不到输入但仍在过滤"的隐式状态
+  useEffect(() => {
+    if (!searchBarPrefs.showSearch && searchTerm) {
+      onSearchChange('');
+    }
+  }, [searchBarPrefs.showSearch, searchTerm, onSearchChange]);
+
+  return (
+    <div className="flex items-center gap-3 h-11" data-tauri-drag-region>
+      {/* 移除视图切换，现在只使用平铺视图 */}
+      {searchBarPrefs.showSearch && (
+        <div className="relative w-64 shrink-0">
+          <div className={`flex items-center h-9 rounded-lg border transition-colors focus-within:border-[#b71422] bg-white dark:bg-dark-bg-card overflow-hidden ${
+            searchTerm ? 'border-[#b71422]/40 dark:border-[#fca5a5]/40' : 'border-[#e1e3e4] dark:border-dark-border'
+          }`}>
+            <Icon name="search" className="flex-shrink-0 text-slate-400 dark:text-gray-400 ml-3" />
+            <input
+              type="text"
+              placeholder={t('dashboard.search.placeholder')}
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="flex-1 h-full bg-transparent border-0 outline-none ring-0 focus:ring-0 pl-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 pr-7"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => onSearchChange('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-dark-bg-tertiary transition-colors flex-shrink-0"
+                title={t('dashboard.search.clear')}
+              >
+                <Icon name="close" className="text-slate-400 dark:text-gray-500 text-sm" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <AgentFilterButton
+        agents={detectedAgents}
+        selected={agentFilter}
+        onSelect={onAgentFilterChange}
+      />
+      <div className="shrink-0 ml-auto">
+        <StatsBar skills={skills} filterType={filterType} onFilterChange={onFilterChange} />
+      </div>
+      <div className="ml-auto shrink-0">
+        <SourceTabs
+          agents={agents}
+          selectedSource={selectedSource}
+          onSelect={onSourceSelect}
+        />
+      </div>
+
+      {searchBarPrefs.showActions && rightActions && (
+        <div className="flex items-center gap-1 shrink-0">{rightActions}</div>
+      )}
+
+    </div>
+  );
+};
+
+// Filter Dropdown Content Component
+interface FilterDropdownContentProps {
+  prefixes: string[];
+  addPrefix: (prefix: string) => void;
+  removePrefix: (prefix: string) => void;
+}
+
+const FilterDropdownContent: React.FC<FilterDropdownContentProps> = ({
+  prefixes,
+  addPrefix,
+  removePrefix,
+}) => {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    addPrefix(trimmed);
+    setDraft('');
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commit();
+    } else if (e.key === 'Backspace' && draft === '' && prefixes.length > 0) {
+      removePrefix(prefixes[prefixes.length - 1]);
+    }
+  };
+
+  return (
+    <div className="px-4 py-3 space-y-3">
+      {/* Input row */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Icon name="add" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-400 text-base" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t('settings.skillFilter.placeholder')}
+            className="w-full bg-white dark:bg-dark-bg-card border border-[#e1e3e4] dark:border-dark-border rounded-lg py-2 pl-9 pr-3 text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-[#b71422]/20 focus:border-[#b71422] transition-all"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={commit}
+          disabled={!draft.trim()}
+          className="px-3 py-2 rounded-lg text-sm font-bold bg-[#b71422] text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {t('settings.skillFilter.add')}
+        </button>
+      </div>
+
+      {/* Chip list */}
+      {prefixes.length === 0 ? (
+        <p className="text-xs text-slate-400 dark:text-gray-500 italic">
+          {t('settings.skillFilter.empty')}
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {prefixes.map((prefix) => (
+            <span
+              key={prefix}
+              className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-mono font-semibold"
+            >
+              {prefix}
+              <button
+                type="button"
+                onClick={() => removePrefix(prefix)}
+                aria-label={t('settings.skillFilter.remove', { prefix })}
+                title={t('settings.skillFilter.remove', { prefix })}
+                className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+              >
+                <Icon name="close" className="text-[11px]" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] text-slate-400 dark:text-gray-500 leading-relaxed">
+          {t('settings.skillFilter.hint')}
+        </p>
+      </div>
+    </div>
+  );
+};

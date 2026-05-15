@@ -9,7 +9,7 @@ interface StatsBarProps {
   compact?: boolean;
 }
 
-export const StatsBar: React.FC<StatsBarProps> = ({ skills, filterType, onFilterChange }) => {
+export const StatsBar: React.FC<StatsBarProps> = ({ skills, filterType, onFilterChange, compact }) => {
   const { t } = useTranslation();
 
   return (
