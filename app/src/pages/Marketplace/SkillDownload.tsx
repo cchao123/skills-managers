@@ -1080,7 +1080,7 @@ export default function SkillDownload() {
               </div>
             ) : (
               <div className="bg-white dark:bg-dark-bg-card rounded-xl border border-[#e1e3e4] dark:border-dark-border flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div onScroll={handleListScroll} className="overflow-x-auto overflow-y-auto flex-1 min-h-0 overscroll-x-contain show-scrollbar" style={{ overscrollBehaviorX: 'none' }}>
+                <div onScroll={handleListScroll} className="overflow-x-auto overflow-y-auto flex-1 min-h-0 overscroll-x-contain show-scrollbar" style={{ overscrollBehaviorX: 'none', width: 'calc(100% + 8px)' }}>
                   <table className="w-full min-w-[900px]">
                     <colgroup>
                       <col className="w-14" />
@@ -1097,7 +1097,7 @@ export default function SkillDownload() {
                         <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border overflow-hidden whitespace-nowrap">
                           {sourceType === 'hot' ? t('skillDownload.column.installs1hChange') : t('skillDownload.column.installs')}
                         </th>
-                        <th className={`sticky right-0 ${showActionText ? 'px-4' : 'px-2'} py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border bg-[#f9fafb] dark:bg-dark-bg-tertiary ${isTableScrolled ? 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.3)]' : ''} transition-shadow duration-200`}>{t('skillDownload.column.action')}</th>
+                        <th className={`sticky right-[8px] ${showActionText ? 'px-4' : 'px-2'} py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-[#e1e3e4] dark:border-dark-border bg-[#f9fafb] dark:bg-dark-bg-tertiary ${isTableScrolled ? 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.3)]' : ''} transition-shadow duration-200`}>{t('skillDownload.column.action')}</th>
 
                       </tr>
                     </thead>
@@ -1105,7 +1105,7 @@ export default function SkillDownload() {
                       {filteredSkills.slice(0, displayCount).map((skill, index) => {
                         const isSelected = detailSkill?.id === skill.id || localDetailSkillLive?.id === skill.id;
                         const cellBgClass = isSelected ? 'bg-red-50 dark:bg-red-900/20' : '';
-                        const actionCellBgClass = isSelected ? 'bg-red-50 dark:bg-red-900/20' : 'bg-white dark:bg-dark-bg-card';
+                        const actionCellBgClass = isSelected ? 'bg-red-50 dark:bg-[#321f1f]' : 'bg-white dark:bg-dark-bg-card';
                         return (
                           <tr
                             key={skill.id}
@@ -1174,7 +1174,7 @@ export default function SkillDownload() {
                             </td>
 
                             {/* 操作：下载 */}
-                            <td className={`sticky right-0 ${showActionText ? 'px-4' : 'px-2'} py-3 align-middle ${actionCellBgClass} ${isTableScrolled ? 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.3)]' : ''} transition-shadow duration-200`}>
+                            <td className={`sticky right-[8px] ${showActionText ? 'px-4' : 'px-2'} py-3 align-middle ${actionCellBgClass} ${isTableScrolled ? 'shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.3)]' : ''} transition-shadow duration-200`}>
                               <div className="flex items-center justify-center">
                                 {(installedIds.has(installedKey(skill.id, skill.repository)) || legacyInstalledIds.has(skill.id)) && !succeeded.has(skillKey(skill)) ? (
                                   <div

@@ -68,6 +68,7 @@ const AGENT_META = {
     displayName: 'OpenCode',
     rootPath: '~/.opencode',
     icon: opencodeIcon,
+    invertInDark: true,
   },
   trae: {
     name: 'trae',
